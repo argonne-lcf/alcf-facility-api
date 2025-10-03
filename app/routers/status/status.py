@@ -1,6 +1,8 @@
-from fastapi import APIRouter, HTTPException, Request, Query
+from fastapi import APIRouter, HTTPException, Request, Query, Depends
 import datetime
 from . import models
+from ...config import DATABASE_ENABLED
+from ...database import get_db_session
 
 router = APIRouter(
     prefix="/status",
@@ -22,8 +24,10 @@ async def get_resources(
     limit : int | None = 100,
     updated_since : datetime.datetime | None = None,
     resource_type : models.ResourceType | None = None,
+    session = Depends(get_db_session),
     ) -> list[models.Resource]:
-    return await request.app.state.adapter.get_resources(offset, limit, name, description, group, updated_since, resource_type)
+    kwargs = {"session": session} if DATABASE_ENABLED else {}
+    return await request.app.state.adapter.get_resources(offset, limit, name, description, group, updated_since, resource_type, **kwargs)
 
 
 @router.get(
@@ -32,10 +36,12 @@ async def get_resources(
     description="Get a specific resource for a given id"
 )
 async def get_resource(
-    request : Request, 
-    resource_id : str
+    request : Request,
+    resource_id : str,
+    session = Depends(get_db_session),
     ) -> models.Resource:
-    item = await request.app.state.adapter.get_resource(resource_id)
+    kwargs = {"session": session} if DATABASE_ENABLED else {}
+    item = await request.app.state.adapter.get_resource(resource_id, **kwargs)
     if not item:
         raise HTTPException(status_code=404, detail="Item not found")
     return item
@@ -59,8 +65,10 @@ async def get_incidents(
     resource_id : str | None = None,
     offset : int | None = 0,
     limit : int | None = 100,
+    session = Depends(get_db_session),
     ) -> list[models.Incident]:
-    return await request.app.state.adapter.get_incidents(offset, limit, name, description, status, type, from_, to, time_, updated_since, resource_id)
+    kwargs = {"session": session} if DATABASE_ENABLED else {}
+    return await request.app.state.adapter.get_incidents(offset, limit, name, description, status, type, from_, to, time_, updated_since, resource_id, **kwargs)
 
 
 @router.get(
@@ -70,9 +78,11 @@ async def get_incidents(
 )
 async def get_incident(
     request : Request,
-    incident_id : str
+    incident_id : str,
+    session = Depends(get_db_session),
     ) -> models.Incident:
-    item = await request.app.state.adapter.get_incident(incident_id)
+    kwargs = {"session": session} if DATABASE_ENABLED else {}
+    item = await request.app.state.adapter.get_incident(incident_id, **kwargs)
     if not item:
         raise HTTPException(status_code=404, detail="Item not found")
     return item
@@ -96,8 +106,10 @@ async def get_events(
     offset : int | None = 0,
     limit : int | None = 100,
     updated_since : datetime.datetime | None = None,
+    session = Depends(get_db_session),
     ) -> list[models.Event]:
-    return await request.app.state.adapter.get_events(incident_id, offset, limit, resource_id, name, description, status, from_, to, time_, updated_since)
+    kwargs = {"session": session} if DATABASE_ENABLED else {}
+    return await request.app.state.adapter.get_events(incident_id, offset, limit, resource_id, name, description, status, from_, to, time_, updated_since, **kwargs)
 
 
 @router.get(
@@ -108,9 +120,11 @@ async def get_events(
 async def get_event(
     request : Request,
     incident_id : str,
-    event_id : str
+    event_id : str,
+    session = Depends(get_db_session),
     ) -> models.Event:
-    item = await request.app.state.adapter.get_event(incident_id, event_id)
+    kwargs = {"session": session} if DATABASE_ENABLED else {}
+    item = await request.app.state.adapter.get_event(incident_id, event_id, **kwargs)
     if not item:
         raise HTTPException(status_code=404, detail="Item not found")
     return item
