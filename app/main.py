@@ -5,6 +5,7 @@ from fastapi import FastAPI
 from contextlib import asynccontextmanager
 from .facility_adapter import FacilityAdapter
 from . import config
+from .database import DATABASE_ENABLED, DATABASE_URL
 
 # include other sub-components as needed
 from app.routers.status import status
@@ -23,6 +24,8 @@ async def lifespan(app: FastAPI):
     # Load the facility-specific adapter
     adapter_name = os.environ.get("IRI_API_ADAPTER", "app.demo_adapter.DemoAdapter")
     logging.getLogger().info(f"Using adapter: {adapter_name}")
+    if DATABASE_ENABLED:
+        logging.getLogger().info(f"\tDatabase enabled ({DATABASE_URL}) - assuming existing database with tables.")
     parts = adapter_name.rsplit(".", 1)
     module = importlib.import_module(parts[0])    
     AdapterClass = getattr(module, parts[1])
