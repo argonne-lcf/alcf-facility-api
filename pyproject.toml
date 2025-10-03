@@ -12,7 +12,13 @@ dependencies = [
     "globus-sdk>=4.3.1",
     "cachetools>=5.3.0",
     "typer>=0.24.1",
+    "psij-python==0.9.11",
+    "python-dotenv>=1.0.0",
 ]
+
 [tool.ruff]
 line-length = 200
 exclude = [".venv", "__pycache__", "build", "dist"]
+
+[tool.setuptools]
+packages = ["app", "alcf"]
