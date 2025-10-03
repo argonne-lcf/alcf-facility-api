@@ -6,4 +6,7 @@ dependencies = [
     "fastapi[standard]>=0.100.0",
     "uvicorn[standard]>=0.22.0",
     "psij-python==0.9.11",
+    "python-dotenv>=1.0.0",
+    "sqlalchemy>=2.0.0",
+    "aiosqlite>=0.19.0",
 ]
