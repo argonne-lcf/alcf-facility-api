@@ -2,6 +2,10 @@ import os
 import logging
 import json
 
+# Load environment variables from .env file
+from dotenv import load_dotenv
+load_dotenv()
+
 logging.basicConfig()
 logging.getLogger().setLevel(logging.INFO)
 
@@ -39,3 +43,7 @@ except Exception as exc:
 
 API_URL_ROOT = os.environ.get("API_URL_ROOT", "https://api.iri.nersc.gov")
 API_URL = os.environ.get("API_URL", "api/current")
+
+# Optional database support with qslmodel and sqlalchemy
+DATABASE_URL = os.getenv("DATABASE_URL", None)
+DATABASE_ENABLED = bool(DATABASE_URL)
