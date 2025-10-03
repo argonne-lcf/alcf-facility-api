@@ -1,0 +1,11 @@
+[
+    {
+        "id": "afb8a6d7-cd5b-4040-8be7-6e917b30af08",
+        "name": "Argonne Leadership Computing Facility Building 240",
+        "short_name": "ALCF240",
+        "description": "Building 240",
+        "last_modified": "2025-07-10T11:28:40.969Z",
+        "operating_organization": "Argonne Leadership Computing Facility",
+        "location_id": "404e75ea-1b00-4ffc-bf07-b56dbbd6306f"
+    }
+]
