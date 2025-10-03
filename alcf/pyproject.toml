@@ -1,0 +1,26 @@
+[project]
+name = "alcf-facility-adapter"
+version = "0.1.0"
+description = "ALCF-specific facility adapter for the IRI Facility API"
+requires-python = ">=3.12"
+dependencies = [
+    "python-dotenv>=1.0.0",
+    "sqlalchemy>=2.0.0",
+    "sqlalchemy-utils>=0.41.0",
+    "aiosqlite>=0.21.0",
+    "greenlet>=3.2.0",
+    "httpx>=0.28.0",
+    "locust>=2.30.0",
+    "sqlmodel>=0.0.14",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=1.0.0",
+    "pytest-cov>=6.0.0",
+    "coverage>=7.0.0",
+]
+
+[tool.setuptools]
+packages = ["alcf"]
