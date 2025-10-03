@@ -9,8 +9,14 @@ dependencies = [
     "opentelemetry-api>=1.39.1,<1.40.0",
     "opentelemetry-sdk>=1.39.1,<1.40.0",
     "opentelemetry-instrumentation-fastapi>=0.60b1,<0.61b0",
-    "opentelemetry-exporter-otlp>=1.39.1,<1.40.0"
+    "opentelemetry-exporter-otlp>=1.39.1,<1.40.0",
+    "psij-python==0.9.11",
+    "python-dotenv>=1.0.0",
 ]
+
 [tool.ruff]
 line-length = 200
 exclude = [".venv", "__pycache__", "build", "dist"]
+
+[tool.setuptools]
+packages = ["app", "alcf"]
