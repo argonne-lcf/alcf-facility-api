@@ -1,0 +1,14 @@
+[
+    {
+        "id": "404e75ea-1b00-4ffc-bf07-b56dbbd6306f",
+        "name": "ALCF location",
+        "short_name": "alcf_location",
+        "description": "Location of the ALCF Building 240",
+        "last_modified": "2025-07-10T11:28:40.969Z",
+        "country_name": "United States",
+        "locality_name": "Lemont",
+        "state_or_province_name": "Illinois",
+        "street_address": "9700 S Cass Ave (Building 240)",
+        "unlocode": "US"
+    }
+]

@@ -1,0 +1,38 @@
+[
+    {
+        "id": "55c1c993-1124-47f9-b823-514ba3849a9a",
+        "name": "Polaris",
+        "short_name": "polaris",
+        "description": "Polaris is an AMD+NVIDIA GPU-based system with 560 nodes and 4 A100 GPUs per node.",
+        "last_modified": "2025-07-10T11:28:40.969Z",
+        "type": "compute",
+        "group": "computes"
+    },
+    {
+        "id": "9674c7e1-aecc-4dbb-bf01-c9197e027cd6",
+        "name": "Sophia",
+        "short_name": "sophia",
+        "description": "Sophia is an AMD+NVIDIA GPU-based system with 24 nodes and 8 A100 GPUs per node.",
+        "last_modified": "2025-07-10T11:28:40.969Z",
+        "type": "compute",
+        "group": "computes"
+    },
+    {
+        "id": "8b9b42f7-572a-4909-8472-a0453436304c",
+        "name": "Crux",
+        "short_name": "crux",
+        "description": "Crux is an AMD CPU-only system with 256 nodes.",
+        "last_modified": "2025-07-10T11:28:40.969Z",
+        "type": "compute",
+        "group": "computes"
+    },
+    {
+        "id": "0325fc07-6fb7-4453-b772-3d5030b2df72",
+        "name": "Aurora",
+        "short_name": "aurora",
+        "description": "Aurora is an HPE Cray-Ex based system with 10,624 nodes and 6 Intel Data Center GPU Max Series per node.",
+        "last_modified": "2025-07-10T11:28:40.969Z",
+        "type": "compute",
+        "group": "computes"
+    }
+]
