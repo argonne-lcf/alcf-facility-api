@@ -2,6 +2,10 @@ import os
 import logging
 import json
 
+# Load environment variables from .env file
+from dotenv import load_dotenv
+load_dotenv()
+
 logging.basicConfig()
 logging.getLogger().setLevel(logging.INFO)
 
