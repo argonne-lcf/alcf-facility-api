@@ -3,6 +3,11 @@ import os
 import json
 from .apilogger import get_stream_logger
 
+# [ADDITION BEGINS] Load environment variables from .env file
+from dotenv import load_dotenv
+load_dotenv()
+# [ADDITION ENDS]
+
 LOG_LEVEL = os.environ.get("LOG_LEVEL", "DEBUG")
 
 logger = get_stream_logger(__name__, LOG_LEVEL)
