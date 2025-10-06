@@ -228,10 +228,6 @@ class AlcfAdapter(FacilityAdapter):
     def __format_incident(self, db_incident: db_models.Incident) -> status_models.Incident:
         """Format a database incident object into a pydantic incident object."""
 
-        # Prepare data from database
-        event_uris = [f"{API_URL}/status/incidents/{db_incident.id}/events/{id}" for id in db_incident.event_ids]
-        resource_uris = [f"{API_URL}/status/resources/{id}" for id in db_incident.resource_ids]
-
         # Build data structure from pydantic model
         return status_models.Incident(
             id=db_incident.id,
@@ -243,17 +239,13 @@ class AlcfAdapter(FacilityAdapter):
             status=db_incident.status,
             type=db_incident.type,
             resolution=db_incident.resolution,
-            event_uris=event_uris,
-            resource_uris=resource_uris
+            event_ids=db_incident.event_ids,
+            resource_ids=db_incident.resource_ids,
         )
 
     # Format event
     def __format_event(self, db_event: db_models.Event) -> status_models.Event:
         """Format a database event object into a pydantic event object."""
-
-        # Prepare data from database
-        resource_uri = f"{API_URL}/status/resources/{db_event.resource_id}"
-        incident_uri = f"{API_URL}/status/incidents/{db_event.incident_id}"
 
         # Build data structure from pydantic model
         return status_models.Event(
@@ -263,10 +255,9 @@ class AlcfAdapter(FacilityAdapter):
             last_modified=db_event.last_modified,
             status=db_event.status,
             occurred_at=db_event.occurred_at,
-            resource_uri=resource_uri,
-            incident_uri=incident_uri
+            resource_id=db_event.resource_id,
+            incident_id=db_event.incident_id,
         )
-
 
 
     # ---------------------------
