@@ -1,4 +1,5 @@
 from app.facility_adapter import FacilityAdapter
+import asyncio
 import datetime
 from fastapi import HTTPException
 from starlette.status import HTTP_304_NOT_MODIFIED, HTTP_400_BAD_REQUEST
@@ -8,6 +9,10 @@ from app.config import API_URL
 from typing import List
 from app.routers.status import models as status_models
 from alcf.database import models as db_models
+
+# Safety net to recover resource status
+from alcf.database.ingestion.ingest_activity_data import ingest_activity_data_for_resource
+from alcf.database.database import get_db_session_context
 
 # Functions to extract objects from the database
 from alcf.database.database import (
@@ -47,6 +52,7 @@ class AlcfAdapter(FacilityAdapter):
         """Update and return all resources from the database."""
         #TODO: check for updates needed
         resources = await get_db_resources(ids=ids)
+        resources = await asyncio.gather(*[self.__update_resource_if_needed(resource) for resource in resources])
         return [self.__format_resource(resource) for resource in resources]
 
 
@@ -57,6 +63,7 @@ class AlcfAdapter(FacilityAdapter):
         ) -> status_models.Resource:
         """Return the resource object tied to a given resource ID."""
         resource = await get_db_resource_from_id(id)
+        resource = await self.__update_resource_if_needed(resource) # Backup if cron job failed    
         return self.__format_resource(resource)
 
 
@@ -217,7 +224,7 @@ class AlcfAdapter(FacilityAdapter):
             id=db_resource.id,
             name=db_resource.name,
             description=db_resource.description,
-            last_updated=db_resource.last_modified,
+            last_updated=db_resource.last_updated,
             current_status=db_resource.current_status,
             capability_ids=[],
             group=db_resource.group,
@@ -233,7 +240,7 @@ class AlcfAdapter(FacilityAdapter):
             id=db_incident.id,
             name=db_incident.name,
             description=db_incident.description,
-            last_modified=db_incident.last_modified,
+            last_updated=db_incident.last_updated,
             start=db_incident.start,
             end=db_incident.end,
             status=db_incident.status,
@@ -252,7 +259,7 @@ class AlcfAdapter(FacilityAdapter):
             id=db_event.id,
             name=db_event.name,
             description=db_event.description,
-            last_modified=db_event.last_modified,
+            last_updated=db_event.last_updated,
             status=db_event.status,
             occurred_at=db_event.occurred_at,
             resource_id=db_event.resource_id,
@@ -264,12 +271,27 @@ class AlcfAdapter(FacilityAdapter):
     #  Private utility functions
     # ---------------------------
 
+    # Update resource if needed
+    async def __update_resource_if_needed(self, resource: db_models.Resource) -> db_models.Resource:
+        """Update the resource manually if the ingestiong cron job failed."""
+
+        # If the resource status has not been verified in the last 2 minutes ...
+        current_datetime = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+        if (current_datetime - resource.last_verified).total_seconds() > 120:
+
+            # Update the resource manually
+            async with get_db_session_context() as db_session:
+                _, _, resource = await ingest_activity_data_for_resource(resource.id, db_session)
+
+        # Return the original resource object or the updated one
+        return resource
+
     # Remove not modified
     def __remove_not_modified(self, obj_list: List, if_modified_since: str) -> List:
         """Only include an object if it was modified since the if_modified_since date string."""
         objs = []
         for obj in obj_list:
-            if self.__is_modified_since(timestamp=obj.last_modified, if_modified_since=if_modified_since):
+            if self.__is_modified_since(timestamp=obj.last_updated, if_modified_since=if_modified_since):
                 objs.append(obj)
         return objs
 
