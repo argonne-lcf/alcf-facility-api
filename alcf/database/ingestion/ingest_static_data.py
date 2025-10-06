@@ -9,7 +9,7 @@ if project_root not in sys.path:
 import json
 import asyncio
 import argparse
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy import delete
 from sqlmodel import SQLModel
 from alcf.database.models import Facility, Site, Resource, Location, Event, Incident
@@ -24,14 +24,18 @@ class DataIngestion:
     def __init__(self):
         
         # Path to where the static data is stored
-        data_dir = os.path.join(os.path.dirname(__file__), "data")
+        data_dir = os.path.join(os.path.dirname(__file__), "static_data")
         
         # Define datetime fields that need parsing
-        self.__datetime_fields = ["last_modified"]
+        self.__datetime_fields = ["last_updated", "last_verified"]
         
         # Define default values for required fields that might be missing
         self.__default_values = {
-            "resources": {"current_status": "unknown"}
+            "resources": {
+                "current_status": "unknown",
+                "last_verified": datetime.now(timezone.utc),
+                "last_updated": datetime.now(timezone.utc)
+            }
         }
         
         # For each static data file ...
@@ -49,7 +53,7 @@ class DataIngestion:
         
     # Parse datetime string
     def __parse_datetime_string(self, dt_string):
-        """Parse ISO datetime string to Python datetime object"""
+        """Parse ISO datetime string to Python datetime object (naive UTC for SQLite compatibility)"""
 
         # If the datetime string is a string ...
         if isinstance(dt_string, str):
@@ -58,8 +62,14 @@ class DataIngestion:
             if dt_string.endswith('Z'):
                 dt_string = dt_string[:-1] + '+00:00'
 
-            # Convert the datetime string to a datetime object and return it
-            return datetime.fromisoformat(dt_string)
+            # Convert the datetime string to a datetime object
+            dt = datetime.fromisoformat(dt_string)
+            
+            # Convert to naive UTC for SQLite compatibility
+            if dt.tzinfo is not None:
+                dt = dt.astimezone(timezone.utc).replace(tzinfo=None)
+            
+            return dt
 
         # If the datetime string is not a string, return it as is
         return dt_string
@@ -84,6 +94,16 @@ class DataIngestion:
             if existing:
                 for key, value in item.items():
                     setattr(existing, key, value)
+                
+                # Apply default values for missing required fields on existing entries
+                model_name = filename.replace('.json', '')
+                if model_name in self.__default_values:
+                    for field, default_value in self.__default_values[model_name].items():
+                        if field not in item or item[field] is None:
+                            # Parse the default value if it's a datetime field
+                            if field in self.__datetime_fields:
+                                default_value = self.__parse_datetime_string(default_value)
+                            setattr(existing, field, default_value)
 
             # Create new entry if does not exist ...
             else:
