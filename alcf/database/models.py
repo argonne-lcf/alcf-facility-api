@@ -10,8 +10,7 @@ class NamedObject(SQLModel):
     name: Optional[str] = None
     short_name: Optional[str] = None
     description: Optional[str] = None
-    last_modified: Optional[datetime] = None
-    ingestion_time: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    last_updated: Optional[datetime] = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 class Facility(NamedObject, table=True):
     """Facility entity."""
@@ -56,3 +55,5 @@ class Resource(NamedObject, table=True):
     type: str
     group: Optional[str] = None
     current_status: str
+    last_event_id: Optional[str] = None
+    last_verified: Optional[datetime] = Field(default_factory=lambda: datetime.now(timezone.utc))
