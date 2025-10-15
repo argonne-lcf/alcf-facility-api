@@ -1,9 +1,8 @@
-from app.facility_adapter import FacilityAdapter
 import asyncio
 import datetime
 from fastapi import HTTPException
 from starlette.status import HTTP_304_NOT_MODIFIED, HTTP_400_BAD_REQUEST
-from app.config import API_URL
+from app.routers.status.facility_adapter import FacilityAdapter as StatusFacilityAdapter
 
 # Typing
 from typing import List
@@ -24,18 +23,10 @@ from alcf.database.database import (
     get_db_event_from_id
 )
 
-# TO BE DELETED
-from fastapi import Request
-from app.routers.account import models as account_models
-import psij
-# TO BE DELETED
 
-class AlcfAdapter(FacilityAdapter):
+class AlcfAdapter(StatusFacilityAdapter):
     """Facility adapter definition for the IRI Facility API."""
-    
-    # ID of the facility in the database
     FACILITY_ID = "8da81144-304b-4fd0-b2fe-eda33bb38720"
-
 
     # Get resources
     async def get_resources(
@@ -50,7 +41,6 @@ class AlcfAdapter(FacilityAdapter):
         ids: List[str] | None = None, # Addition from FacilityAdapter
         ) -> list[status_models.Resource]:
         """Update and return all resources from the database."""
-        #TODO: check for updates needed
         resources = await get_db_resources(ids=ids)
         resources = await asyncio.gather(*[self.__update_resource_if_needed(resource) for resource in resources])
         return [self.__format_resource(resource) for resource in resources]
@@ -130,7 +120,7 @@ class AlcfAdapter(FacilityAdapter):
     
     # Get incident
     async def get_incident(
-        self : "FacilityAdapter",
+        self : "AlcfAdapter",
         id : str
         ) -> status_models.Incident:
         """Return the incident object tied to a given incident ID."""
@@ -218,13 +208,11 @@ class AlcfAdapter(FacilityAdapter):
     # Format resource
     def __format_resource(self, db_resource: db_models.Resource) -> status_models.Resource:
         """Format a database resource object into a pydantic resource object."""
-
-        # Build data structure from pydantic model
         return status_models.Resource(
             id=db_resource.id,
             name=db_resource.name,
             description=db_resource.description,
-            last_updated=db_resource.last_updated,
+            last_modified=db_resource.last_updated,
             current_status=db_resource.current_status,
             capability_ids=[],
             group=db_resource.group,
@@ -234,13 +222,11 @@ class AlcfAdapter(FacilityAdapter):
     # Format incident
     def __format_incident(self, db_incident: db_models.Incident) -> status_models.Incident:
         """Format a database incident object into a pydantic incident object."""
-
-        # Build data structure from pydantic model
         return status_models.Incident(
             id=db_incident.id,
             name=db_incident.name,
             description=db_incident.description,
-            last_updated=db_incident.last_updated,
+            last_modified=db_incident.last_updated,
             start=db_incident.start,
             end=db_incident.end,
             status=db_incident.status,
@@ -253,13 +239,11 @@ class AlcfAdapter(FacilityAdapter):
     # Format event
     def __format_event(self, db_event: db_models.Event) -> status_models.Event:
         """Format a database event object into a pydantic event object."""
-
-        # Build data structure from pydantic model
         return status_models.Event(
             id=db_event.id,
             name=db_event.name,
             description=db_event.description,
-            last_updated=db_event.last_updated,
+            last_modified=db_event.last_updated,
             status=db_event.status,
             occurred_at=db_event.occurred_at,
             resource_id=db_event.resource_id,
@@ -327,83 +311,3 @@ class AlcfAdapter(FacilityAdapter):
             error_message = f"The requested {object_name} was not modified."
             raise HTTPException(status_code=HTTP_304_NOT_MODIFIED, detail=error_message)
     
-
-##### TEMPORARY WILL BE DELETED #####
-
-    def get_capabilities(
-        self : "FacilityAdapter",
-        ):
-        pass
-
-
-    def get_current_user(
-        self : "FacilityAdapter",
-        request: Request,
-        api_key: str
-        ):
-        """
-            Decode the api_key and return the authenticated user's id.
-            This method is not called directly, rather authorized endpoints "depend" on it.
-            (https://fastapi.tiangolo.com/tutorial/dependencies/)
-        """
-        pass
-
-
-    def get_user(
-        self : "FacilityAdapter",
-        request: Request,
-        user_id: str
-        ):
-        pass
-
-
-    def get_projects(
-        self : "FacilityAdapter",
-        request: Request,
-        user: account_models.User
-        ):
-        pass
-
-
-    def get_project_allocations(
-        self : "FacilityAdapter",
-        request: Request,
-        project: account_models.Project
-        ):
-        pass
-
-
-    def get_user_allocations(
-        self : "FacilityAdapter",
-        request: Request,
-        user: account_models.User,
-        project_allocations: list[account_models.ProjectAllocation],
-        ):
-        pass
-
-    
-    def submit_job(
-        self: "FacilityAdapter",
-        resource: status_models.Resource, 
-        user: account_models.User, 
-        job: psij.Job,
-    ):
-        pass
-
-    
-    def get_job(
-        self: "FacilityAdapter",
-        resource: status_models.Resource, 
-        user: account_models.User, 
-        job_id: str,
-    ):
-        pass
-
-    
-    def cancel_job(
-        self: "FacilityAdapter",
-        resource: status_models.Resource, 
-        user: account_models.User, 
-        job: psij.Job,
-    ):
-        pass
