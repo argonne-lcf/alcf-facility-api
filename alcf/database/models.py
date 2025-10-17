@@ -56,4 +56,4 @@ class Resource(NamedObject, table=True):
     group: Optional[str] = None
     current_status: str
     last_event_id: Optional[str] = None
-    last_verified: Optional[datetime] = Field(default_factory=lambda: datetime.now(timezone.utc))
+    last_verified: Optional[datetime] = None

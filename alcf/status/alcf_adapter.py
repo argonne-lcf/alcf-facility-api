@@ -259,7 +259,7 @@ class AlcfAdapter(StatusFacilityAdapter):
 
         # If the resource status has not been verified in the last 2 minutes ...
         current_datetime = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
-        if (current_datetime - resource.last_verified).total_seconds() > 120:
+        if resource.last_verified is None or (current_datetime - resource.last_verified).total_seconds() > 120:
 
             # Update the resource manually
             async with get_db_session_context() as db_session:
