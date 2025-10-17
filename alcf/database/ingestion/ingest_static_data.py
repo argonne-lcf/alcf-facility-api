@@ -33,7 +33,7 @@ class DataIngestion:
         self.__default_values = {
             "resources": {
                 "current_status": "unknown",
-                "last_verified": datetime.now(timezone.utc),
+                "last_verified": None,
                 "last_updated": datetime.now(timezone.utc)
             }
         }
