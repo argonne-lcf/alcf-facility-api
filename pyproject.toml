@@ -5,7 +5,7 @@ requires-python = ">=3.12"
 dependencies = [
     "fastapi[standard]>=0.100.0",
     "uvicorn[standard]>=0.22.0",
-    "humps>=0.2.2"
+    "humps>=0.2.2",
     "psij-python==0.9.11",
     "python-dotenv>=1.0.0",
 ]
