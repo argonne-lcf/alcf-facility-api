@@ -4,7 +4,7 @@
 
 Look at the main README to install your python environment with `make`. In the root folder of the project, activate your python environment and update required packages:
 ```bash
-conda activate fastapi
+source .venv/bin/activate
 uv pip install -r alcf/requirements.txt
 ```
 
