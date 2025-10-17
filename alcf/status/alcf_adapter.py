@@ -36,12 +36,11 @@ class AlcfAdapter(StatusFacilityAdapter):
         name : str | None = None,
         description : str | None = None,        
         group : str | None = None,
-        updated_since : datetime.datetime | None = None,
+        modified_since : datetime.datetime | None = None,
         resource_type : status_models.ResourceType | None = None,
-        ids: List[str] | None = None, # Addition from FacilityAdapter
         ) -> list[status_models.Resource]:
         """Update and return all resources from the database."""
-        resources = await get_db_resources(ids=ids)
+        resources = await get_db_resources()
         resources = await asyncio.gather(*[self.__update_resource_if_needed(resource) for resource in resources])
         return [self.__format_resource(resource) for resource in resources]
 
@@ -70,11 +69,11 @@ class AlcfAdapter(StatusFacilityAdapter):
         from_ : datetime.datetime | None = None,
         to : datetime.datetime | None = None,
         time : datetime.datetime | None = None,
-        updated_since : datetime.datetime | None = None,
-        ids: List[str] | None = None, # Addition from FacilityAdapter
+        modified_since : datetime.datetime | None = None,
         ) -> list[status_models.Event]:
         """Return all events from the database."""
-        events = await get_db_events(ids=ids)
+        incident = await get_db_incident_from_id(incident_id)
+        events = await get_db_events(ids=incident.event_ids)
         return [self.__format_event(event) for event in events]
 
     
@@ -109,12 +108,11 @@ class AlcfAdapter(StatusFacilityAdapter):
         from_ : datetime.datetime | None = None,
         to : datetime.datetime | None = None,
         time_ : datetime.datetime | None = None,
-        updated_since : datetime.datetime | None = None,
+        modified_since : datetime.datetime | None = None,
         resource_id : str | None = None,
-        ids: List[str] | None = None, # Addition from FacilityAdapter
         ) -> list[status_models.Incident]:
         """Return all incidents from the database."""
-        incidents = await get_db_incidents(ids=ids)
+        incidents = await get_db_incidents()
         return [self.__format_incident(incident) for incident in incidents]
 
     
