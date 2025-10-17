@@ -104,7 +104,7 @@ async def get_db_incident_from_id(id) -> db_models.Incident:
     return await get_db_object_from_id(id, db_models.Incident)
 
 # Function to extract a single event entry from its id
-async def get_db_event_from_id(id):
+async def get_db_event_from_id(id) -> db_models.Event:
     return await get_db_object_from_id(id, db_models.Event)
 
 # ========================================
