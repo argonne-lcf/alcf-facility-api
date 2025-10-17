@@ -38,5 +38,15 @@
         "type": "compute",
         "group": "computes",
         "site_id": "afb8a6d7-cd5b-4040-8be7-6e917b30af08"
+    },
+    {
+        "id": "7f7d0593-162e-43b9-8476-07d7d137d6ab",
+        "name": "Edith",
+        "short_name": "edith",
+        "description": "Edit is an ALCF development cluster with 4 nodes",
+        "last_updated": "2025-07-10T11:28:40.969Z",
+        "type": "compute",
+        "group": "computes",
+        "site_id": "afb8a6d7-cd5b-4040-8be7-6e917b30af08"
     }
 ]
