@@ -8,6 +8,7 @@ from alcf.database.ingestion.ingest_activity_data import ALCF_RESOURCE_ID_LIST
 from app.routers.compute import models as compute_models
 from app.routers.status import models as status_models
 from app.routers.account import models as account_models
+from alcf.compute.graphql import models as graphql_models
 
 # HTTP codes
 from starlette.status import (
@@ -22,7 +23,8 @@ from starlette.status import (
 
 # GraphQL query utils
 from alcf.compute.graphql.utils import (
-    build_mutation_createjob_query
+    build_mutation_createjob_query,
+    build_query_jobs_query
 )
 
 class AlcfAdapter(ComputeFacilityAdapter):
@@ -118,9 +120,12 @@ class AlcfAdapter(ComputeFacilityAdapter):
         print("========")
         print(query)
 
+        # Submit query to GraphQL API
         #response = await self.__post_graphql(query=query, user=user, url=pbs_url)
         #print("========")
         #print(response)
+
+        # TODO: Temp while we seek access to GraphQL
         import json
         response = json.loads("""
             {
@@ -137,22 +142,27 @@ class AlcfAdapter(ComputeFacilityAdapter):
                 }
             }
         """)
-        print("=====")
-        print(json.dumps(response, indent=4))
 
-        # Extract job details
-        # TODO: add try/except here
-        # TODO: Make pydantic model for GraphQL response
-        # TODO: just throw the dictionary in the pydantic class
-        job_id = response["data"]["createJob"]["node"]["jobId"]
-        job_state = response["data"]["createJob"]["node"]["status"]["state"]
+        # Validate query response
+        try:
+            response = graphql_models.CreateJobResponse(**response["data"]["createJob"])
+        except Exception as e:
+            raise HTTPException(
+                status_code=HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Compute query response could not be parsed: {e}"
+            )
 
+        # Convert GraphQL response to IRI-compliant job object
         job = compute_models.Job(
-            id=job_id,
+            id=response.node.jobId,
             status=compute_models.JobStatus(
-                state=self.__get_iri_job_state_from_graphql(job_state)
+                state=self.__get_iri_job_state_from_graphql(
+                    response.node.status.state
+                )
             )
         )
+
+        # Return IRI-compliant job submission response
         return job
 
 
@@ -168,14 +178,70 @@ class AlcfAdapter(ComputeFacilityAdapter):
 
 
     # Get job
-    def get_job(
+    async def get_job(
         self: "AlcfAdapter",
         resource: status_models.Resource, 
         user: account_models.User, 
         job_id: str,
         historical: bool = False,
     ) -> compute_models.Job:
-        pass
+        
+        # Get API URL from the resource object for the job submition
+        pbs_url = self.__pbs_graphql_api_urls[resource.id]
+
+        # Build GraphQL query
+        query = self.__build_get_job_query(resource, user, job_id, historical)
+        print("========")
+        print(query)
+
+        # Submit query to GraphQL API
+        #response = await self.__post_graphql(query=query, user=user, url=pbs_url)
+
+        # TEMP
+        import json
+        response = json.loads("""
+            {
+            "data": {
+                "jobs": {
+                "edges": [
+                    {
+                    "node": {
+                        "jobId": "77726.edtb-01.mcp.alcf.anl.gov",
+                        "status": {
+                        "state": 10,
+                        "exitStatus": 0
+                        }
+                    }
+                    }
+                ]
+                }
+            }
+            }
+        """)
+
+        # Validate query response
+        try:
+            response = response["data"]["jobs"]["edges"][0]
+            response = graphql_models.CreateJobResponse(**response)
+        except Exception as e:
+            raise HTTPException(
+                status_code=HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Compute query response could not be parsed: {e}"
+            )
+
+        # Convert GraphQL response to IRI-compliant job object
+        job = compute_models.Job(
+            id=response.node.jobId,
+            status=compute_models.JobStatus(
+                state=self.__get_iri_job_state_from_graphql(
+                    response.node.status.state
+                ),
+                exit_code=response.node.status.exitStatus
+            )
+        )
+
+        # Return IRI-compliant job submission response
+        return job
 
     
     # Get jobs
@@ -213,27 +279,54 @@ class AlcfAdapter(ComputeFacilityAdapter):
         job_spec: compute_models.JobSpec
     ) -> str:
         
-        # Build input data
-        input_data = {
-            "remoteCommand": job_spec.executable,
-            "commandArgs": job_spec.arguments,
-            "name": job_spec.name,
-            "errorPath": job_spec.stderr_path,
-            "outputPath": job_spec.stdout_path,
-            "queue": {
-                "name": job_spec.attributes.queue_name
-            },
-            "resourcesRequested": {
-                "jobResources": {
-                    "index": "",
-                    "physicalMemory": job_spec.resources.memory,
-                    "wallClockTime": job_spec.attributes.duration.seconds
-                }
-            }
-        }
+        # Build queue
+        queue = graphql_models.Queue(
+            name=job_spec.attributes.queue_name
+        )
+
+        # Build job resources
+        jobResources = graphql_models.JobTasksResources(
+            physicalMemory=job_spec.resources.memory,
+            wallClockTime=job_spec.attributes.duration.seconds
+        )
+
+        # Build resources requested
+        resourcesRequested = graphql_models.JobResources(
+            jobResources=jobResources
+        )
+        
+        # Build query data
+        input_data = graphql_models.Job(
+            remoteCommand=job_spec.executable,
+            commandArgs=job_spec.arguments,
+            name=job_spec.name,
+            errorPath=job_spec.stderr_path,
+            outputPath=job_spec.stdout_path,
+            queue=queue,
+            resourcesRequested=resourcesRequested
+        )
 
         # Generate and return the job submission GraphQL query
         return build_mutation_createjob_query(input_data)
+    
+
+    # Job submission query
+    def __build_get_job_query(
+        self: "AlcfAdapter",
+        resource: status_models.Resource, 
+        user: account_models.User, 
+        job_id: str,
+        historical: bool = False,
+    ) -> str:
+        
+        # Build job query filter
+        filter_data = graphql_models.QueryJobsFilter(
+            withHistoryJobs=historical,
+            jobIds=job_id
+        )
+
+        # Generate and return the job submission GraphQL query
+        return build_query_jobs_query(filter_data)
 
 
     # Post GraphQL
@@ -291,6 +384,14 @@ class AlcfAdapter(ComputeFacilityAdapter):
         # New
         if state == 0:
             return compute_models.JobState.NEW.value
+        
+        # Running
+        elif state == 7:
+            return compute_models.JobState.ACTIVE.value
+
+        # Completed
+        elif state == 10:
+            return compute_models.JobState.COMPLETED.value
         
         # Error if state not supported
         else:
