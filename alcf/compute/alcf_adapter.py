@@ -21,18 +21,24 @@ from starlette.status import (
 )
 
 # GraphQL query utils
-from alcf.compute.utils_graphql import (
+from alcf.compute.graphql.utils import (
     build_mutation_createjob_query
 )
 
 class AlcfAdapter(ComputeFacilityAdapter):
     """Facility adapter definition for the IRI Facility API."""
 
+    # Initialization for constants and convertions 
     def __init__(self):
+
+        # Temporary user during development
+        # TODO: REMOVE
+        self.user = account_models.User(id="bcote", name="Benoit Cote", api_key="12345")
+
+        # URLs for PBS GraphQL API on different resource
         self.__pbs_graphql_api_urls = {
            ALCF_RESOURCE_ID_LIST.edith.value: "https://edtb-01:8080/graphql"
         }
-        self.user = account_models.User(id="bcote", name="Benoit Cote", api_key="12345")
 
 
     # Get current_user
@@ -112,14 +118,39 @@ class AlcfAdapter(ComputeFacilityAdapter):
         print("========")
         print(query)
 
-        response = await self.__post_graphql(query=query, user=user, url=pbs_url)
-        print("========")
-        print(response)
+        #response = await self.__post_graphql(query=query, user=user, url=pbs_url)
+        #print("========")
+        #print(response)
+        import json
+        response = json.loads("""
+            {
+                "data": {
+                    "createJob": {
+                    "node": {
+                        "jobId": "77721.edtb-01.mcp.alcf.anl.gov",
+                        "status": {
+                            "state": 0
+                        }
+                    },
+                    "error": null
+                    }
+                }
+            }
+        """)
+        print("=====")
+        print(json.dumps(response, indent=4))
+
+        # Extract job details
+        # TODO: add try/except here
+        # TODO: Make pydantic model for GraphQL response
+        # TODO: just throw the dictionary in the pydantic class
+        job_id = response["data"]["createJob"]["node"]["jobId"]
+        job_state = response["data"]["createJob"]["node"]["status"]["state"]
 
         job = compute_models.Job(
-            id="1",
+            id=job_id,
             status=compute_models.JobStatus(
-                state=compute_models.JobState.NEW
+                state=self.__get_iri_job_state_from_graphql(job_state)
             )
         )
         return job
@@ -170,9 +201,9 @@ class AlcfAdapter(ComputeFacilityAdapter):
         pass
 
 
-    # ----------------------
-    # Build GraphQL Querries
-    # ----------------------
+    # -----------------
+    # GraphQL Functions
+    # -----------------
 
     # Job submission query
     def __build_submit_job_query(
@@ -204,10 +235,6 @@ class AlcfAdapter(ComputeFacilityAdapter):
         # Generate and return the job submission GraphQL query
         return build_mutation_createjob_query(input_data)
 
-
-    # ----
-    # Submit GraphQL Queries
-    # --------
 
     # Post GraphQL
     # TODO: Remove verify_ssl once PBS GraphQL is outside of the dev environment
@@ -255,3 +282,19 @@ class AlcfAdapter(ComputeFacilityAdapter):
         
         # Return the response (already parsed)
         return response
+    
+
+    # Get IRI job state
+    def __get_iri_job_state_from_graphql(self, state: int):
+        """Return the IRI Facility API compliant state from a PBS GraphQL state."""
+        
+        # New
+        if state == 0:
+            return compute_models.JobState.NEW.value
+        
+        # Error if state not supported
+        else:
+            raise HTTPException(
+                status_code=HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Job state {state} not supported."
+            )
