@@ -1,3 +1,9 @@
+import json
+from alcf.compute.graphql.models import (
+    Job,
+    QueryJobsFilter
+)
+
 # Get indents
 def get_indent_strings(indent: int, base_indent: int):
     return " " * indent, " " * base_indent
@@ -47,9 +53,13 @@ def list_to_graphql_str(l: list, indent: int = 4, base_indent: int = 0) -> str:
 # Format GraphQL block
 def format_graphql_block(block, base_indent: int = 0, indent: int = 4) -> str:
     """Generic fonction to format a block of a dictionary into a GraphQL-compatible string."""
-    
+
+    # Boolean
+    if isinstance(block, bool):
+        return json.dumps(block)
+
     # String
-    if isinstance(block, str):
+    elif isinstance(block, str):
         return f"\"{block}\""
     
     # Number
@@ -70,8 +80,9 @@ def format_graphql_block(block, base_indent: int = 0, indent: int = 4) -> str:
     
 
 # Build mutation createJob query
-def build_mutation_createjob_query(input_data: dict = None) -> str:
+def build_mutation_createjob_query(input_data: Job) -> str:
     """Build a GraphQL-compatible string from input data for submitting a job."""
+    input_data = input_data.model_dump(exclude_none=True)
     return f"""
         mutation {{
             createJob (
@@ -81,11 +92,33 @@ def build_mutation_createjob_query(input_data: dict = None) -> str:
                     jobId
                     status {{
                         state
+                        exitStatus
                     }}
                 }}
                 error {{
                     errorCode
                     errorMessage
+                }}
+            }}
+        }}
+    """
+
+# Build query jobs query
+def build_query_jobs_query(filter_data: QueryJobsFilter):
+    filter_data = filter_data.model_dump(exclude_none=True)
+    return f"""
+        query {{
+            jobs (
+                filter: {dictionary_to_graphql_str(filter_data, base_indent=16, indent=4)}
+            ) {{
+                edges {{
+                    node {{
+                        jobId
+                        status {{
+                            state
+                            exitStatus
+                        }}
+                    }}
                 }}
             }}
         }}
