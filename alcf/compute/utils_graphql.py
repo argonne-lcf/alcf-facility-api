@@ -79,6 +79,9 @@ def build_mutation_createjob_query(input_data: dict = None) -> str:
             ) {{
                 node {{
                     jobId
+                    status {{
+                        state
+                    }}
                 }}
                 error {{
                     errorCode
