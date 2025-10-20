@@ -1,7 +1,21 @@
+import httpx
 import json
+from json.decoder import JSONDecodeError
+from fastapi import HTTPException
+from app.routers.account.models import User
+from app.routers.compute.models import JobSpec
 from alcf.compute.graphql.models import (
     Job,
-    QueryJobsFilter
+    JobResponse,
+    JobResources,
+    JobTasksResources,
+    Queue,
+    QueryJobsFilter,
+)
+from starlette.status import (
+    HTTP_400_BAD_REQUEST, 
+    HTTP_408_REQUEST_TIMEOUT,
+    HTTP_500_INTERNAL_SERVER_ERROR,
 )
 
 # Get indents
@@ -76,12 +90,46 @@ def format_graphql_block(block, base_indent: int = 0, indent: int = 4) -> str:
         
     # Error for unsupported type
     else:
-        raise Exception(f"Type {type(block)} not supported in format_graphql_block.")
-    
+        raise HTTPException(
+                status_code=HTTP_400_BAD_REQUEST,
+                detail=f"Type {type(block)} not supported in format_graphql_block."
+            )
 
-# Build mutation createJob query
-def build_mutation_createjob_query(input_data: Job) -> str:
-    """Build a GraphQL-compatible string from input data for submitting a job."""
+
+# Build submit job query
+def build_submit_job_query(
+    user: User, 
+    job_spec: JobSpec
+) -> str:
+        
+    # Build queue
+    queue = Queue(
+        name=job_spec.attributes.queue_name
+    )
+
+    # Build job resources
+    jobResources = JobTasksResources(
+        physicalMemory=job_spec.resources.memory,
+        wallClockTime=job_spec.attributes.duration.seconds
+    )
+
+    # Build resources requested
+    resourcesRequested = JobResources(
+        jobResources=jobResources
+    )
+        
+    # Build query data
+    input_data = Job(
+        remoteCommand=job_spec.executable,
+        commandArgs=job_spec.arguments,
+        name=job_spec.name,
+        errorPath=job_spec.stderr_path,
+        outputPath=job_spec.stdout_path,
+        queue=queue,
+        resourcesRequested=resourcesRequested
+    )
+
+    # Generate and return the job submission GraphQL query
     input_data = input_data.model_dump(exclude_none=True)
     return f"""
         mutation {{
@@ -102,9 +150,22 @@ def build_mutation_createjob_query(input_data: Job) -> str:
             }}
         }}
     """
+    
 
-# Build query jobs query
-def build_query_jobs_query(filter_data: QueryJobsFilter) -> str:
+# Build get job query
+def build_get_job_query(
+    user: User, 
+    job_id: str,
+    historical: bool = False,
+) -> str:
+        
+    # Build job query filter
+    filter_data = QueryJobsFilter(
+        withHistoryJobs=historical,
+        jobIds=job_id
+    )
+
+    # Generate and return the job submission GraphQL query
     filter_data = filter_data.model_dump(exclude_none=True)
     return f"""
         query {{
@@ -123,10 +184,13 @@ def build_query_jobs_query(filter_data: QueryJobsFilter) -> str:
             }}
         }}
     """
+    
 
-
-# Build mutation deletejob query
-def build_mutation_deletejob_query(job_id: str) -> str:
+# Build candel job query
+def build_cancel_job_query(
+    user: User, 
+    job_id: str,
+) -> str:
     return f"""
         mutation {{
             deleteJob (jobId: "{job_id}" input: {{}}) {{
@@ -141,3 +205,69 @@ def build_mutation_deletejob_query(job_id: str) -> str:
             }}
         }}
     """
+
+
+# Post GraphQL
+# TODO: Remove verify_ssl once PBS GraphQL is outside of the dev environment
+async def post_graphql(
+    query: str = None,
+    user: User = None,
+    url: str = None,
+    verify_ssl: bool = False
+    ):
+    """Generic command to send post requests to GraphQL."""
+
+    # Generate request headers
+    try:
+        headers = {
+            "Authorization": f"Bearer {user.api_key}",
+            "Content-Type": "application/json"
+        }
+    except Exception:
+        raise HTTPException(
+            status_code=HTTP_400_BAD_REQUEST, 
+            detail="Cannot extract user's API key."
+        )
+
+    # Submit request to GraphQL API 
+    try:
+        async with httpx.AsyncClient(verify=verify_ssl) as client:
+            response = await client.post(url, json={"query": query}, headers=headers, timeout=10)
+            response = response.json()
+    except httpx.TimeoutException:
+        raise HTTPException(
+            status_code=HTTP_408_REQUEST_TIMEOUT,
+            detail="Compute query timed out."
+        )
+    except JSONDecodeError as e:
+        raise HTTPException(
+            status_code=HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Compute query response could not be parsed: {e}"
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Compute query failed: {e}"
+        )
+        
+    # Return the response (already parsed)
+    return response
+
+
+# Validate Job responses from GraphQL
+def validate_job_response(data: dict, keys: list) -> JobResponse:
+    try:
+
+        # Access the subset of data within the dictionary
+        for key in keys:
+            data = data[key]
+
+        # Convert the targeted subset into a JobRequest object
+        return JobResponse(**data)
+    
+    # Error message if something goes wrong
+    except Exception as e:
+        raise HTTPException(
+            status_code=HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Compute query response could not be parsed: {e}"
+        )
