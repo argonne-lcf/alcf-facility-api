@@ -254,7 +254,7 @@ class DemoAdapter(status_adapter.FacilityAdapter, account_adapter.FacilityAdapte
         return self.capabilities.values()
     
 
-    def get_current_user(
+    async def get_current_user(
             self : "DemoAdapter",
             api_key: str,
             ip_address: str,
@@ -302,6 +302,25 @@ class DemoAdapter(status_adapter.FacilityAdapter, account_adapter.FacilityAdapte
         resource: status_models.Resource, 
         user: account_models.User, 
         job_spec: compute_models.JobSpec,
+    ) -> compute_models.Job:
+        return compute_models.Job(
+            id="job_123",
+            status=compute_models.JobStatus(
+                state=compute_models.JobState.NEW,
+                time=time.time(),
+                message="job submitted",
+                exit_code=None,
+                meta_data={ "account": "account1" },
+            )
+        )
+    
+
+    async def submit_job_script(
+        self: "DemoAdapter",
+        resource: status_models.Resource, 
+        user: account_models.User, 
+        job_script_path: str,
+        args: list[str] = [],
     ) -> compute_models.Job:
         return compute_models.Job(
             id="job_123",
