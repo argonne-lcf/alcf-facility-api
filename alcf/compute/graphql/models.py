@@ -38,7 +38,7 @@ class ErrorResponse(BaseModel):
     errorCode: int
     errorMessage: str
 
-class CreateJobResponse(BaseModel):
+class JobResponse(BaseModel):
     node: Optional[Job] = None
     error: Optional[ErrorResponse] = None
 
