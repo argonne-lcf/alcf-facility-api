@@ -25,7 +25,8 @@ from starlette.status import (
 # GraphQL query utils
 from alcf.compute.graphql.utils import (
     build_mutation_createjob_query,
-    build_query_jobs_query
+    build_query_jobs_query,
+    build_mutation_deletejob_query
 )
 
 class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
@@ -88,9 +89,9 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
         pbs_url = self.__pbs_graphql_api_urls[resource.id]
 
         # Build GraphQL query
-        query = self.__build_submit_job_query(resource, user, job_spec)
-        #print("========")
-        #print(query)
+        query = self.__build_submit_job_query(user, job_spec)
+        print("========")
+        print(query)
 
         # Submit query to GraphQL API
         #response = await self.__post_graphql(query=query, user=user, url=pbs_url)
@@ -123,19 +124,9 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
                 status_code=HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"Compute query response could not be parsed: {e}"
             )
-
-        # Convert GraphQL response to IRI-compliant job object
-        job = compute_models.Job(
-            id=response.node.jobId,
-            status=compute_models.JobStatus(
-                state=self.__get_iri_job_state_from_graphql(
-                    response.node.status.state
-                )
-            )
-        )
-
+        
         # Return IRI-compliant job submission response
-        return job
+        return self.__format_submit_job(response)
 
 
     # Update job
@@ -162,9 +153,9 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
         pbs_url = self.__pbs_graphql_api_urls[resource.id]
 
         # Build GraphQL query
-        query = self.__build_get_job_query(resource, user, job_id, historical)
-        #print("========")
-        #print(query)
+        query = self.__build_get_job_query(user, job_id, historical)
+        print("========")
+        print(query)
 
         # Submit query to GraphQL API
         #response = await self.__post_graphql(query=query, user=user, url=pbs_url)
@@ -178,9 +169,9 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
                 "edges": [
                     {
                     "node": {
-                        "jobId": "77726.edtb-01.mcp.alcf.anl.gov",
+                        "jobId": "77730.edtb-01.mcp.alcf.anl.gov",
                         "status": {
-                        "state": 10,
+                        "state": 7,
                         "exitStatus": 0
                         }
                     }
@@ -201,19 +192,8 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
                 detail=f"Compute query response could not be parsed: {e}"
             )
 
-        # Convert GraphQL response to IRI-compliant job object
-        job = compute_models.Job(
-            id=response.node.jobId,
-            status=compute_models.JobStatus(
-                state=self.__get_iri_job_state_from_graphql(
-                    response.node.status.state
-                ),
-                exit_code=response.node.status.exitStatus
-            )
-        )
-
         # Return IRI-compliant job submission response
-        return job
+        return self.__format_get_job(response)
 
     
     # Get jobs
@@ -230,23 +210,67 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
 
     
     # Cancel job
-    def cancel_job(
+    async def cancel_job(
         self: "AlcfAdapter",
         resource: status_models.Resource, 
         user: account_models.User, 
         job_id: str,
     ) -> bool:
-        pass
+        
+        # Get API URL from the resource object for the job submition
+        pbs_url = self.__pbs_graphql_api_urls[resource.id]
 
+        # Build GraphQL query
+        query = self.__build_cancel_job_query(user, job_id)
+        print("========")
+        print(query)
+
+        # Submit query to GraphQL API
+        #response = await self.__post_graphql(query=query, user=user, url=pbs_url)
+
+        # TEMP
+        import json
+        response = json.loads("""
+            {
+            "data": {
+                "deleteJob": {
+                "node": {
+                    "jobId": "77730.edtb-01.mcp.alcf.anl.gov"
+                },
+                "error": null
+                }
+            }
+            }
+        """)
+
+        # Validate query response
+        try:
+            response = response["data"]["deleteJob"]
+            response = graphql_models.CreateJobResponse(**response)
+        except Exception as e:
+            raise HTTPException(
+                status_code=HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Compute query response could not be parsed: {e}"
+            )
+        
+        # Error message if any
+        if response.error:
+            raise HTTPException(
+                status_code=HTTP_400_BAD_REQUEST,
+                detail=response.error.errorMessage
+            )
+
+        # Return IRI-compliant job submission response
+        #return self.__format_get_job(response)
+        return True
 
     # -----------------
     # GraphQL Functions
     # -----------------
 
-    # Job submission query
+    # Build submit job query
     def __build_submit_job_query(
         self: "AlcfAdapter",
-        resource: status_models.Resource, 
         user: account_models.User, 
         job_spec: compute_models.JobSpec
     ) -> str:
@@ -282,10 +306,9 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
         return build_mutation_createjob_query(input_data)
     
 
-    # Job submission query
+    # Build get job query
     def __build_get_job_query(
         self: "AlcfAdapter",
-        resource: status_models.Resource, 
         user: account_models.User, 
         job_id: str,
         historical: bool = False,
@@ -299,6 +322,15 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
 
         # Generate and return the job submission GraphQL query
         return build_query_jobs_query(filter_data)
+    
+
+    # Build candel job query
+    def __build_cancel_job_query(
+        self: "AlcfAdapter",
+        user: account_models.User, 
+        job_id: str,
+    ) -> str:
+        return build_mutation_deletejob_query(job_id)
 
 
     # Post GraphQL
@@ -371,3 +403,32 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
                 status_code=HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"Job state {state} not supported."
             )
+        
+    # --------------------------------------
+    #  Private frontend formatting functions
+    # --------------------------------------
+
+    # Format submit job
+    def __format_submit_job(self, response: graphql_models.CreateJobResponse) -> compute_models.Job:
+        """Format a GraphQL submit job response into a pydantic Job object."""
+        state = self.__get_iri_job_state_from_graphql(response.node.status.state)
+        status = compute_models.JobStatus(
+            state=state
+        )
+        return compute_models.Job(
+            id=response.node.jobId,
+            status=status
+        )
+    
+    # Format get job
+    def __format_get_job(self, response: graphql_models.CreateJobResponse) -> compute_models.Job:
+        """Format a GraphQL get job response into a pydantic Job object."""
+        state = self.__get_iri_job_state_from_graphql(response.node.status.state)
+        status = compute_models.JobStatus(
+            state=state,
+            exit_code=response.node.status.exitStatus
+        )
+        return compute_models.Job(
+            id=response.node.jobId,
+            status=status
+        )
