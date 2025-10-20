@@ -3,6 +3,7 @@ from json.decoder import JSONDecodeError
 from fastapi import HTTPException
 from app.routers.compute.facility_adapter import FacilityAdapter as ComputeFacilityAdapter
 from alcf.database.ingestion.ingest_activity_data import ALCF_RESOURCE_ID_LIST
+from alcf.auth.alcf_adapter import AlcfAuthenticatedAdapter
 
 # Typing
 from app.routers.compute import models as compute_models
@@ -27,7 +28,7 @@ from alcf.compute.graphql.utils import (
     build_query_jobs_query
 )
 
-class AlcfAdapter(ComputeFacilityAdapter):
+class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
     """Facility adapter definition for the IRI Facility API."""
 
     # Initialization for constants and convertions 
@@ -35,41 +36,12 @@ class AlcfAdapter(ComputeFacilityAdapter):
 
         # Temporary user during development
         # TODO: REMOVE
-        self.user = account_models.User(id="bcote", name="Benoit Cote", api_key="12345")
+        #self.user = account_models.User(id="bcote", name="Benoit Cote", api_key="12345")
 
         # URLs for PBS GraphQL API on different resource
         self.__pbs_graphql_api_urls = {
            ALCF_RESOURCE_ID_LIST.edith.value: "https://edtb-01:8080/graphql"
         }
-
-
-    # Get current_user
-    async def get_current_user(
-        self : "AlcfAdapter",
-        api_key: str,
-        ip_address: str|None,
-        ) -> str:
-        """
-            Decode the api_key and return the authenticated user's id.
-            This method is not called directly, rather authorized endpoints "depend" on it.
-            (https://fastapi.tiangolo.com/tutorial/dependencies/)
-        """
-        # TODO CHANGE after testing
-        return "bcote"
-
-
-    # Get User
-    async def get_user(
-        self : "AlcfAdapter",
-        user_id: str,
-        api_key: str,
-        ) -> account_models.User:
-        """
-            Retrieve additional user information (name, email, etc.) for the given user_id.
-        """
-        # TODO CHANGE after testing
-        return self.user
-
 
     # Submit job
     async def submit_job(
@@ -117,8 +89,8 @@ class AlcfAdapter(ComputeFacilityAdapter):
 
         # Build GraphQL query
         query = self.__build_submit_job_query(resource, user, job_spec)
-        print("========")
-        print(query)
+        #print("========")
+        #print(query)
 
         # Submit query to GraphQL API
         #response = await self.__post_graphql(query=query, user=user, url=pbs_url)
@@ -191,8 +163,8 @@ class AlcfAdapter(ComputeFacilityAdapter):
 
         # Build GraphQL query
         query = self.__build_get_job_query(resource, user, job_id, historical)
-        print("========")
-        print(query)
+        #print("========")
+        #print(query)
 
         # Submit query to GraphQL API
         #response = await self.__post_graphql(query=query, user=user, url=pbs_url)
