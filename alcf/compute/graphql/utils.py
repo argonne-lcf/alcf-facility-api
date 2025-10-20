@@ -104,7 +104,7 @@ def build_mutation_createjob_query(input_data: Job) -> str:
     """
 
 # Build query jobs query
-def build_query_jobs_query(filter_data: QueryJobsFilter):
+def build_query_jobs_query(filter_data: QueryJobsFilter) -> str:
     filter_data = filter_data.model_dump(exclude_none=True)
     return f"""
         query {{
@@ -119,6 +119,24 @@ def build_query_jobs_query(filter_data: QueryJobsFilter):
                             exitStatus
                         }}
                     }}
+                }}
+            }}
+        }}
+    """
+
+
+# Build mutation deletejob query
+def build_mutation_deletejob_query(job_id: str) -> str:
+    return f"""
+        mutation {{
+            deleteJob (jobId: "{job_id}" input: {{}}) {{
+                node {{
+                    jobId
+                }}
+                error {{
+                    jobId
+                    errorCode
+                    errorMessage
                 }}
             }}
         }}
