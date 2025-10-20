@@ -4,8 +4,8 @@ from alcf.config import SECRET_DEV_KEY
 
 class AlcfAuthenticatedAdapter(AuthenticatedAdapter):
 
-    # TODO: Should make this async
-    def get_current_user(
+    # Get current user
+    async def get_current_user(
         self : "AlcfAuthenticatedAdapter",
         api_key: str,
         ip_address: str|None,
