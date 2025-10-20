@@ -43,6 +43,7 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
         self.__pbs_graphql_api_urls = {
            ALCF_RESOURCE_ID_LIST.edith.value: "https://edtb-01:8080/graphql"
         }
+        # TODO: Soon this will be https://edtb-pbs-02.lab.alcf.anl.gov/graphql
 
     # Submit job
     async def submit_job(
