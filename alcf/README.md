@@ -85,16 +85,22 @@ print(json.dumps(facility_model_schema, indent=2))
 
 Create an environment variable file (`.env`) with the following:
 ```bash
+API_URL_ROOT="http://localhost:8000"
+API_URL="api/current"
+
 DATABASE_URL="sqlite+aiosqlite:///alcf/facilityapi.db"
-API_URL_ROOT", "https://api.alcf.anl.gov"
-IRI_API_ADAPTER="alcf.alcf_adapter.AlcfAdapter"
-IRI_API_PARAMS='{ \
-    "title": "ALCF implementation of the IRI Facility API", \
-    "description": "A simple implementation of the IRI facility API for ALCF.\n\nFor more information, see: [https://iri.science/](https://iri.science/)\n\n<img src=\"https://iri.science/images/doe-icon-old.png\" height=50 />", \
-    "docs_url": "/alcf/", \
-    "contact": { \
-        "name": "ALCF API contact", \
-        "url": "https://www.alcf.anl.gov/" \
-    } \
+
+IRI_API_ADAPTER_status="alcf.status.alcf_adapter.AlcfAdapter"
+IRI_API_ADAPTER_compute="alcf.compute.alcf_adapter.AlcfAdapter"
+IRI_API_PARAMS='{
+    "title": "ALCF implementation of the IRI Facility API",
+    "description": "IRI facility API for ALCF.\n\nFor more information, see: [https://iri.science/](https://iri.science/)\n\n<img src=\"https://iri.science/images/doe-icon-old.png\" height=50 />",
+    "docs_url": "/",
+    "contact": {
+        "name": "ALCF API contact",
+        "url": "https://www.alcf.anl.gov/"
+    }
 }'
+
+IRI_SHOW_MISSING_ROUTES=False
 ```
