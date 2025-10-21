@@ -1,6 +1,7 @@
 # Exclude environment files
 .env
 .env.*
+.venv/
 
 # Exclude database files
 *.sqlite3
