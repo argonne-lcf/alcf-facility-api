@@ -21,3 +21,6 @@ __pycache__/
 
 # Docker-related files
 .dockerignore
+
+# Others
+vm_setup/
