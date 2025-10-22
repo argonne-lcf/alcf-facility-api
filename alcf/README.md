@@ -36,15 +36,20 @@ gunicorn -c gunicorn.config.production.py app.main:APP
 
 ## Run application in a container
 
-Build multi-architectures image (useful when building images from MacOS):
+Define variable names:
 ```bash
-podman manifest create localhost/facility-api-prototype:<TAG>
-podman build . --platform linux/arm64,linux/amd64 --manifest localhost/facility-api-prototype:<TAG>
+IMAGE_NAME="your_image_name"
+IMAGE_TAG="your_image_tag"
+```
+
+Build image:
+```bash
+podman build -f Dockerfile.production -t $IMAGE_NAME:$IMAGE_TAG .
 ```
 
 Start the container in the background (served at http://localhost:8000):
 ```bash
-podman run -d -p 8000:8000 facility-api-prototype:<TAG>
+podman run --rm -d -p 8000:8000 $IMAGE_NAME:$IMAGE_TAG
 ```
 
 Check running container ID:
@@ -59,20 +64,33 @@ podman container stop <CONTAINER-ID>
 
 ## Build image and push it to GoHarbor
 
-Login to ALCF GoHarbor
+Define variable names:
 ```bash
-podman login goharbor.alcf.anl.gov
+IMAGE_NAME="your_image_name"
+IMAGE_TAG="your_image_tag"
+GOHARBOR_PROJECT="your_goharbor_project"
 ```
 
-Build multi-architectures image:
+Authenticate to your ALCF GoHarbor project (need to be on the VPN, need to use a robot-account):
 ```bash
-podman manifest create goharbor.alcf.anl.gov/<USERNAME>/facility-api-prototype:<TAG>
-podman build . --platform linux/arm64,linux/amd64 --manifest goharbor.alcf.anl.gov/<USERNAME>/facility-api-prototype:<TAG>
+podman login goharbor.alcf.anl.gov/$GOHARBOR_PROJECT
+```
+
+If you have credential issues, you may need to logout and log back in
+```bash
+podman logout goharbor.alcf.anl.gov
+podman login goharbor.alcf.anl.gov/$GOHARBOR_PROJECT
+```
+
+Build multi-architectures image (useful when building images from MacOS):
+```bash
+podman manifest create goharbor.alcf.anl.gov/$GOHARBOR_PROJECT/$IMAGE_NAME:$IMAGE_TAG
+podman build -f Dockerfile.production . --platform linux/arm64,linux/amd64 --manifest goharbor.alcf.anl.gov/$GOHARBOR_PROJECT/$IMAGE_NAME:$IMAGE_TAG
 ```
 
 Push to GoHarbor
 ```bash
-podman manifest push --all goharbor.alcf.anl.gov/<USERNAME>/facility-api-prototype:<TAG> docker://goharbor.alcf.anl.gov/<USERNAME>/facility-api-prototype:<TAG>
+podman manifest push --all goharbor.alcf.anl.gov/$GOHARBOR_PROJECT/$IMAGE_NAME:$IMAGE_TAG docker://goharbor.alcf.anl.gov/$GOHARBOR_PROJECT/$IMAGE_NAME:$IMAGE_TAG
 ```
 
 ## Run test suite
@@ -113,4 +131,6 @@ IRI_API_PARAMS='{
 }'
 
 IRI_SHOW_MISSING_ROUTES=False
+
+GRAPHQL_URL="https://your-api-url"
 ```
