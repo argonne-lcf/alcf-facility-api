@@ -2,6 +2,7 @@ from fastapi import HTTPException
 from app.routers.compute.facility_adapter import FacilityAdapter as ComputeFacilityAdapter
 from alcf.database.ingestion.ingest_activity_data import ALCF_RESOURCE_ID_LIST
 from alcf.auth.alcf_adapter import AlcfAuthenticatedAdapter
+from alcf.config import GRAPHQL_URL
 
 # Typing
 from app.routers.compute import models as compute_models
@@ -18,10 +19,12 @@ from starlette.status import (
 
 # GraphQL query utils
 from alcf.compute.graphql.utils import (
+    IRI_STATE_FROM_PBS_STATE,
     validate_job_response,
     build_submit_job_query,
     build_get_job_query,
     build_cancel_job_query,
+    #build_update_job_query,
     post_graphql
 )
 
@@ -31,13 +34,10 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
     # Initialization for constants and convertions 
     def __init__(self):
 
-        # Temporary user during development
-        # TODO: REMOVE
-        #self.user = account_models.User(id="bcote", name="Benoit Cote", api_key="12345")
-
-        # URLs for PBS GraphQL API on different resource
+        # URLs for PBS GraphQL API on different resource 
+        # For now just hardcoded to Edith
         self.__pbs_graphql_api_urls = {
-           ALCF_RESOURCE_ID_LIST.edith.value: "https://edtb-01:8080/graphql"
+           ALCF_RESOURCE_ID_LIST.edith.value: GRAPHQL_URL
         }
         # TODO: Soon this will be https://edtb-pbs-02.lab.alcf.anl.gov/graphql
 
@@ -99,17 +99,18 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
         import json
         response = json.loads("""
             {
-                "data": {
-                    "createJob": {
-                    "node": {
-                        "jobId": "77721.edtb-01.mcp.alcf.anl.gov",
-                        "status": {
-                            "state": 0
-                        }
-                    },
-                    "error": null
+            "data": {
+                "createJob": {
+                "node": {
+                    "jobId": "77737.edtb-01.mcp.alcf.anl.gov",
+                    "status": {
+                    "state": 0,
+                    "exitStatus": 0
                     }
+                },
+                "error": null
                 }
+            }
             }
         """)
 
@@ -132,7 +133,7 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
 
 
     # Update job
-    def update_job(
+    async def update_job(
         self: "AlcfAdapter",
         resource: status_models.Resource, 
         user: account_models.User, 
@@ -140,6 +141,19 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
         job_id: str,
     ) -> compute_models.Job:
         pass
+        
+        #print("!!!!!!")
+        #print(user)
+        #print(job_spec)
+        #print(job_id)
+
+        # Get API URL from the resource object for the job submition
+        #pbs_url = self.__pbs_graphql_api_urls[resource.id]
+
+        # Build GraphQL query
+        #query = build_update_job_query(user, job_spec, job_id)
+        #print("======== update_job ========")
+        #print(query)
 
 
     # Get job
@@ -171,7 +185,7 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
                 "edges": [
                     {
                     "node": {
-                        "jobId": "77730.edtb-01.mcp.alcf.anl.gov",
+                        "jobId": "77737.edtb-01.mcp.alcf.anl.gov",
                         "status": {
                         "state": 7,
                         "exitStatus": 0
@@ -229,10 +243,12 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
             {
             "data": {
                 "deleteJob": {
-                "node": {
-                    "jobId": "77730.edtb-01.mcp.alcf.anl.gov"
-                },
-                "error": null
+                "node": null,
+                "error": {
+                    "jobId": "77737.edtb-01.mcp.alcf.anl.gov",
+                    "errorCode": 15139,
+                    "errorMessage": "Job has finished"
+                }
                 }
             }
             }
@@ -260,7 +276,7 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
     # Format submit job
     def __format_submit_job(self, response: graphql_models.JobResponse) -> compute_models.Job:
         """Format a GraphQL submit job response into a pydantic Job object."""
-        state = self.__get_iri_job_state_from_graphql(response.node.status.state)
+        state = self.__get_iri_state_from_pbs_state(response.node.status.state)
         status = compute_models.JobStatus(
             state=state
         )
@@ -272,7 +288,7 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
     # Format get job
     def __format_get_job(self, response: graphql_models.JobResponse) -> compute_models.Job:
         """Format a GraphQL get job response into a pydantic Job object."""
-        state = self.__get_iri_job_state_from_graphql(response.node.status.state)
+        state = self.__get_iri_state_from_pbs_state(response.node.status.state)
         status = compute_models.JobStatus(
             state=state,
             exit_code=response.node.status.exitStatus
@@ -282,25 +298,13 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
             status=status
         )
 
-    # Get IRI job state
-    def __get_iri_job_state_from_graphql(self, state: int):
+    # Get IRI job state from PBS state
+    def __get_iri_state_from_pbs_state(self, state: int):
         """Return the IRI Facility API compliant state from a PBS GraphQL state."""
-        
-        # New
-        if state == 0:
-            return compute_models.JobState.NEW.value
-        
-        # Running
-        elif state == 7:
-            return compute_models.JobState.ACTIVE.value
-
-        # Completed
-        elif state == 10:
-            return compute_models.JobState.COMPLETED.value
-        
-        # Error if state not supported
+        if state in IRI_STATE_FROM_PBS_STATE:
+            return IRI_STATE_FROM_PBS_STATE[state]
         else:
             raise HTTPException(
                 status_code=HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Job state {state} not supported."
+                detail=f"PBS job state {state} not supported."
             )
