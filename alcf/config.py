@@ -10,3 +10,6 @@ DATABASE_URL = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///alcf/facilityapi.d
 # Dev only
 # TODO: Remove this once Auth is integrated
 SECRET_DEV_KEY = os.getenv("SECRET_DEV_KEY", None)
+
+# PBS GraphQL API URL
+GRAPHQL_URL = os.getenv("GRAPHQL_URL", "")
