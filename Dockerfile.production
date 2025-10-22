@@ -1,4 +1,4 @@
-FROM python:3
+FROM python:3.13.0
 
 RUN mkdir /app
 COPY . /app
@@ -8,6 +8,11 @@ RUN pip install -U pip
 RUN pip install -U wheel
 RUN pip install -U setuptools
 RUN pip install uv
-RUN uv pip install --system -r /app/pyproject.toml
 
-CMD ["gunicorn" "app.main:app" "-c" "gunicorn.config.production.py" "-k" "uvicorn.workers.UvicornWorker"]
+# Install python packages (-e . is needed for scripts to recognize alcf/ during imports)
+RUN uv pip install --system -e .
+RUN uv pip install --system -r /app/alcf/requirements.txt
+
+# Setup database and run application
+RUN chmod u+x /app/entrypoint.sh
+ENTRYPOINT ["/app/entrypoint.sh"]
