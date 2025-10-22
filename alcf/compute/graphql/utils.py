@@ -2,8 +2,8 @@ import httpx
 import json
 from json.decoder import JSONDecodeError
 from fastapi import HTTPException
-from app.routers.account.models import User
-from app.routers.compute.models import JobSpec
+from app.routers.account import models as account_models
+from app.routers.compute import models as compute_models
 from alcf.compute.graphql.models import (
     Job,
     JobResponse,
@@ -17,6 +17,17 @@ from starlette.status import (
     HTTP_408_REQUEST_TIMEOUT,
     HTTP_500_INTERNAL_SERVER_ERROR,
 )
+
+
+# Job state translators between GraphQL and IRI
+IRI_STATE_FROM_PBS_STATE = {
+    0: compute_models.JobState.NEW.value,
+    7: compute_models.JobState.ACTIVE.value,
+    10: compute_models.JobState.COMPLETED.value
+    }
+PBS_STATE_FROM_IRI_STATE = {
+    v: k for k, v in IRI_STATE_FROM_PBS_STATE.items()
+}
 
 # Get indents
 def get_indent_strings(indent: int, base_indent: int):
@@ -98,8 +109,8 @@ def format_graphql_block(block, base_indent: int = 0, indent: int = 4) -> str:
 
 # Build submit job query
 def build_submit_job_query(
-    user: User, 
-    job_spec: JobSpec
+    user: account_models.User, 
+    job_spec: compute_models.JobSpec
 ) -> str:
         
     # Build queue
@@ -154,7 +165,7 @@ def build_submit_job_query(
 
 # Build get job query
 def build_get_job_query(
-    user: User, 
+    user: account_models.User, 
     job_id: str,
     historical: bool = False,
 ) -> str:
@@ -188,7 +199,7 @@ def build_get_job_query(
 
 # Build candel job query
 def build_cancel_job_query(
-    user: User, 
+    user: account_models.User, 
     job_id: str,
 ) -> str:
     return f"""
@@ -211,7 +222,7 @@ def build_cancel_job_query(
 # TODO: Remove verify_ssl once PBS GraphQL is outside of the dev environment
 async def post_graphql(
     query: str = None,
-    user: User = None,
+    user: account_models.User = None,
     url: str = None,
     verify_ssl: bool = False
     ):
