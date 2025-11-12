@@ -13,3 +13,4 @@ sqlmodel>=0.0.14
 asyncache>=0.1.0
 cachetools>=5.0.0
 gunicorn>=23.0.0
+python-keycloak>=5.8.1
