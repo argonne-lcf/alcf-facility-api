@@ -3,23 +3,26 @@ from app.routers.compute.facility_adapter import FacilityAdapter as ComputeFacil
 from alcf.database.ingestion.ingest_activity_data import ALCF_RESOURCE_ID_LIST
 from alcf.auth.alcf_adapter import AlcfAuthenticatedAdapter
 from alcf.config import GRAPHQL_URL
+from alcf.compute.graphql.converters import (
+    get_graphql_job_from_iri_jobspec,
+    get_iri_job_from_graphql_job
+)
 
 # Typing
 from app.routers.compute import models as compute_models
 from app.routers.status import models as status_models
 from app.routers.account import models as account_models
-from alcf.compute.graphql import models as graphql_models
 
 # HTTP codes
 from starlette.status import ( 
     HTTP_400_BAD_REQUEST,
+    HTTP_404_NOT_FOUND,
     HTTP_500_INTERNAL_SERVER_ERROR,
     HTTP_501_NOT_IMPLEMENTED, 
 )
 
 # GraphQL query utils
 from alcf.compute.graphql.utils import (
-    IRI_STATE_FROM_PBS_STATE,
     validate_job_response,
     build_submit_job_query,
     build_get_job_query,
@@ -39,7 +42,6 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
         self.__pbs_graphql_api_urls = {
            ALCF_RESOURCE_ID_LIST.edith.value: GRAPHQL_URL
         }
-        # TODO: Soon this will be https://edtb-pbs-02.lab.alcf.anl.gov/graphql
 
     # Submit job
     async def submit_job(
@@ -63,62 +65,51 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
             raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="'post_launch' not supported yet.")
         if job_spec.launcher:
             raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="'launcher' not supported yet.")
-        if job_spec.resources.node_count:
-            raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="'node_count' not supported yet.")
-        if job_spec.resources.process_count:
-            raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="'process_count' not supported yet.")
-        if job_spec.resources.processes_per_node:
-            raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="'processes_per_node' not supported yet.")
-        if job_spec.resources.cpu_cores_per_process:
-            raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="'cpu_cores_per_process' not supported yet.")
-        if job_spec.resources.gpu_cores_per_process:
-            raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="'gpu_cores_per_process' not supported yet.")
-        if job_spec.resources.exclusive_node_use == False:
-            raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="'exclusive_node_use' not supported yet.")
-        if job_spec.attributes.account:
-            raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="'account' not supported yet.")
-        if job_spec.attributes.reservation_id:
-            raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="'reservation_id' not supported yet.")
-        if job_spec.attributes.custom_attributes:
-            raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="'custom_attributes' not supported yet.")
+        if job_spec.resources:
+            if job_spec.resources.node_count:
+                raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="'node_count' not supported yet.")
+            if job_spec.resources.process_count:
+                raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="'process_count' not supported yet.")
+            if job_spec.resources.processes_per_node:
+                raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="'processes_per_node' not supported yet.")
+            if job_spec.resources.cpu_cores_per_process:
+                raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="'cpu_cores_per_process' not supported yet.")
+            if job_spec.resources.gpu_cores_per_process:
+                raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="'gpu_cores_per_process' not supported yet.")
+            if job_spec.resources.exclusive_node_use == False:
+                raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="'exclusive_node_use' not supported yet.")
+        if job_spec.attributes:
+            if job_spec.attributes.account:
+                raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="'account' not supported yet.")
+            if job_spec.attributes.reservation_id:
+                raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="'reservation_id' not supported yet.")
+            if job_spec.attributes.custom_attributes:
+                raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="'custom_attributes' not supported yet.")
             
-        # Get API URL from the resource object for the job submition
-        pbs_url = self.__pbs_graphql_api_urls[resource.id]
-
-        # Build GraphQL query
-        query = build_submit_job_query(user, job_spec)
-        print("======== submit_job ========")
-        print(query)
+        # Convert IRI Job spec into GraphQL Job spec
+        graphql_data = get_graphql_job_from_iri_jobspec(job_spec)
 
         # Submit query to GraphQL API
-        #response = await post_graphql(query=query, user=user, url=pbs_url)
-        #print("========")
-        #print(response)
+        response = await post_graphql(
+            user=user,
+            query=build_submit_job_query(user, graphql_data),
+            url=self.__pbs_graphql_api_urls[resource.id]
+        )
 
-        # TODO: Temp while we seek access to GraphQL
-        import json
-        response = json.loads("""
-            {
-            "data": {
-                "createJob": {
-                "node": {
-                    "jobId": "77737.edtb-01.mcp.alcf.anl.gov",
-                    "status": {
-                    "state": 0,
-                    "exitStatus": 0
-                    }
-                },
-                "error": null
-                }
-            }
-            }
-        """)
-
-        # Convert raw GraphQL response into a JobResponse pydantic model
-        response = validate_job_response(response, ["data", "createJob"])
+        # Access relevant data in the response
+        try:
+            response = response["data"]["createJob"]
+        except Exception as e:
+            raise HTTPException(
+                status_code=HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Cannot access response['data']['createJob']: {response}"
+            )
         
-        # Return IRI-compliant job submission response
-        return self.__format_submit_job(response)
+        # Convert raw GraphQL response into a JobResponse pydantic model
+        response = validate_job_response(response)
+        
+        # Return IRI-compliant job response
+        return get_iri_job_from_graphql_job(response.node)
     
 
     # Submit job script
@@ -165,48 +156,38 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
         historical: bool = False,
     ) -> compute_models.Job:
         
-        # Get API URL from the resource object for the job submition
-        pbs_url = self.__pbs_graphql_api_urls[resource.id]
-
-        # Build GraphQL query
-        query = build_get_job_query(user, job_id, historical)
-        print("======== get_job ========")
-        print(query)
-
         # Submit query to GraphQL API
-        #response = await post_graphql(query=query, user=user, url=pbs_url)
+        response = await post_graphql(
+            user=user,
+            query=build_get_job_query(user, job_id=job_id, historical=historical),
+            url=self.__pbs_graphql_api_urls[resource.id]
+        )
 
-        # TEMP
-        import json
-        response = json.loads("""
-            {
-            "data": {
-                "jobs": {
-                "edges": [
-                    {
-                    "node": {
-                        "jobId": "77737.edtb-01.mcp.alcf.anl.gov",
-                        "status": {
-                        "state": 7,
-                        "exitStatus": 0
-                        }
-                    }
-                    }
-                ]
-                }
-            }
-            }
-        """)
+        # Access relevant data in the response
+        try:
+            response = response["data"]["jobs"]["edges"][0]
+        except Exception as e:
+            raise HTTPException(
+                status_code=HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Cannot access response['data']['jobs']['edges'][0]: {response}"
+            )
 
         # Convert raw GraphQL response into a JobResponse pydantic model
-        response = validate_job_response(response, ["data", "jobs", "edges", 0])
+        response = validate_job_response(response)
+        
+        # Error if job not found
+        if response.node is None:
+            raise HTTPException(
+                status_code=HTTP_404_NOT_FOUND,
+                detail=f"Job ID {job_id} not found."
+            )
 
-        # Return IRI-compliant job submission response
-        return self.__format_get_job(response)
+        # Return IRI-compliant job response
+        return get_iri_job_from_graphql_job(response.node)
 
     
     # Get jobs
-    def get_jobs(
+    async def get_jobs(
         self: "AlcfAdapter",
         resource: status_models.Resource, 
         user: account_models.User, 
@@ -215,7 +196,28 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
         filters: dict[str, object] | None = None,
         historical: bool = False,
     ) -> list[compute_models.Job]:
-        pass
+        
+        # Submit query to GraphQL API
+        response = await post_graphql(
+            user=user,
+            query=build_get_job_query(user, historical=historical),
+            url=self.__pbs_graphql_api_urls[resource.id]
+        )
+        
+        # Access relevant data from the response
+        try:
+            response = response["data"]["jobs"]["edges"]
+        except Exception as e:
+            raise HTTPException(
+                status_code=HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Cannot access response['data']['jobs']['edges']: {response}"
+            )
+        
+        # Convert raw GraphQL response into a JobResponse pydantic model
+        responses = [validate_job_response(edge) for edge in response]
+
+        # Return IRI-compliant job submission response
+        return [get_iri_job_from_graphql_job(r.node) for r in responses]
 
     
     # Cancel job
@@ -226,36 +228,23 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
         job_id: str,
     ) -> bool:
         
-        # Get API URL from the resource object for the job submition
-        pbs_url = self.__pbs_graphql_api_urls[resource.id]
-
-        # Build GraphQL query
-        query = build_cancel_job_query(user, job_id)
-        print("======== cancel_job ========")
-        print(query)
-
         # Submit query to GraphQL API
-        #response = await post_graphql(query=query, user=user, url=pbs_url)
-
-        # TEMP
-        import json
-        response = json.loads("""
-            {
-            "data": {
-                "deleteJob": {
-                "node": null,
-                "error": {
-                    "jobId": "77737.edtb-01.mcp.alcf.anl.gov",
-                    "errorCode": 15139,
-                    "errorMessage": "Job has finished"
-                }
-                }
-            }
-            }
-        """)
-
+        response = await post_graphql(
+            user=user,
+            query=build_cancel_job_query(user, job_id),
+            url=self.__pbs_graphql_api_urls[resource.id]
+        )
+        
         # Convert raw GraphQL response into a JobResponse pydantic model
-        response = validate_job_response(response, ["data", "deleteJob"])
+        try:
+            response = response["data"]["deleteJob"]
+        except Exception as e:
+            raise HTTPException(
+                status_code=HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Cannot access response['data']['deleteJob']: {response}"
+            )
+        # Convert raw GraphQL response into a JobResponse pydantic model  
+        response = validate_job_response(response)
         
         # Error message if any
         if response.error:
@@ -265,46 +254,5 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
             )
 
         # Return IRI-compliant job submission response
-        #return self.__format_get_job(response)
         return True
     
-        
-    # --------------------------------------
-    #  Private frontend formatting functions
-    # --------------------------------------
-
-    # Format submit job
-    def __format_submit_job(self, response: graphql_models.JobResponse) -> compute_models.Job:
-        """Format a GraphQL submit job response into a pydantic Job object."""
-        state = self.__get_iri_state_from_pbs_state(response.node.status.state)
-        status = compute_models.JobStatus(
-            state=state
-        )
-        return compute_models.Job(
-            id=response.node.jobId,
-            status=status
-        )
-    
-    # Format get job
-    def __format_get_job(self, response: graphql_models.JobResponse) -> compute_models.Job:
-        """Format a GraphQL get job response into a pydantic Job object."""
-        state = self.__get_iri_state_from_pbs_state(response.node.status.state)
-        status = compute_models.JobStatus(
-            state=state,
-            exit_code=response.node.status.exitStatus
-        )
-        return compute_models.Job(
-            id=response.node.jobId,
-            status=status
-        )
-
-    # Get IRI job state from PBS state
-    def __get_iri_state_from_pbs_state(self, state: int):
-        """Return the IRI Facility API compliant state from a PBS GraphQL state."""
-        if state in IRI_STATE_FROM_PBS_STATE:
-            return IRI_STATE_FROM_PBS_STATE[state]
-        else:
-            raise HTTPException(
-                status_code=HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"PBS job state {state} not supported."
-            )
