@@ -26,7 +26,7 @@ class Job(BaseModel):
     workDir: Optional[str] = None
     resourcesRequested: Optional[JobResources] = None
     resourcesUsed: Optional[JobResources] = None
-    queue: Optional[Queue] = Queue()
+    queue: Optional[Queue] = None
     startTime: Optional[str] = None
     endTime: Optional[str] = None
     submitTime: Optional[str] = None
