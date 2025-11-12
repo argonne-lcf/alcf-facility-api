@@ -4,30 +4,12 @@ from json.decoder import JSONDecodeError
 from fastapi import HTTPException
 from app.routers.account import models as account_models
 from app.routers.compute import models as compute_models
-from alcf.compute.graphql.models import (
-    Job,
-    JobResponse,
-    JobResources,
-    JobTasksResources,
-    Queue,
-    QueryJobsFilter,
-)
+from alcf.compute.graphql import models as graphql_models
 from starlette.status import (
     HTTP_400_BAD_REQUEST, 
     HTTP_408_REQUEST_TIMEOUT,
     HTTP_500_INTERNAL_SERVER_ERROR,
 )
-
-
-# Job state translators between GraphQL and IRI
-IRI_STATE_FROM_PBS_STATE = {
-    0: compute_models.JobState.NEW.value,
-    7: compute_models.JobState.ACTIVE.value,
-    10: compute_models.JobState.COMPLETED.value
-    }
-PBS_STATE_FROM_IRI_STATE = {
-    v: k for k, v in IRI_STATE_FROM_PBS_STATE.items()
-}
 
 # Get indents
 def get_indent_strings(indent: int, base_indent: int):
@@ -110,38 +92,11 @@ def format_graphql_block(block, base_indent: int = 0, indent: int = 4) -> str:
 # Build submit job query
 def build_submit_job_query(
     user: account_models.User, 
-    job_spec: compute_models.JobSpec
+    graphql_job: graphql_models.Job
 ) -> str:
-        
-    # Build queue
-    queue = Queue(
-        name=job_spec.attributes.queue_name
-    )
-
-    # Build job resources
-    jobResources = JobTasksResources(
-        physicalMemory=job_spec.resources.memory,
-        wallClockTime=job_spec.attributes.duration.seconds
-    )
-
-    # Build resources requested
-    resourcesRequested = JobResources(
-        jobResources=jobResources
-    )
-        
-    # Build query data
-    input_data = Job(
-        remoteCommand=job_spec.executable,
-        commandArgs=job_spec.arguments,
-        name=job_spec.name,
-        errorPath=job_spec.stderr_path,
-        outputPath=job_spec.stdout_path,
-        queue=queue,
-        resourcesRequested=resourcesRequested
-    )
 
     # Generate and return the job submission GraphQL query
-    input_data = input_data.model_dump(exclude_none=True)
+    input_data = graphql_job.model_dump(exclude_none=True)
     return f"""
         mutation {{
             createJob (
@@ -166,12 +121,12 @@ def build_submit_job_query(
 # Build get job query
 def build_get_job_query(
     user: account_models.User, 
-    job_id: str,
+    job_id: str = None,
     historical: bool = False,
 ) -> str:
         
     # Build job query filter
-    filter_data = QueryJobsFilter(
+    filter_data = graphql_models.QueryJobsFilter(
         withHistoryJobs=historical,
         jobIds=job_id
     )
@@ -266,19 +221,15 @@ async def post_graphql(
 
 
 # Validate Job responses from GraphQL
-def validate_job_response(data: dict, keys: list) -> JobResponse:
+def validate_job_response(data: dict) -> graphql_models.JobResponse:
+    
+    # Convert the targeted subset into a JobRequest object
     try:
-
-        # Access the subset of data within the dictionary
-        for key in keys:
-            data = data[key]
-
-        # Convert the targeted subset into a JobRequest object
-        return JobResponse(**data)
+        return graphql_models.JobResponse(**data)
     
     # Error message if something goes wrong
     except Exception as e:
         raise HTTPException(
             status_code=HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Compute query response could not be parsed: {e}"
+            detail=f"Compute query response could not be validated: {e}"
         )
