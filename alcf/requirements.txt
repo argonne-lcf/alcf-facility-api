@@ -18,3 +18,4 @@ humps>=0.2.2
 psij-python==0.9.11
 python-dotenv>=1.0.0
 gunicorn>=23.0.0
+python-keycloak>=5.8.1
