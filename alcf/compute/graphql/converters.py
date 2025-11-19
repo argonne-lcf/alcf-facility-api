@@ -60,7 +60,7 @@ def get_graphql_job_from_iri_jobspec(iri_jobspec: compute_models.JobSpec) -> gra
     field_mapping = {
         'name': 'name',
         'remoteCommand': 'executable',
-        'commandArgs': 'arguments',
+        'commandArgs': lambda js: js.arguments if js.arguments else None,
         'workDir': 'directory',
         'errorPath': 'stderr_path',
         'outputPath': 'stdout_path',
@@ -126,12 +126,14 @@ def get_iri_state_from_pbs_state(state: int) -> int:
         return compute_models.JobState.NEW.value
     elif state in [3]:
         return compute_models.JobState.QUEUED.value
-    elif state in [7]:
+    elif state in [6, 7]:
         return compute_models.JobState.ACTIVE.value
     elif state in [10]:
         return compute_models.JobState.COMPLETED.value
     elif state in [12]:
         return compute_models.JobState.CANCELED.value
+    elif state in [11]:
+        return compute_models.JobState.FAILED.value
 
     # Unknown state
     else:
