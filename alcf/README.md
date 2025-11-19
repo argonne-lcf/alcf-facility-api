@@ -49,7 +49,7 @@ podman build -f Dockerfile.production -t $IMAGE_NAME:$IMAGE_TAG .
 
 Start the container in the background (served at http://localhost:8000):
 ```bash
-podman run --rm -d -p 8000:8000 $IMAGE_NAME:$IMAGE_TAG
+podman run --rm -d -p 8000:8000 --env-file .env $IMAGE_NAME:$IMAGE_TAG
 ```
 
 Check running container ID:
