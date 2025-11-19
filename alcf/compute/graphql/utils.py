@@ -157,6 +157,8 @@ def build_cancel_job_query(
     user: account_models.User, 
     job_id: str,
 ) -> str:
+    
+    # Generate and return the job submission GraphQL query
     return f"""
         mutation {{
             deleteJob (jobId: "{job_id}" input: {{}}) {{
@@ -165,6 +167,37 @@ def build_cancel_job_query(
                 }}
                 error {{
                     jobId
+                    errorCode
+                    errorMessage
+                }}
+            }}
+        }}
+    """
+
+
+# Build update job query
+def build_update_job_query(
+    user: account_models.User, 
+    graphql_job: graphql_models.Job,
+    job_id: str,
+) -> str:
+    
+    # Generate and return the job submission GraphQL query
+    input_data = graphql_job.model_dump(exclude_none=True)
+    return f"""
+        mutation {{
+            updateJob (
+                jobId: "{job_id}",
+                input: {dictionary_to_graphql_str(input_data, base_indent=16, indent=4)}
+            ) {{
+                node {{
+                    jobId
+                    status {{
+                        state
+                        exitStatus
+                    }}
+                }}
+                error {{
                     errorCode
                     errorMessage
                 }}
