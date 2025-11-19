@@ -9,14 +9,15 @@ from alcf.compute.graphql.converters import (
 )
 
 # Typing
+from typing import List
 from app.routers.compute import models as compute_models
 from app.routers.status import models as status_models
 from app.routers.account import models as account_models
+from alcf.compute.graphql import models as graphql_models
 
 # HTTP codes
 from starlette.status import ( 
     HTTP_400_BAD_REQUEST,
-    HTTP_404_NOT_FOUND,
     HTTP_500_INTERNAL_SERVER_ERROR,
     HTTP_501_NOT_IMPLEMENTED, 
 )
@@ -27,7 +28,7 @@ from alcf.compute.graphql.utils import (
     build_submit_job_query,
     build_get_job_query,
     build_cancel_job_query,
-    #build_update_job_query,
+    build_update_job_query,
     post_graphql
 )
 
@@ -96,17 +97,8 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
             url=self.__pbs_graphql_api_urls[resource.id]
         )
 
-        # Access relevant data in the response
-        try:
-            response = response["data"]["createJob"]
-        except Exception as e:
-            raise HTTPException(
-                status_code=HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Cannot access response['data']['createJob']: {response}"
-            )
-        
-        # Convert raw GraphQL response into a JobResponse pydantic model
-        response = validate_job_response(response)
+        # Extract raw job response into GraphQL JobResponse pydantic object
+        response = self.__extract_job_response(response, ["data", "createJob"])
         
         # Return IRI-compliant job response
         return get_iri_job_from_graphql_job(response.node)
@@ -120,7 +112,7 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
         job_script_path: str,
         args: list[str] = [],
     ) -> compute_models.Job:
-        pass
+        raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="Capability not implemented")
 
 
     # Update job
@@ -131,20 +123,22 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
         job_spec: compute_models.JobSpec,
         job_id: str,
     ) -> compute_models.Job:
-        pass
         
-        #print("!!!!!!")
-        #print(user)
-        #print(job_spec)
-        #print(job_id)
+        # Convert IRI Job spec into GraphQL Job spec
+        graphql_data = get_graphql_job_from_iri_jobspec(job_spec)
+        
+        # Submit query to GraphQL API
+        response = await post_graphql(
+            user=user,
+            query=build_update_job_query(user, graphql_data, job_id),
+            url=self.__pbs_graphql_api_urls[resource.id]
+        )
 
-        # Get API URL from the resource object for the job submition
-        #pbs_url = self.__pbs_graphql_api_urls[resource.id]
-
-        # Build GraphQL query
-        #query = build_update_job_query(user, job_spec, job_id)
-        #print("======== update_job ========")
-        #print(query)
+        # Extract raw job response into GraphQL JobResponse pydantic object
+        response = self.__extract_job_response(response, ["data", "updateJob"])
+        
+        # Return IRI-compliant job response
+        return get_iri_job_from_graphql_job(response.node)
 
 
     # Get job
@@ -163,24 +157,8 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
             url=self.__pbs_graphql_api_urls[resource.id]
         )
 
-        # Access relevant data in the response
-        try:
-            response = response["data"]["jobs"]["edges"][0]
-        except Exception as e:
-            raise HTTPException(
-                status_code=HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Cannot access response['data']['jobs']['edges'][0]: {response}"
-            )
-
-        # Convert raw GraphQL response into a JobResponse pydantic model
-        response = validate_job_response(response)
-        
-        # Error if job not found
-        if response.node is None:
-            raise HTTPException(
-                status_code=HTTP_404_NOT_FOUND,
-                detail=f"Job ID {job_id} not found."
-            )
+        # Extract raw job response into GraphQL JobResponse pydantic object
+        response = self.__extract_job_response(response, ["data", "jobs", "edges", 0])
 
         # Return IRI-compliant job response
         return get_iri_job_from_graphql_job(response.node)
@@ -197,6 +175,13 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
         historical: bool = False,
     ) -> list[compute_models.Job]:
         
+        # [TEMPORARY]
+        # Error if input variables are not supported yet
+        if filters:
+            raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="filters not implemented")
+        if limit > 0:
+            raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="limit not implemented")
+
         # Submit query to GraphQL API
         response = await post_graphql(
             user=user,
@@ -214,7 +199,7 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
             )
         
         # Convert raw GraphQL response into a JobResponse pydantic model
-        responses = [validate_job_response(edge) for edge in response]
+        responses = [validate_job_response(edge) for edge in response if edge["node"]]
 
         # Return IRI-compliant job submission response
         return [get_iri_job_from_graphql_job(r.node) for r in responses]
@@ -234,25 +219,36 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
             query=build_cancel_job_query(user, job_id),
             url=self.__pbs_graphql_api_urls[resource.id]
         )
+
+        # Extract raw job response into GraphQL JobResponse pydantic object
+        response = self.__extract_job_response(response, ["data", "deleteJob"])
         
+        # Return IRI-compliant job submission response
+        return True
+    
+
+    # Extract job response
+    def __extract_job_response(self, response: dict, key_list: List[str]) -> graphql_models.JobResponse:
+
         # Convert raw GraphQL response into a JobResponse pydantic model
         try:
-            response = response["data"]["deleteJob"]
+            for key in key_list:
+                response = response[key]
         except Exception as e:
             raise HTTPException(
                 status_code=HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Cannot access response['data']['deleteJob']: {response}"
+                detail=f"Cannot access response data with {key_list}: {response}"
             )
-        # Convert raw GraphQL response into a JobResponse pydantic model  
-        response = validate_job_response(response)
         
-        # Error message if any
+        # Convert raw GraphQL response into a GraphQL JobResponse pydantic model  
+        response: graphql_models.JobResponse = validate_job_response(response)
+        
+        # Error message from GraphQL
         if response.error:
             raise HTTPException(
                 status_code=HTTP_400_BAD_REQUEST,
                 detail=response.error.errorMessage
             )
-
-        # Return IRI-compliant job submission response
-        return True
-    
+        
+        # Return JobResponse object
+        return response
