@@ -4,7 +4,7 @@ from alcf.config import KEYCLOAK_CLIENT_ID, KEYCLOAK_CLIENT_SECRET, KEYCLOAK_REA
 from keycloak import KeycloakOpenID
 from fastapi import Depends
 
- # Configure Keycloak client
+# Configure Keycloak client
 keycloak_openid = KeycloakOpenID(
     server_url="https://keycloak-internal.alcf.anl.gov",
     client_id=KEYCLOAK_CLIENT_ID,
@@ -13,7 +13,6 @@ keycloak_openid = KeycloakOpenID(
     verify=True
 )
 config_well_known = keycloak_openid.well_known()
-
 
 
 class AlcfAuthenticatedAdapter(AuthenticatedAdapter):
