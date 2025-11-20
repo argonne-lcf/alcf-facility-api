@@ -21,12 +21,6 @@ AsyncSessionLocal = sessionmaker(
     class_=AsyncSession,
 )
 
-# Function to create a database session per request
-async def get_db_session() -> AsyncSession:
-    async with AsyncSessionLocal() as db_session:
-        yield db_session
-
-
 @asynccontextmanager
 async def get_db_session_context():
     """Context manager for independent database operations."""

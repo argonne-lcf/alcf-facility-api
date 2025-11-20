@@ -1,0 +1,27 @@
+# Exclude environment files
+.env
+.env.*
+.venv/
+
+# Exclude database files
+*.sqlite3
+*.db
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info
+
+# Git files
+.git/
+.gitignore
+
+# VS Code settings
+.vscode/
+
+# Docker-related files
+.dockerignore
+
+# Others
+vm_setup/

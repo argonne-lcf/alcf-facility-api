@@ -21,20 +21,25 @@ uvicorn app.main:app
 
 Test FastAPI with Gunicorn with Uvicorn workers (logs will be stored in the `logs/` folder):
 ```bash
-gunicorn -c gunicorn.config.py app.main:app
+gunicorn -c gunicorn.config.production.py app.main:app
 ```
 
 ## Run application in a container
 
-Build multi-architectures image (useful when building images from MacOS):
+Define variable names:
 ```bash
-podman manifest create localhost/facility-api-prototype:<TAG>
-podman build . --platform linux/arm64,linux/amd64 --manifest localhost/facility-api-prototype:<TAG>
+IMAGE_NAME="your_image_name"
+IMAGE_TAG="your_image_tag"
+```
+
+Build image:
+```bash
+podman build -f Dockerfile.production -t $IMAGE_NAME:$IMAGE_TAG .
 ```
 
 Start the container in the background (served at http://localhost:8000):
 ```bash
-podman run -d -p 8000:8000 facility-api-prototype:<TAG>
+podman run --rm -d -p 8000:8000 --env-file .env $IMAGE_NAME:$IMAGE_TAG
 ```
 
 Check running container ID:
@@ -49,20 +54,33 @@ podman container stop <CONTAINER-ID>
 
 ## Build image and push it to GoHarbor
 
-Login to ALCF GoHarbor
+Define variable names:
 ```bash
-podman login goharbor.alcf.anl.gov
+IMAGE_NAME="your_image_name"
+IMAGE_TAG="your_image_tag"
+GOHARBOR_PROJECT="your_goharbor_project"
 ```
 
-Build multi-architectures image:
+Authenticate to your ALCF GoHarbor project (need to be on the VPN, need to use a robot-account):
 ```bash
-podman manifest create goharbor.alcf.anl.gov/<USERNAME>/facility-api-prototype:<TAG>
-podman build . --platform linux/arm64,linux/amd64 --manifest goharbor.alcf.anl.gov/<USERNAME>/facility-api-prototype:<TAG>
+podman login goharbor.alcf.anl.gov/$GOHARBOR_PROJECT
+```
+
+If you have credential issues, you may need to logout and log back in
+```bash
+podman logout goharbor.alcf.anl.gov
+podman login goharbor.alcf.anl.gov/$GOHARBOR_PROJECT
+```
+
+Build multi-architectures image (useful when building images from MacOS):
+```bash
+podman manifest create goharbor.alcf.anl.gov/$GOHARBOR_PROJECT/$IMAGE_NAME:$IMAGE_TAG
+podman build -f Dockerfile.production . --platform linux/arm64,linux/amd64 --manifest goharbor.alcf.anl.gov/$GOHARBOR_PROJECT/$IMAGE_NAME:$IMAGE_TAG
 ```
 
 Push to GoHarbor
 ```bash
-podman manifest push --all goharbor.alcf.anl.gov/<USERNAME>/facility-api-prototype:<TAG> docker://goharbor.alcf.anl.gov/<USERNAME>/facility-api-prototype:<TAG>
+podman manifest push --all goharbor.alcf.anl.gov/$GOHARBOR_PROJECT/$IMAGE_NAME:$IMAGE_TAG docker://goharbor.alcf.anl.gov/$GOHARBOR_PROJECT/$IMAGE_NAME:$IMAGE_TAG
 ```
 
 ## Run test suite
@@ -85,16 +103,24 @@ print(json.dumps(facility_model_schema, indent=2))
 
 Create an environment variable file (`.env`) with the following:
 ```bash
+API_URL_ROOT="http://localhost:8000"
+API_URL="api/current"
+
 DATABASE_URL="sqlite+aiosqlite:///alcf/facilityapi.db"
-API_URL_ROOT", "https://api.alcf.anl.gov"
-IRI_API_ADAPTER="alcf.alcf_adapter.AlcfAdapter"
-IRI_API_PARAMS='{ \
-    "title": "ALCF implementation of the IRI Facility API", \
-    "description": "A simple implementation of the IRI facility API for ALCF.\n\nFor more information, see: [https://iri.science/](https://iri.science/)\n\n<img src=\"https://iri.science/images/doe-icon-old.png\" height=50 />", \
-    "docs_url": "/alcf/", \
-    "contact": { \
-        "name": "ALCF API contact", \
-        "url": "https://www.alcf.anl.gov/" \
-    } \
+
+IRI_API_ADAPTER_status="alcf.status.alcf_adapter.AlcfAdapter"
+IRI_API_ADAPTER_compute="alcf.compute.alcf_adapter.AlcfAdapter"
+IRI_API_PARAMS='{
+    "title": "ALCF implementation of the IRI Facility API",
+    "description": "IRI facility API for ALCF.\n\nFor more information, see: [https://iri.science/](https://iri.science/)\n\n<img src=\"https://iri.science/images/doe-icon-old.png\" height=50 />",
+    "docs_url": "/",
+    "contact": {
+        "name": "ALCF API contact",
+        "url": "https://www.alcf.anl.gov/"
+    }
 }'
+
+IRI_SHOW_MISSING_ROUTES=False
+
+GRAPHQL_URL="https://your-api-url"
 ```
