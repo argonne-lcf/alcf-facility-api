@@ -33,7 +33,7 @@ from alcf.compute.graphql.utils import (
 )
 
 class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
-    """Facility adapter definition for the IRI Facility API."""
+    """Compute facility adapter definition for the IRI Facility API."""
 
     # Initialization for constants and convertions 
     def __init__(self):
