@@ -230,6 +230,13 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
     # Extract job response
     def __extract_job_response(self, response: dict, key_list: List[str]) -> graphql_models.JobResponse:
 
+        # GraphQL error
+        if "errors" in response:
+            raise HTTPException(
+                status_code=HTTP_400_BAD_REQUEST,
+                detail=f"GraphQL error: {response["errors"]}"
+            )
+
         # Convert raw GraphQL response into a JobResponse pydantic model
         try:
             for key in key_list:
@@ -243,10 +250,10 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
         # Convert raw GraphQL response into a GraphQL JobResponse pydantic model  
         response: graphql_models.JobResponse = validate_job_response(response)
         
-        # Error message from GraphQL
+        # Error if data validation went wrong
         if response.error:
             raise HTTPException(
-                status_code=HTTP_400_BAD_REQUEST,
+                status_code=HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=response.error.errorMessage
             )
         
