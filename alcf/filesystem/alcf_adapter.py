@@ -1,9 +1,13 @@
+from fastapi import HTTPException
+from alcf.globus import utils as globus_utils
 from app.routers.filesystem.facility_adapter import FacilityAdapter as FilesystemFacilityAdapter
 from app.routers.status import models as status_models
 from app.routers.account import models as account_models
 from app.routers.filesystem import models as filesystem_models
 from alcf.auth.alcf_adapter import AlcfAuthenticatedAdapter
+from starlette.status import HTTP_501_NOT_IMPLEMENTED, HTTP_500_INTERNAL_SERVER_ERROR 
 from typing import Any, Tuple
+from alcf.filesystem.utils import get_iri_file_from_ls_line
 
 class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
     """Filesystem facility adapter definition for the IRI Facility API."""
@@ -15,7 +19,17 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
         user: account_models.User, 
         request_model: filesystem_models.PutFileChmodRequest
     ) -> filesystem_models.PutFileChmodResponse:
-        pass
+    
+        # Build data for the command
+        input_data = request_model.model_dump()
+
+        # Submit task to Globus Compute and wait for the result
+        result = globus_utils.submit_task_and_get_result("chmod", resource, input_data, user)
+        
+        # Convert result (should only be one line) into IRI File and return the object
+        return filesystem_models.PutFileChmodResponse(
+            output=get_iri_file_from_ls_line(result)
+        )
 
 
     # Chown
@@ -25,7 +39,17 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
         user: account_models.User, 
         request_model: filesystem_models.PutFileChownRequest
     ) -> filesystem_models.PutFileChownResponse:
-        pass
+
+        # Build data for the command
+        input_data = request_model.model_dump()
+
+        # Submit task to Globus Compute and wait for the result
+        result = globus_utils.submit_task_and_get_result("chown", resource, input_data, user)
+        
+        # Convert result (should only be one line) into IRI File and return the object
+        return filesystem_models.PutFileChmodResponse(
+            output=get_iri_file_from_ls_line(result)
+        )
 
 
     # Ls
@@ -39,8 +63,27 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
         recursive: bool, 
         dereference: bool,
     ) -> filesystem_models.GetDirectoryLsResponse:
-        pass
+        
+        # Build data for the command
+        input_data = {
+            "path": path,
+            "show_hidden": show_hidden,
+            "numeric_uid": numeric_uid,
+            "recursive": recursive,
+            "dereference": dereference
+        }
 
+        # Submit task to Globus Compute and wait for the result
+        result = globus_utils.submit_task_and_get_result("ls", resource, input_data, user)
+
+        # Recover all lines from the command
+        lines = [line.strip() for line in result.splitlines() if line.strip()]
+
+        # Convert lines into IRI File and return array
+        return filesystem_models.GetDirectoryLsResponse(
+            output=[get_iri_file_from_ls_line(line) for line in lines if len(line.split()) > 2]
+        )
+    
 
     # Head
     async def head(
@@ -52,7 +95,7 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
         lines: int, 
         skip_trailing: bool,
     ) -> Tuple[Any, int]:
-        pass
+        raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="Not implemented yet.")
 
 
     # Tail
@@ -65,7 +108,7 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
         lines: int | None, 
         skip_trailing: bool,
     ) -> Tuple[Any, int]:
-        pass
+        raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="Not implemented yet.")
 
 
     # View
@@ -77,7 +120,7 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
         size: int,
         offset: int,
     ) -> filesystem_models.GetViewFileResponse:
-        pass
+        raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="Not implemented yet.")
 
 
     # Checksum
@@ -87,7 +130,7 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
         user: account_models.User, 
         path: str, 
     ) -> filesystem_models.GetFileChecksumResponse:
-        pass
+        raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="Not implemented yet.")
 
 
     # File
@@ -97,7 +140,7 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
         user: account_models.User, 
         path: str, 
     ) -> filesystem_models.GetFileTypeResponse:
-        pass
+        raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="Not implemented yet.")
 
 
     # Stat
@@ -108,7 +151,7 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
         path: str, 
         dereference: bool,
     ) -> filesystem_models.GetFileStatResponse:
-        pass
+        raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="Not implemented yet.")
 
 
     # Rm
@@ -118,7 +161,7 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
         user: account_models.User, 
         path: str, 
     ):
-        pass
+        raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="Not implemented yet.")
 
 
     # Mkdir
@@ -128,7 +171,7 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
         user: account_models.User, 
         request_model: filesystem_models.PostMakeDirRequest,
     ) -> filesystem_models.PostMkdirResponse:
-        pass
+        raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="Not implemented yet.")
 
 
     # Sumlink
@@ -138,7 +181,7 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
         user: account_models.User, 
         request_model: filesystem_models.PostFileSymlinkRequest,
     ) -> filesystem_models.PostFileSymlinkResponse:
-        pass
+        raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="Not implemented yet.")
 
 
     # Download
@@ -148,7 +191,7 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
         user: account_models.User, 
         path: str,
     ) -> Any:
-        pass
+        raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="Not implemented yet.")
 
 
     # Upload
@@ -159,7 +202,7 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
         path: str,
         content: str,
     ) -> None:
-        pass
+        raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="Not implemented yet.")
 
 
     # Compress
@@ -169,7 +212,7 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
         user: account_models.User, 
         request_model: filesystem_models.PostCompressRequest,
     ) -> filesystem_models.PostCompressResponse:
-        pass
+        raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="Not implemented yet.")
 
 
     # Extract
@@ -179,7 +222,7 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
         user: account_models.User, 
         request_model: filesystem_models.PostExtractRequest,
     ) -> filesystem_models.PostExtractResponse:
-        pass
+        raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="Not implemented yet.")
 
 
     # Mv
@@ -189,7 +232,7 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
         user: account_models.User, 
         request_model: filesystem_models.PostMoveRequest,
     ) -> filesystem_models.PostMoveResponse:
-        pass
+        raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="Not implemented yet.")
 
 
     # Cp
@@ -199,4 +242,4 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
         user: account_models.User, 
         request_model: filesystem_models.PostCopyRequest,
     ) -> filesystem_models.PostCopyResponse:
-        pass
+        raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="Not implemented yet.")
