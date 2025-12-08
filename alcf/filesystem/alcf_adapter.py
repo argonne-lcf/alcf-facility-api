@@ -64,6 +64,10 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
         dereference: bool,
     ) -> filesystem_models.GetDirectoryLsResponse:
         
+        # Disable options that are not ready yet
+        if recursive:
+            raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="'recursive' option not implemented yet.")
+        
         # Build data for the command
         input_data = {
             "path": path,
@@ -95,7 +99,23 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
         lines: int, 
         skip_trailing: bool,
     ) -> Tuple[Any, int]:
-        raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="Not implemented yet.")
+        
+        # Build data for the command
+        input_data = {
+            "path": path,
+            "file_bytes": file_bytes,
+            "lines": lines,
+            "skip_trailing": skip_trailing
+        }
+
+        # Submit task to Globus Compute and wait for the result
+        result = globus_utils.submit_task_and_get_result("head", resource, input_data, user)
+
+        # Get the end_position
+        end_position = len(result)
+
+        # Return IRI response
+        return result, end_position
 
 
     # Tail
@@ -120,7 +140,19 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
         size: int,
         offset: int,
     ) -> filesystem_models.GetViewFileResponse:
-        raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="Not implemented yet.")
+        
+        # Build data for the command
+        input_data = {
+            "path": path,
+            "size": size,
+            "offset": offset
+        }
+
+        # Submit task to Globus Compute and wait for the result
+        result = globus_utils.submit_task_and_get_result("view", resource, input_data, user)
+
+        # Return IRI response
+        return filesystem_models.GetViewFileResponse(output=result)
 
 
     # Checksum
