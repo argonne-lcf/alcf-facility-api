@@ -6,6 +6,7 @@ from app.routers.status import models as status_models
 from globus_compute_sdk import Client, Executor
 from globus_compute_sdk.sdk.login_manager import AuthorizerLoginManager
 from globus_compute_sdk.sdk.login_manager.manager import ComputeScopeBuilder
+from globus_compute_sdk.serialize import ComputeSerializer, CombinedCode
 from globus_sdk import AccessTokenAuthorizer
 ComputeScopes = ComputeScopeBuilder()
 
@@ -19,7 +20,12 @@ def get_compute_executor(user: account_models.User) -> Executor:
         gcc = get_compute_client(user)
 
         # Create and return the executor
-        return Executor(client=gcc)
+        return Executor(
+            client=gcc,
+            batch_size=1,
+            api_burst_limit=1,
+            serializer = ComputeSerializer(strategy_code=CombinedCode())
+        )
         
     # Error if something wrong happen
     except Exception as e:
@@ -90,6 +96,9 @@ def submit_task_and_get_result(
     # Get Globus Compute client from user's token
     gce = get_compute_executor(user)
     gce.endpoint_id = endpoint_id
+
+    # Make sure the endpoint runs on the login node
+    gce.user_endpoint_config = {"provider": "local"}
 
     # Submit task to Globus Compute
     try:
