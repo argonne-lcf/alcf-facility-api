@@ -1,4 +1,4 @@
-from globus_compute_sdk.serialize import CombinedCode
+from globus_compute_sdk.serialize import ComputeSerializer, CombinedCode
 from globus_compute_sdk import Client
 import json
 import os
@@ -12,12 +12,14 @@ def ls(params):
     
     # Import all necessary packages
     from pydantic import BaseModel, ConfigDict, field_validator
+    from typing import Optional
     import subprocess
+    import os
 
     # Pydantic for function response
     class Response(BaseModel):
-        output: str = None
-        error: str = None
+        output: Optional[str] = None
+        error: Optional[str] = None
 
     # Pydantic for input data
     class InputData(BaseModel):
@@ -43,6 +45,10 @@ def ls(params):
         input_data = InputData(**params)
     except Exception as e:
         return Response(error=f"Input validation error: {str(e)}").model_dump()
+
+    # Check if path exists
+    if not os.path.exists(input_data.path):
+        return Response(error=f"File {input_data.path} does not exist: {input_data.path}").model_dump()
 
     # Build command flags
     flags = "-lh" 
@@ -75,7 +81,7 @@ def ls(params):
 
 
 # Create Globus Compute client
-gcc = Client()
+gcc = Client(code_serialization_strategy=CombinedCode())
 
 # Register the function
 COMPUTE_FUNCTION_ID = gcc.register_function(ls, public=True)
