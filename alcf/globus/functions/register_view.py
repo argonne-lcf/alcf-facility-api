@@ -28,18 +28,14 @@ def view(params):
         path: str
         size: Optional[int] = Field(default=None, ge=0)
         offset: Optional[int] = Field(default=None, ge=0)
-        
-        # No extra argument
         model_config = ConfigDict(extra="forbid")
 
         # Forbidden characters (prevent shell injection)
         @field_validator("path")
         @classmethod
         def forbidden_characters(cls, v: str) -> str:
-            if not re.compile(r"^[\w\-. /\\]+$").fullmatch(v):
+            if not re.compile(r"^[\w\-./\\]+$").fullmatch(v):
                 raise ValueError("Field contains forbidden characters.")
-            if " " in v:
-                raise ValueError("No empty space allowed.")
             if "\0" in v:
                 raise ValueError("Null byte not allowed.")
             return v
