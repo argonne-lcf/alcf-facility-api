@@ -14,7 +14,9 @@ def chmod(params):
     from pydantic import BaseModel, ConfigDict, Field, field_validator
     from typing import Optional
     import subprocess
+    import pathlib
     import os
+    import re
 
     # Pydantic for function response
     class Response(BaseModel):
@@ -29,12 +31,25 @@ def chmod(params):
         # No extra argument
         model_config = ConfigDict(extra="forbid")
 
-        # No semicolon and shell injection
+        # Forbidden characters (prevent shell injection)
         @field_validator("path", "mode")
         @classmethod
-        def no_semicolon(cls, v: str) -> str:
-            if ";" in v:
-                raise ValueError("Shell injection not allowed. Semicolon detected.")
+        def forbidden_characters(cls, v: str) -> str:
+            if not re.compile(r"^[\w\-. /\\]+$").fullmatch(v):
+                raise ValueError("Field contains forbidden characters.")
+            if " " in v:
+                raise ValueError("No empty space allowed.")
+            if "\0" in v:
+                raise ValueError("Null byte not allowed.")
+            return v
+        
+        # Clean path (prevent remaining traversal)
+        @field_validator("path")
+        @classmethod
+        def clean_path(cls, v: str) -> str:
+            v = os.path.normpath(v)
+            if ".." in pathlib.PurePath(v).parts:
+                raise ValueError("Path traversal components '..' not allowed.")
             return v
         
         # Make sure mode must only contain digits
