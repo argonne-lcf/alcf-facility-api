@@ -5,9 +5,10 @@ from app.routers.status import models as status_models
 from app.routers.account import models as account_models
 from app.routers.filesystem import models as filesystem_models
 from alcf.auth.alcf_adapter import AlcfAuthenticatedAdapter
-from starlette.status import HTTP_501_NOT_IMPLEMENTED, HTTP_500_INTERNAL_SERVER_ERROR 
+from starlette.status import HTTP_501_NOT_IMPLEMENTED, HTTP_400_BAD_REQUEST 
 from typing import Any, Tuple
 from alcf.filesystem.utils import get_iri_file_from_ls_line
+from alcf.filesystem import validation
 
 class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
     """Filesystem facility adapter definition for the IRI Facility API."""
@@ -22,6 +23,12 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
     
         # Build data for the command
         input_data = request_model.model_dump()
+
+        # Validate data
+        try:
+            _ = validation.ChmodInputData(**input_data)
+        except Exception as e:
+            raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=str(e))
 
         # Submit task to Globus Compute and wait for the result
         result = globus_utils.submit_task_and_get_result("chmod", resource, input_data, user)
@@ -42,6 +49,12 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
 
         # Build data for the command
         input_data = request_model.model_dump()
+
+        # Validate data
+        try:
+            _ = validation.ChownInputData(**input_data)
+        except Exception as e:
+            raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=str(e))
 
         # Submit task to Globus Compute and wait for the result
         result = globus_utils.submit_task_and_get_result("chown", resource, input_data, user)
@@ -77,6 +90,12 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
             "dereference": dereference
         }
 
+        # Validate data
+        try:
+            _ = validation.LsInputData(**input_data)
+        except Exception as e:
+            raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=str(e))
+
         # Submit task to Globus Compute and wait for the result
         result = globus_utils.submit_task_and_get_result("ls", resource, input_data, user)
 
@@ -107,6 +126,12 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
             "lines": lines,
             "skip_trailing": skip_trailing
         }
+
+        # Validate data
+        try:
+            _ = validation.HeadInputData(**input_data)
+        except Exception as e:
+            raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=str(e))
 
         # Submit task to Globus Compute and wait for the result
         result = globus_utils.submit_task_and_get_result("head", resource, input_data, user)
@@ -147,6 +172,12 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
             "size": size,
             "offset": offset
         }
+
+        # Validate data
+        try:
+            _ = validation.ViewInputData(**input_data)
+        except Exception as e:
+            raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=str(e))
 
         # Submit task to Globus Compute and wait for the result
         result = globus_utils.submit_task_and_get_result("view", resource, input_data, user)
