@@ -22,3 +22,7 @@ app = FastAPI()
 app.mount(f"{config.API_PREFIX}{config.API_URL}", api_app)
 
 logging.getLogger().info(f"API path: {config.API_PREFIX}{config.API_URL}")
+
+# [ADDITION] to add Keycloak authentication
+from alcf.auth.auth import auth_router
+app.include_router(auth_router)
