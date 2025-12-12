@@ -17,6 +17,7 @@ from alcf.config import (
     KEYCLOAK_CLIENT_ID,
     KEYCLOAK_CLIENT_SECRET,
     KEYCLOAK_REDIRECT_URI,
+    SESSION_MIDDLEWARE_SECRET_KEY
 )
 
 # Create OAuth client to make calls to Keycloak
@@ -36,7 +37,7 @@ templates = Jinja2Templates(directory=str(TEMPLATE_DIR))
 from app.main import app
 app.add_middleware(
     SessionMiddleware,
-    secret_key="Asaa#$a9klasd09jaAMVAj$^%AvmoasdlQasfa1u9asd00jgANJ)", 
+    secret_key=SESSION_MIDDLEWARE_SECRET_KEY, 
     session_cookie="session",
     max_age=3600,
 )
