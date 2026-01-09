@@ -28,7 +28,7 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
         try:
             _ = validation.ChmodInputData(**input_data)
         except Exception as e:
-            raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=str(e))
+            raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=f"Input validation error: {str(e)}")
 
         # Submit task to Globus Compute and wait for the result
         result = globus_utils.submit_task_and_get_result("chmod", resource, input_data, user)
@@ -54,7 +54,7 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
         try:
             _ = validation.ChownInputData(**input_data)
         except Exception as e:
-            raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=str(e))
+            raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=f"Input validation error: {str(e)}")
 
         # Submit task to Globus Compute and wait for the result
         result = globus_utils.submit_task_and_get_result("chown", resource, input_data, user)
@@ -94,7 +94,7 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
         try:
             _ = validation.LsInputData(**input_data)
         except Exception as e:
-            raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=str(e))
+            raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=f"Input validation error: {str(e)}")
 
         # Submit task to Globus Compute and wait for the result
         result = globus_utils.submit_task_and_get_result("ls", resource, input_data, user)
@@ -131,7 +131,7 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
         try:
             _ = validation.HeadInputData(**input_data)
         except Exception as e:
-            raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=str(e))
+            raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=f"Input validation error: {str(e)}")
 
         # Submit task to Globus Compute and wait for the result
         result = globus_utils.submit_task_and_get_result("head", resource, input_data, user)
@@ -177,7 +177,7 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
         try:
             _ = validation.ViewInputData(**input_data)
         except Exception as e:
-            raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=str(e))
+            raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=f"Input validation error: {str(e)}")
 
         # Submit task to Globus Compute and wait for the result
         result = globus_utils.submit_task_and_get_result("view", resource, input_data, user)
