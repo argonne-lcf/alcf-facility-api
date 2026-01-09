@@ -64,7 +64,7 @@ def chmod(params):
 
     # Check if path exists
     if not os.path.exists(input_data.path):
-        return Response(error=f"File {input_data.path} does not exist: {input_data.path}").model_dump()
+        return Response(error=f"File {input_data.path} does not exist.").model_dump()
 
     # Build command
     cmd = ["chmod", input_data.mode, input_data.path]
