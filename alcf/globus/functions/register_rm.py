@@ -5,10 +5,10 @@ import os
 
 # Constants
 FILE_NAME = "function_ids.json"
-COMMAND = "chown"
+COMMAND = "rm"
 
-# Globus Compute function definition (subprocess - chown)
-def chown(params):
+# Globus Compute function definition (subprocess - rm)
+def rm(params):
     
     # Import all necessary packages
     from pydantic import BaseModel, ConfigDict, field_validator
@@ -26,12 +26,10 @@ def chown(params):
     # Pydantic for input data
     class InputData(BaseModel):
         path: str
-        owner: str
-        group: str
         model_config = ConfigDict(extra="forbid")
 
         # Forbidden characters (prevent shell injection)
-        @field_validator("path", "owner", "group")
+        @field_validator("path")
         @classmethod
         def forbidden_characters(cls, v: str) -> str:
             if not re.compile(r"^[\w\-./\\]+$").fullmatch(v):
@@ -59,8 +57,8 @@ def chown(params):
     if not os.path.exists(input_data.path):
         return Response(error=f"File {input_data.path} does not exist.").model_dump()
 
-    # Build command
-    cmd = ["chown", f"{input_data.owner}:{input_data.group}", input_data.path]
+    # Build subprocess command
+    cmd = ["rm", input_data.path]
 
     # Run subprocess command
     try:
@@ -73,21 +71,12 @@ def chown(params):
         )
     except Exception as e:
         return Response(error=f"subprocess.run error: {str(e)}").model_dump()
-    if result.stderr:
-        return Response(error=result.stderr).model_dump()
-    
-    # Execute an ls command on the path to return the new state
-    cmd = ["ls", "-lh", input_data.path]
-    try:
-        result = subprocess.run(
-            cmd,
-            check=True,          # Raise error if command fails
-            capture_output=True, # Capture stdout/stderr
-            text=True,           # Return strings instead of bytes
-            shell=False          # Avoid shell injection
-        )
-    except Exception as e:
-        return Response(error=f"subprocess.run error: {str(e)}").model_dump()
+
+    !!!@#!@#$!@#$!@#$!@#$!
+    !!!!!!
+    I AM HERE I DO NOT (should I return the full response?)
+                 !!! I THINK YES, let the API do what it needs to do
+                 Just did not have time to think ... got to go 
 
     # Return result
     return Response(output=result.stdout, error=result.stderr).model_dump()
@@ -97,7 +86,7 @@ def chown(params):
 gcc = Client(code_serialization_strategy=CombinedCode())
 
 # Register the function
-COMPUTE_FUNCTION_ID = gcc.register_function(chown, public=True)
+COMPUTE_FUNCTION_ID = gcc.register_function(rm, public=True)
 
 # Load file that stores all function IDs
 if os.path.exists(FILE_NAME):
