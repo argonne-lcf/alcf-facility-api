@@ -1,6 +1,6 @@
-from pydantic import BaseModel, computed_field, Field
 import datetime
 import enum
+from pydantic import BaseModel, computed_field, Field
 from ... import config
 
 class Link(BaseModel):
@@ -23,18 +23,27 @@ class NamedResource(BaseModel):
 
 
     @staticmethod
-    def find_by_id(a, id):
-        return next((r for r in a if r.id == id), None)
+    def find_by_id(a, id, allow_name: bool|None=False):
+        # Find a resource by its id.
+        # If allow_name is True, the id parameter can also match the resource's name.
+        return next((r for r in a if r.id == id or (allow_name and r.name == id)), None)
 
 
     @staticmethod
     def find(a, name, description, modified_since):
+        def normalize(dt: datetime) -> datetime:
+            # Convert naive datetimes into UTC-aware versions
+            if dt.tzinfo is None:
+                return dt.replace(tzinfo=datetime.timezone.utc)
+            return dt
         if name:
             a = [aa for aa in a if aa.name == name]
         if description:
             a = [aa for aa in a if description in aa.description]
         if modified_since:
-            a = [aa for aa in a if aa.last_modified >= modified_since]
+            if modified_since.tzinfo is None:
+                modified_since = modified_since.replace(tzinfo=datetime.timezone.utc)
+            a = [aa for aa in a if normalize(aa.last_modified) >= modified_since]
         return a
 
 
@@ -75,13 +84,13 @@ class Resource(NamedResource):
         if resource_type:
             a = [aa for aa in a if aa.resource_type == resource_type]
         return a
-    
+
 
 class Event(NamedResource):
     occurred_at : datetime.datetime
     status : Status
-    resource_id : str = Field(exclude=True) 
-    incident_id : str | None = Field(exclude=True, default=None) 
+    resource_id : str = Field(exclude=True)
+    incident_id : str | None = Field(exclude=True, default=None)
 
 
     @computed_field(description="The url of this object")
@@ -100,7 +109,7 @@ class Event(NamedResource):
     @property
     def incident_uri(self) -> str|None:
         return f"{config.API_URL_ROOT}{config.API_PREFIX}{config.API_URL}/status/incidents/{self.incident_id}" if self.incident_id else None
-    
+
 
     @staticmethod
     def find(
@@ -133,6 +142,14 @@ class IncidentType(enum.Enum):
     unplanned = "unplanned"
 
 
+class Resolution(enum.Enum):
+    unresolved = "unresolved"
+    cancelled = "cancelled"
+    completed = "completed"
+    extended = "extended"
+    pending = "pending"
+
+
 class Incident(NamedResource):
     status : Status
     resource_ids : list[str] = Field(exclude=True)
@@ -140,7 +157,7 @@ class Incident(NamedResource):
     start : datetime.datetime
     end : datetime.datetime | None
     type : IncidentType
-    resolution : str    
+    resolution : Resolution
 
 
     @computed_field(description="The url of this object")
@@ -160,13 +177,12 @@ class Incident(NamedResource):
     def resource_uris(self) -> list[str]:
         return [f"{config.API_URL_ROOT}{config.API_PREFIX}{config.API_URL}/status/resources/{r}" for r in self.resource_ids]
 
-
     def find(
         incidents : list,
         name : str | None = None,
         description : str | None = None,
         status : Status | None = None,
-        type : IncidentType | None = None,
+        type_ : IncidentType | None = None,
         from_ : datetime.datetime | None = None,
         to : datetime.datetime | None = None,
         time_ : datetime.datetime | None = None,
@@ -178,8 +194,8 @@ class Incident(NamedResource):
             incidents = [e for e in incidents if resource_id in e.resource_ids]
         if status:
             incidents = [e for e in incidents if e.status == status]
-        if type:
-            incidents = [e for e in incidents if e.type == type]
+        if type_:
+            incidents = [e for e in incidents if e.type == type_]
         if from_:
             incidents = [e for e in incidents if e.start >= from_]
         if to:
