@@ -2,9 +2,7 @@ name: Build and Push Docker Image
 
 on:
   push:
-    branches: [ deactivated_on_purpose ]
-  pull_request:
-    branches: [ deactivated_on_purpose ]
+    branches: [ main ]
 
 jobs:
   build:
