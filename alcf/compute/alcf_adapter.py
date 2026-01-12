@@ -156,7 +156,7 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
             query=build_get_job_query(user, job_id=job_id, historical=historical),
             url=self.__pbs_graphql_api_urls[resource.id]
         )
-        
+
         # Extract raw job response into GraphQL JobResponse pydantic object
         response = self.__extract_job_response(response, ["data", "jobs", "edges", 0])
 
@@ -188,6 +188,8 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
             raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="filters not implemented")
         if limit > 0:
             raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="limit not implemented")
+        if offset > 0:
+            raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="offset not implemented")
 
         # Submit query to GraphQL API
         response = await post_graphql(
