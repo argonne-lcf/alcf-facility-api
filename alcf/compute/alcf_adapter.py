@@ -156,9 +156,16 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
             query=build_get_job_query(user, job_id=job_id, historical=historical),
             url=self.__pbs_graphql_api_urls[resource.id]
         )
-
+        
         # Extract raw job response into GraphQL JobResponse pydantic object
         response = self.__extract_job_response(response, ["data", "jobs", "edges", 0])
+
+        # Error if no job exists
+        if not response.node:
+            raise HTTPException(
+                status_code=HTTP_400_BAD_REQUEST,
+                detail=f"Job {job_id} not found."
+            )
 
         # Return IRI-compliant job response
         return get_iri_job_from_graphql_job(response.node)
