@@ -39,11 +39,8 @@ class AlcfAuthenticatedAdapter(AuthenticatedAdapter):
         if not introspection["active"]:
             return None
 
-        # Check if this is the authorized dev user (bcote)
-        if introspection["username"] == "bcote":
-            return "bcote"
-        else:
-            return None
+        # Return username
+        return introspection.get("username", None)
 
 
     # Get User
@@ -51,12 +48,16 @@ class AlcfAuthenticatedAdapter(AuthenticatedAdapter):
         self : "AlcfAuthenticatedAdapter",
         user_id: str,
         api_key: str,
+        client_ip: str = None
         ) -> User:
         """
             Retrieve additional user information (name, email, etc.) for the given user_id.
         """
-        # TODO: Change this for a proper auth check once integrated
+        
+        # Temporary - allow specific username
         if user_id == "bcote":
-            return User(id="bcote", name="Benoit Cote", api_key=api_key.replace("Bearer ", ""))
+            return User(id="bcote", name="Benoit Cote", api_key=api_key.replace("Bearer ", ""), client_ip=client_ip)
+        elif user_id == "richp":
+            return User(id="bcote", name="Paul Rich", api_key=api_key.replace("Bearer ", ""), client_ip=client_ip)
         else:
             return None
