@@ -31,7 +31,6 @@ class ALCF_RESOURCE_ID_LIST(str, Enum):
     sophia = "9674c7e1-aecc-4dbb-bf01-c9197e027cd6"
     crux = "8b9b42f7-572a-4909-8472-a0453436304c"
     aurora = "0325fc07-6fb7-4453-b772-3d5030b2df72"
-    edith = "7f7d0593-162e-43b9-8476-07d7d137d6ab"
 
 # List of URLs to fetch activity.json files
 class ALCF_RESOURCE_URLS(str, Enum):
@@ -387,36 +386,40 @@ async def main():
                        help='Clear all existing activity data before ingestion')
     args = parser.parse_args()
 
-    # Create tables if not already done
-    async with engine.begin() as conn:
-        await conn.run_sync(SQLModel.metadata.create_all)
-    
-    # Get database session using async context manager
-    async with get_db_session_context() as db_session:
-        try:
-            
-            # Clear activity data if requested
-            if args.clear:
-                await clear_activity_data(db_session)
-                print("Activity data cleared successfully!")
+    try:
+        # Create tables if not already done
+        async with engine.begin() as conn:
+            await conn.run_sync(SQLModel.metadata.create_all)
+        
+        # Get database session using async context manager
+        async with get_db_session_context() as db_session:
+            try:
+                
+                # Clear activity data if requested
+                if args.clear:
+                    await clear_activity_data(db_session)
+                    print("Activity data cleared successfully!")
 
-            # Process each resource
-            for resource_enum in ALCF_RESOURCE_ID_LIST:
-                resource_id = resource_enum.value
-                resource_name = resource_enum.name
+                # Process each resource
+                for resource_enum in ALCF_RESOURCE_ID_LIST:
+                    resource_id = resource_enum.value
+                    resource_name = resource_enum.name
 
-                # Ingest activity data for this resource
-                try:
-                    _, _, _ = await ingest_activity_data_for_resource(resource_id, db_session)
-                    print(f"  Successfully processed {resource_name}")
-                except Exception as e:
-                    print(f"  Error processing {resource_id}: {e}")
-                    await db_session.rollback()
-            
-            print("\nActivity data ingestion completed!")
-                    
-        except Exception as e:
-            print(f"Unexpected error: {e}")
+                    # Ingest activity data for this resource
+                    try:
+                        _, _, _ = await ingest_activity_data_for_resource(resource_id, db_session)
+                        print(f"  Successfully processed {resource_name}")
+                    except Exception as e:
+                        print(f"  Error processing {resource_id}: {e}")
+                        await db_session.rollback()
+                
+                print("\nActivity data ingestion completed!")
+                        
+            except Exception as e:
+                print(f"Unexpected error: {e}")
+    finally:
+        # Dispose of the engine to close all connections
+        await engine.dispose()
 
 if __name__ == "__main__":
     asyncio.run(main())
