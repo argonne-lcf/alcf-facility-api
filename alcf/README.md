@@ -68,7 +68,7 @@ Define variable names:
 ```bash
 IMAGE_NAME="your_image_name"
 IMAGE_TAG="your_image_tag"
-GOHARBOR_PROJECT="your_goharbor_project"
+GOHARBOR_PROJECT="alcf-facility-api"
 ```
 
 Authenticate to your ALCF GoHarbor project (need to be on the VPN, need to use a robot-account):
@@ -92,6 +92,8 @@ Push to GoHarbor
 ```bash
 podman manifest push --all goharbor.alcf.anl.gov/$GOHARBOR_PROJECT/$IMAGE_NAME:$IMAGE_TAG docker://goharbor.alcf.anl.gov/$GOHARBOR_PROJECT/$IMAGE_NAME:$IMAGE_TAG
 ```
+
+To deploy on Kubernetes, please see [https://gitlab-ci.alcf.anl.gov/anl/artemis/showcase/facility-api](https://gitlab-ci.alcf.anl.gov/anl/artemis/showcase/facility-api)
 
 ## Run test suite
 
