@@ -7,3 +7,4 @@ iri_sandbox
 
 # [Addition from upstream]
 logs/
+.DS_Store
