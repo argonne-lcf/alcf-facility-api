@@ -344,8 +344,9 @@ async def ingest_activity_data_for_resource(resource_id: str, db):
             # If the last event is the same as the new event ...
             if last_event.description == event.description and last_event.status == event.status:
                 
-                # Update the time when the resource status was last verified
+                # Update the time when the resource status was last verified and ensure current_status is synced
                 resource.last_verified = current_datetime
+                resource.current_status = event.status
                 await db.commit()
 
                 # Skip the creation of a new event or incident
