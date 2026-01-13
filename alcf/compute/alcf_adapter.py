@@ -243,7 +243,7 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
         if "errors" in response:
             raise HTTPException(
                 status_code=HTTP_400_BAD_REQUEST,
-                detail=f"GraphQL error: {response["errors"]}"
+                detail=f"GraphQL error: {response['errors']}"
             )
 
         # Convert raw GraphQL response into a JobResponse pydantic model
