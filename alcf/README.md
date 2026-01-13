@@ -112,6 +112,8 @@ DATABASE_URL="sqlite+aiosqlite:///alcf/facilityapi.db"
 
 IRI_API_ADAPTER_status="alcf.status.alcf_adapter.AlcfAdapter"
 IRI_API_ADAPTER_compute="alcf.compute.alcf_adapter.AlcfAdapter"
+IRI_API_ADAPTER_filesystem=alcf.filesystem.alcf_adapter.AlcfAdapter
+IRI_API_ADAPTER_task=alcf.task.alcf_adapter.AlcfAdapter
 IRI_API_PARAMS='{
     "title": "ALCF implementation of the IRI Facility API",
     "description": "IRI facility API for ALCF.\n\nFor more information, see: [https://iri.science/](https://iri.science/)\n\n<img src=\"https://iri.science/images/doe-icon-old.png\" height=50 />",
@@ -125,4 +127,30 @@ IRI_API_PARAMS='{
 IRI_SHOW_MISSING_ROUTES=False
 
 GRAPHQL_URL="https://your-api-url"
+
+# Keycloak integration
+KEYCLOAK_CLIENT_ID="PBS-EDTB"
+KEYCLOAK_CLIENT_SECRET="your-keycloak-secret"
+KEYCLOAK_REALM_NAME="PBS-EDTB"
+KEYCLOAK_SERVER_URL="https://keycloak-internal.alcf.anl.gov/realms/PBS-EDTB"
+KEYCLOAK_AUTHORIZATION_ENDPOINT="https://keycloak-internal.alcf.anl.gov/realms/PBS-EDTB/protocol/openid-connect/auth"
+KEYCLOAK_REDIRECT_URI="http://localhost:8000/auth/callback"
+
+
+# Compute functions -> function_name: function_UUID
+GLOBUS_COMPUTE_FUNCTIONS='
+{
+    "chmod": "8f9a8eb8-495c-4122-a7cf-44c616d98d1b",
+    "chown": "6e8635cc-1f90-4051-bbbe-f44a0135ab50",
+    "ls": "1b1dc9be-b6e1-48f0-96e5-ad42cbd3b7f0",
+    "head": "ee15b751-fb5c-43ef-be27-856c5073fac2",
+    "view": "7494c19d-3967-43c9-9240-f99dbcf77661"
+}
+'
+# Compute endpoints -> resource_name: endpoint_UUID
+GLOBUS_COMPUTE_ENDPOINTS='
+{  
+    "edith": "your-globus-compute-endpoint"
+}
+'
 ```
