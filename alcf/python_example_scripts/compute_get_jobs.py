@@ -17,7 +17,7 @@ headers = {
 
 # Build URL
 historical = "true" if historical else "false"
-url = f"http://localhost:8000/api/current/compute/status/{resource_id}?historical={historical}&limit={limit}&offset={offset}"
+url = f"http://localhost:8000/api/v1/compute/status/{resource_id}?historical={historical}&limit={limit}&offset={offset}"
 
 # Send request to Facility API
 response = requests.post(url, headers=headers)
