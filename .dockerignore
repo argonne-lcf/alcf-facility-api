@@ -25,3 +25,4 @@ __pycache__/
 
 # Others
 vm_setup/
+.DS_Store
