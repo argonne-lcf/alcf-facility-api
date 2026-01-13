@@ -14,7 +14,7 @@ headers = {
 }
 
 # Build URL
-url = f"http://localhost:8000/api/current/compute/cancel/{resource_id}/{job_id}"
+url = f"http://localhost:8000/api/v1/compute/cancel/{resource_id}/{job_id}"
 
 # Send request to Facility API
 response = requests.delete(url, headers=headers)
