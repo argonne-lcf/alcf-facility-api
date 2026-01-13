@@ -1,4 +1,5 @@
 import os
+import json
 
 # Load environment variables from .env file
 from dotenv import load_dotenv
@@ -18,3 +19,7 @@ GRAPHQL_URL = os.getenv("GRAPHQL_URL", "")
 KEYCLOAK_CLIENT_ID = os.getenv("KEYCLOAK_CLIENT_ID", None)
 KEYCLOAK_CLIENT_SECRET = os.getenv("KEYCLOAK_CLIENT_SECRET", None)
 KEYCLOAK_REALM_NAME = os.getenv("KEYCLOAK_REALM_NAME", None)
+
+# Globus Compute
+GLOBUS_COMPUTE_FUNCTIONS = json.loads(os.getenv("GLOBUS_COMPUTE_FUNCTIONS", None))
+GLOBUS_COMPUTE_ENDPOINTS = json.loads(os.getenv("GLOBUS_COMPUTE_ENDPOINTS", None))
