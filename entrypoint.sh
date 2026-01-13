@@ -7,4 +7,4 @@ python alcf/database/ingestion/ingest_static_data.py
 python alcf/database/ingestion/ingest_activity_data.py
 
 # Run application
-gunicorn app.main:app -c gunicorn.config.production.py -k uvicorn.workers.UvicornWorker
+gunicorn app.main:APP -c gunicorn.config.production.py -k uvicorn.workers.UvicornWorker
