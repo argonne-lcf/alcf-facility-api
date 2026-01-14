@@ -9,6 +9,11 @@ Make sure the VM has access to the latest packages
 sudo apt update && sudo apt upgrade -y
 ```
 
+Add packages
+```bash
+sudo apt install make
+```
+
 ## Firewall
 
 Make sure the Uncomplicated Firewall (UFW) is disabled and reset to its original setting:
@@ -70,9 +75,16 @@ sudo -u apiuser /bin/bash
 cd ~
 ```
 
+Install `uv`:
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+# You may need to exit the shell and come back to see the uv package
+```
+
 Clone the alcf-facility-api code, and follow the instructions in the previous README file to install the application:
 ```bash
 git clone https://github.com/argonne-lcf/alcf-facility-api
+cd alcf-facility-api
 git checkout -b alcf-deployment --track origin/alcf-deployment
 ```
 
