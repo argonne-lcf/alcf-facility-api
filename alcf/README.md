@@ -18,6 +18,17 @@ In the root folder of the project, activate your python environment and update r
 uv pip install -r alcf/requirements.txt
 ```
 
+Create and load database
+```bash
+python alcf/database/ingestion/ingest_static_data.py
+```
+
+If you have issues with `no module named 'alcf'`, you might have to type:
+```bash
+pip install -e .
+```
+
+
 Test FastAPI service in development mode (served at http://localhost:8000):
 
 ```bash
