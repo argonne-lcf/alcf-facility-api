@@ -13,6 +13,10 @@ RUN pip install uv
 RUN uv pip install --system -e .
 RUN uv pip install --system -r /app/alcf/requirements.txt
 
+# Add vim for debuggin
+RUN apt update
+RUN apt install -y vim
+
 # Setup database and run application
 RUN chmod u+x /app/entrypoint.sh
 ENTRYPOINT ["/app/entrypoint.sh"]
