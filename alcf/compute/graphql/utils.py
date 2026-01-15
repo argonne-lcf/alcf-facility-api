@@ -5,6 +5,7 @@ from fastapi import HTTPException
 from app.routers.account import models as account_models
 from app.routers.compute import models as compute_models
 from alcf.compute.graphql import models as graphql_models
+from alcf.config import GRAPHQL_HTTPX_TRUST_ENV
 from starlette.status import (
     HTTP_400_BAD_REQUEST, 
     HTTP_408_REQUEST_TIMEOUT,
@@ -230,7 +231,7 @@ async def post_graphql(
 
     # Submit request to GraphQL API 
     try:
-        async with httpx.AsyncClient(verify=verify_ssl) as client:
+        async with httpx.AsyncClient(verify=verify_ssl, trust_env=GRAPHQL_HTTPX_TRUST_ENV) as client:
             response = await client.post(url, json={"query": query}, headers=headers, timeout=10)
             response = response.json()
     except httpx.TimeoutException:
