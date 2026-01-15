@@ -49,6 +49,33 @@ Check status to make sure it's running
 sudo systemctl status nginx
 ```
 
+## Create postgres database
+
+Create username and password for the database
+```bash
+psql
+CREATE USER facilityapi_user WITH PASSWORD 'your-password-here';
+```
+
+Create database
+```bash
+CREATE DATABASE facilityapi_db
+    OWNER facilityapi_user
+    ENCODING 'UTF8'
+    TEMPLATE template0;
+```
+
+Quit postgres shell
+```bash
+\q
+```
+
+Connect to database
+```bash
+psql -U facilityapi_user -d facilityapi_db
+```
+
+
 ## API user account
 
 Create a new Unix user (`apiuser`) with a home directory to allow others to operate and maintain the API service (**DO NOT create users with UID and GUI above 1000**):
