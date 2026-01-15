@@ -120,7 +120,9 @@ async def get_db_objects(
     group: str = None,
     offset: int = None,
     limit: int = None,
-    resource_type: str = None
+    resource_type: str = None,
+    status: str = None,
+    type: str = None
     ):
     async with get_db_session_context() as session:
         try:
@@ -139,6 +141,10 @@ async def get_db_objects(
                 stmt = stmt.limit(limit)
             if resource_type:
                 stmt = stmt.where(db_model_class.type == resource_type)
+            if type:
+                stmt = stmt.where(db_model_class.type == type)
+            if status:
+                stmt = stmt.where(db_model_class.status == status)
             result = await session.execute(stmt)
             return result.scalars().all()
         except Exception as e:
@@ -199,24 +205,38 @@ async def get_db_locations(
 async def get_db_incidents(
     ids: List[str] = None, 
     offset: int = None, 
-    limit: int = None
+    limit: int = None,
+    name: str = None,
+    description: str = None,
+    status: str = None,
+    type: str = None
     ) -> List[db_models.Incident]:
     return await get_db_objects(
         db_models.Incident, 
         ids=ids, 
         offset=offset, 
-        limit=limit
+        limit=limit,
+        name=name,
+        description=description,
+        status=status,
+        type=type
     )
 
 # Function to extract a list of event entries from a list of IDs (or all if no IDs provided)
 async def get_db_events(
     ids: List[str] = None, 
     offset: int = None, 
-    limit: int = None
+    limit: int = None,
+    name: str = None,
+    description: str = None,
+    status: str = None
     ) -> List[db_models.Event]:
     return await get_db_objects(
         db_models.Event, 
         ids=ids, 
         offset=offset, 
-        limit=limit
+        limit=limit,
+        name=name,
+        description=description,
+        status=status
     )
