@@ -112,34 +112,131 @@ async def get_db_event_from_id(id) -> db_models.Event:
 # ========================================
 
 # Function to extract multiple database entries by list of IDs (or all if no IDs provided)
-async def get_db_objects(db_model_class, ids: List[str] = None):
+async def get_db_objects(
+    db_model_class, 
+    ids: List[str] = None, 
+    name: str = None, 
+    description: str = None,
+    group: str = None,
+    offset: int = None,
+    limit: int = None,
+    resource_type: str = None,
+    status: str = None,
+    type: str = None
+    ):
     async with get_db_session_context() as session:
-        stmt = select(db_model_class)
-        if ids:
-            stmt = stmt.where(db_model_class.id.in_(ids))
-        result = await session.execute(stmt)
-        return result.scalars().all()
+        try:
+            stmt = select(db_model_class)
+            if ids:
+                stmt = stmt.where(db_model_class.id.in_(ids))
+            if name:
+                stmt = stmt.where(db_model_class.name == name)
+            if description:
+                stmt = stmt.where(db_model_class.description == description)
+            if group:
+                stmt = stmt.where(db_model_class.group == group)
+            if offset is not None:
+                stmt = stmt.offset(offset)
+            if limit is not None:
+                stmt = stmt.limit(limit)
+            if resource_type:
+                stmt = stmt.where(db_model_class.type == resource_type)
+            if type:
+                stmt = stmt.where(db_model_class.type == type)
+            if status:
+                stmt = stmt.where(db_model_class.status == status)
+            result = await session.execute(stmt)
+            return result.scalars().all()
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Error retrieving database objects: {e}")
 
 # Function to extract a list of facility entries from a list of IDs (or all if no IDs provided)
 async def get_db_facilities(ids: List[str] = None) -> List[db_models.Facility]:
     return await get_db_objects(db_models.Facility, ids)
 
 # Function to extract a list of resource entries from a list of IDs (or all if no IDs provided)
-async def get_db_resources(ids: List[str] = None) -> List[db_models.Resource]:
-    return await get_db_objects(db_models.Resource, ids)
+async def get_db_resources(
+    ids: List[str] = None, 
+    name: str = None, 
+    description: str = None,
+    group: str = None,
+    offset: int = None,
+    limit: int = None,
+    resource_type: str = None
+    ) -> List[db_models.Resource]:
+    return await get_db_objects(
+        db_models.Resource, 
+        ids=ids,
+        name=name, 
+        description=description, 
+        group=group,
+        offset=offset,
+        limit=limit,
+        resource_type=resource_type
+    )
 
 # Function to extract a list of site entries from a list of IDs (or all if no IDs provided)
-async def get_db_sites(ids: List[str] = None) -> List[db_models.Site]:
-    return await get_db_objects(db_models.Site, ids)
+async def get_db_sites(
+    ids: List[str] = None, 
+    offset: int = None, 
+    limit: int = None
+    ) -> List[db_models.Site]:
+    return await get_db_objects(
+        db_models.Site, 
+        ids=ids, 
+        offset=offset, 
+        limit=limit
+    )
 
 # Function to extract a list of location entries from a list of IDs (or all if no IDs provided)
-async def get_db_locations(ids: List[str] = None) -> List[db_models.Location]:
-    return await get_db_objects(db_models.Location, ids)
+async def get_db_locations(
+    ids: List[str] = None, 
+    offset: int = None, 
+    limit: int = None
+    ) -> List[db_models.Location]:
+    return await get_db_objects(
+        db_models.Location, 
+        ids=ids, 
+        offset=offset, 
+        limit=limit
+    )
 
 # Function to extract a list of incident entries from a list of IDs (or all if no IDs provided)
-async def get_db_incidents(ids: List[str] = None) -> List[db_models.Incident]:
-    return await get_db_objects(db_models.Incident, ids)
+async def get_db_incidents(
+    ids: List[str] = None, 
+    offset: int = None, 
+    limit: int = None,
+    name: str = None,
+    description: str = None,
+    status: str = None,
+    type: str = None
+    ) -> List[db_models.Incident]:
+    return await get_db_objects(
+        db_models.Incident, 
+        ids=ids, 
+        offset=offset, 
+        limit=limit,
+        name=name,
+        description=description,
+        status=status,
+        type=type
+    )
 
 # Function to extract a list of event entries from a list of IDs (or all if no IDs provided)
-async def get_db_events(ids: List[str] = None) -> List[db_models.Event]:
-    return await get_db_objects(db_models.Event, ids)
+async def get_db_events(
+    ids: List[str] = None, 
+    offset: int = None, 
+    limit: int = None,
+    name: str = None,
+    description: str = None,
+    status: str = None
+    ) -> List[db_models.Event]:
+    return await get_db_objects(
+        db_models.Event, 
+        ids=ids, 
+        offset=offset, 
+        limit=limit,
+        name=name,
+        description=description,
+        status=status
+    )
