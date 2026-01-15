@@ -16,7 +16,7 @@ headers = {
 
 # Build URL
 historical = "true" if historical else "false"
-url = f"http://localhost:8000/api/v1/compute/status/{resource_id}/{job_id}?historical={historical}"
+url = f"{os.getenv('BASE_URL')}/compute/status/{resource_id}/{job_id}?historical={historical}"
 
 # Send request to Facility API
 response = requests.get(url, headers=headers)
