@@ -41,11 +41,11 @@ class AlcfAdapter(StatusFacilityAdapter):
         ) -> list[status_models.Resource]:
         """Update and return all resources from the database."""
 
-        # Error if modified_since is provided
+        # Error for unsupported filters
         if modified_since:
             raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="'modified_since' filter not supported yet.")
 
-        # Gather resources from database
+        # Gather resources from database with filters
         resources = await get_db_resources(
             name=name,
             description=description,
@@ -89,8 +89,35 @@ class AlcfAdapter(StatusFacilityAdapter):
         modified_since : datetime.datetime | None = None,
         ) -> list[status_models.Event]:
         """Return all events from the database."""
+
+        # Error for unsupported filters
+        if modified_since:
+            raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="'modified_since' filter not supported yet.")
+        if from_:
+            raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="'from' filter not supported yet.")
+        if to:
+            raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="'to' filter not supported yet.")
+        if time:
+            raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="'time' filter not supported yet.")
+
+        # Get incident from database
         incident = await get_db_incident_from_id(incident_id)
-        events = await get_db_events(ids=incident.event_ids)
+
+        # Gather events from database with filters
+        events = await get_db_events(
+            ids=incident.event_ids,
+            offset=offset,
+            limit=limit,
+            name=name,
+            description=description,
+            status=status.value if status else None
+        )
+
+        # Filter based on resource ID
+        if resource_id:
+            events = [event for event in events if event.resource_id == resource_id]
+
+        # Format events into IRI specification and return
         return [self.__format_event(event) for event in events]
 
     
@@ -109,7 +136,7 @@ class AlcfAdapter(StatusFacilityAdapter):
         if event.incident_id != incident_id:
             raise HTTPException(status_code=404, detail=f"Event not found for Incident {incident_id}.")
 
-        # Format and return data
+        # Format event into IRI specification and return
         return self.__format_event(event)
 
 
@@ -129,7 +156,32 @@ class AlcfAdapter(StatusFacilityAdapter):
         resource_id : str | None = None,
         ) -> list[status_models.Incident]:
         """Return all incidents from the database."""
-        incidents = await get_db_incidents()
+
+        # Error for unsupported filters
+        if modified_since:
+            raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="'modified_since' filter not supported yet.")
+        if from_:
+            raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="'from' filter not supported yet.")
+        if to:
+            raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="'to' filter not supported yet.")
+        if time_:
+            raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="'time' filter not supported yet.")
+
+        # Gather incidents from database with filters
+        incidents = await get_db_incidents(
+            offset=offset,
+            limit=limit,
+            name=name,
+            description=description,
+            status=status.value if status else None,
+            type=type.value if type else None
+        )
+
+        # Filter based on resource ID
+        if resource_id:
+            incidents = [incident for incident in incidents if resource_id in incident.resource_ids]
+
+        # Format incidents into IRI specification and return
         return [self.__format_incident(incident) for incident in incidents]
 
     
