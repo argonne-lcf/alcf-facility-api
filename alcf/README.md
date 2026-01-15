@@ -21,11 +21,15 @@ uv pip install -r alcf/requirements.txt
 Create and load database
 ```bash
 python alcf/database/ingestion/ingest_static_data.py
+python alcf/database/ingestion/ingest_activity_data.py
 ```
 
 If you have issues with `no module named 'alcf'`, you might have to type:
 ```bash
+pip uninstall -y iri-api-python
 pip install -e .
+python -m alcf.database.ingestion.ingest_static_data
+python -m alcf.database.ingestion.ingest_activity_data
 ```
 
 
