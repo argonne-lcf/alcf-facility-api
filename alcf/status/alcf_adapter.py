@@ -1,7 +1,7 @@
 import asyncio
 import datetime
 from fastapi import HTTPException
-from starlette.status import HTTP_304_NOT_MODIFIED, HTTP_400_BAD_REQUEST
+from starlette.status import HTTP_304_NOT_MODIFIED, HTTP_400_BAD_REQUEST, HTTP_501_NOT_IMPLEMENTED
 from app.routers.status.facility_adapter import FacilityAdapter as StatusFacilityAdapter
 
 # Typing
@@ -40,8 +40,25 @@ class AlcfAdapter(StatusFacilityAdapter):
         resource_type : status_models.ResourceType | None = None,
         ) -> list[status_models.Resource]:
         """Update and return all resources from the database."""
-        resources = await get_db_resources()
-        resources = await asyncio.gather(*[self.__update_resource_if_needed(resource) for resource in resources])
+
+        # Error if modified_since is provided
+        if modified_since:
+            raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="'modified_since' filter not supported yet.")
+
+        # Gather resources from database
+        resources = await get_db_resources(
+            name=name,
+            description=description,
+            group=group,
+            offset=offset,
+            limit=limit,
+            resource_type=resource_type.value if resource_type else None
+        )
+
+        # Update resources if needed
+        resources = await asyncio.gather(*[self.__update_resource_if_needed(resource) for resource in resources])   
+
+        # Format resources into IRI specification and return
         return [self.__format_resource(resource) for resource in resources]
 
 
