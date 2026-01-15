@@ -46,7 +46,7 @@ headers = {
 }
 
 # Build URL
-url = f"http://localhost:8000/api/v1/compute/job/{resource_id}"
+url = f"{os.getenv('BASE_URL')}/compute/job/{resource_id}"
 
 # Send request to Facility API
 response = requests.post(url, json=data, headers=headers)
