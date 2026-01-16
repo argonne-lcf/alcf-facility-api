@@ -260,8 +260,8 @@ async def summarize_jobs(activity_response: Activity_Response):
 async def get_incident_event_from_activity_json(resource_id: str, resource_name: str):
     """Create and return an Incident and Event objects from parsing an ALCF activity.json file."""
 
-    # Record timestamp where the fetch/parse occured (in UTC)
-    current_datetime = datetime.now(timezone.utc)
+    # Record timestamp where the fetch/parse occured (in UTC, timezone-naive for database compatibility)
+    current_datetime = datetime.now(timezone.utc).replace(tzinfo=None)
 
     # Fetch data from activity.json and define resource status
     try:
@@ -285,7 +285,7 @@ async def get_incident_event_from_activity_json(resource_id: str, resource_name:
             status=status,
             type=incident_type,
             start=current_datetime,
-            end=datetime.now(timezone.utc),
+            end=datetime.now(timezone.utc).replace(tzinfo=None),
             resolution="completed"
         )
     except Exception as e:
@@ -333,8 +333,8 @@ async def ingest_activity_data_for_resource(resource_id: str, db):
         # Create incident and event objects from activity.json file
         incident, event = await get_incident_event_from_activity_json(resource.id, resource.name)
 
-        # Record current datetime
-        current_datetime = datetime.now(timezone.utc)
+        # Record current datetime (timezone-naive for database compatibility)
+        current_datetime = datetime.now(timezone.utc).replace(tzinfo=None)
 
         # If there is a last event associated with the resource ...
         if resource.last_event_id:
@@ -386,36 +386,40 @@ async def main():
                        help='Clear all existing activity data before ingestion')
     args = parser.parse_args()
 
-    # Create tables if not already done
-    async with engine.begin() as conn:
-        await conn.run_sync(SQLModel.metadata.create_all)
-    
-    # Get database session using async context manager
-    async with get_db_session_context() as db_session:
-        try:
-            
-            # Clear activity data if requested
-            if args.clear:
-                await clear_activity_data(db_session)
-                print("Activity data cleared successfully!")
+    try:
+        # Create tables if not already done
+        async with engine.begin() as conn:
+            await conn.run_sync(SQLModel.metadata.create_all)
+        
+        # Get database session using async context manager
+        async with get_db_session_context() as db_session:
+            try:
+                
+                # Clear activity data if requested
+                if args.clear:
+                    await clear_activity_data(db_session)
+                    print("Activity data cleared successfully!")
 
-            # Process each resource
-            for resource_enum in ALCF_RESOURCE_ID_LIST:
-                resource_id = resource_enum.value
-                resource_name = resource_enum.name
+                # Process each resource
+                for resource_enum in ALCF_RESOURCE_ID_LIST:
+                    resource_id = resource_enum.value
+                    resource_name = resource_enum.name
 
-                # Ingest activity data for this resource
-                try:
-                    _, _, _ = await ingest_activity_data_for_resource(resource_id, db_session)
-                    print(f"  Successfully processed {resource_name}")
-                except Exception as e:
-                    print(f"  Error processing {resource_id}: {e}")
-                    await db_session.rollback()
-            
-            print("\nActivity data ingestion completed!")
-                    
-        except Exception as e:
-            print(f"Unexpected error: {e}")
+                    # Ingest activity data for this resource
+                    try:
+                        _, _, _ = await ingest_activity_data_for_resource(resource_id, db_session)
+                        print(f"  Successfully processed {resource_name}")
+                    except Exception as e:
+                        print(f"  Error processing {resource_id}: {e}")
+                        await db_session.rollback()
+                
+                print("\nActivity data ingestion completed!")
+                        
+            except Exception as e:
+                print(f"Unexpected error: {e}")
+    finally:
+        # Dispose of the engine to close all connections
+        await engine.dispose()
 
 if __name__ == "__main__":
     asyncio.run(main())
