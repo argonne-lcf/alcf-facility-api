@@ -5,3 +5,6 @@ docker-build.sh
 iri_sandbox
 .env
 local.env
+
+# [Addition from upstream]
+logs/
