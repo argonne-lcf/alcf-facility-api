@@ -53,7 +53,7 @@ class DataIngestion:
         
     # Parse datetime string
     def __parse_datetime_string(self, dt_string):
-        """Parse ISO datetime string to Python datetime object (naive UTC for SQLite compatibility)"""
+        """Parse ISO datetime string to Python datetime object (naive UTC)"""
 
         # If the datetime string is a string ...
         if isinstance(dt_string, str):
@@ -65,7 +65,7 @@ class DataIngestion:
             # Convert the datetime string to a datetime object
             dt = datetime.fromisoformat(dt_string)
             
-            # Convert to naive UTC for SQLite compatibility
+            # Convert to naive UTC (timezone-naive datetime for database compatibility)
             if dt.tzinfo is not None:
                 dt = dt.astimezone(timezone.utc).replace(tzinfo=None)
             
@@ -160,28 +160,32 @@ async def main():
                        help='Clear all existing data before ingestion')
     args = parser.parse_args()
 
-    # Create tables if not already done
-    async with engine.begin() as conn:
-        await conn.run_sync(SQLModel.metadata.create_all)
-    
-    # Get database session using async context manager
-    async with get_db_session_context() as db_session:
-        try:
+    try:
+        # Create tables if not already done
+        async with engine.begin() as conn:
+            await conn.run_sync(SQLModel.metadata.create_all)
+        
+        # Get database session using async context manager
+        async with get_db_session_context() as db_session:
+            try:
 
-            # Create ingestion instance
-            ingestion = DataIngestion()
+                # Create ingestion instance
+                ingestion = DataIngestion()
 
-            # Clear database if requested
-            if args.clear:
-                await ingestion.clear_all_data(db_session)
-                print("Database cleared successfully!")
+                # Clear database if requested
+                if args.clear:
+                    await ingestion.clear_all_data(db_session)
+                    print("Database cleared successfully!")
 
-            # Proceed with the data ingestion
-            await ingestion.run_ingestion(db_session)
-            print("Data ingestion completed successfully!")
-                    
-        except Exception as e:
-            print(f"Unexpected error: {e}")
+                # Proceed with the data ingestion
+                await ingestion.run_ingestion(db_session)
+                print("Data ingestion completed successfully!")
+                        
+            except Exception as e:
+                print(f"Unexpected error: {e}")
+    finally:
+        # Dispose of the engine to close all connections
+        await engine.dispose()
 
 
 if __name__ == "__main__":
