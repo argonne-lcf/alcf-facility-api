@@ -26,12 +26,12 @@ fastapi dev app/main.py
 
 Test FastAPI with Uvicorn:
 ```bash
-uvicorn app.main:app
+uvicorn app.main:APP
 ```
 
-Test FastAPI with Gunicorn with Uvicorn workers (logs will be stored in the `logs/` folder):
+Test FastAPI with Gunicorn with Uvicorn workers with configuration file:
 ```bash
-gunicorn -c gunicorn.config.py app.main:app
+gunicorn -c gunicorn.config.production.py app.main:APP
 ```
 
 ## Run application in a container
