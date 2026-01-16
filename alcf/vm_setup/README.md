@@ -49,6 +49,74 @@ Check status to make sure it's running
 sudo systemctl status nginx
 ```
 
+## Create postgres database
+
+Create username and password for the database
+```bash
+psql
+CREATE USER facilityapi_user WITH PASSWORD 'your-password-here';
+```
+
+Create database
+```bash
+CREATE DATABASE facilityapi_db
+    OWNER facilityapi_user
+    ENCODING 'UTF8'
+    TEMPLATE template0;
+```
+
+Quit postgres shell
+```bash
+\q
+```
+
+Connect to database
+```bash
+psql -U facilityapi_user -d facilityapi_db
+```
+
+The URL of the database will be:
+```bash
+# Without password
+DATABASE_URL=postgresql+asyncpg://facilityapi_user@localhost/facilityapi_db
+
+# With password
+DATABASE_URL=postgresql+asyncpg://facilityapi_user:your_password@localhost:5432/facilityapi_db
+```
+
+Check if you have your tables created:
+```bash
+psql -U facilityapi_user -d facilityapi_db -c "\dt"
+```
+
+Check how many entries you have for each table:
+```bash
+psql -U facilityapi_user -d facilityapi_db -c "SELECT 'facility' as table_name, COUNT(*) as row_count FROM facility UNION ALL SELECT 'location', COUNT(*) FROM location UNION ALL SELECT 'site', COUNT(*) FROM site UNION ALL SELECT 'resource', COUNT(*) FROM resource UNION ALL SELECT 'incident', COUNT(*) FROM incident UNION ALL SELECT 'event', COUNT(*) FROM event;"
+```
+
+Check status of resources according to the database:
+```bash
+psql -U facilityapi_user -d facilityapi_db -c "SELECT id, name, type, current_status FROM resource;"
+```
+
+**DANGER ZONE** Clear all data from all table:
+```bash
+# DANGER ZONE
+psql -U facilityapi_user -d facilityapi_db -c "
+TRUNCATE TABLE event, incident, resource, site, location, facility CASCADE;
+"
+# DANGER ZONE
+```
+
+**DANGER ZONE** Clear event and incident tables only:
+```bash
+# DANGER ZONE
+psql -U facilityapi_user -d facilityapi_db -c "
+TRUNCATE TABLE event, incident CASCADE;
+"
+# DANGER ZONE
+```
+
 ## API user account
 
 Create a new Unix user (`apiuser`) with a home directory to allow others to operate and maintain the API service (**DO NOT create users with UID and GUI above 1000**):
