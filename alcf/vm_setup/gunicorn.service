@@ -1,14 +1,14 @@
 [Unit]
-Description=Gunicorn async asgi instance of the facility API prototype
+Description=Gunicorn async asgi instance of the ALCF Facility API
 After=network.target
 
 [Service]
 User=apiuser
 Group=apiuser
 WorkingDirectory=/home/apiuser/alcf-facility-api
-Environment=PATH=/home/apiuser/miniconda3/envs/fastapi/bin/
+Environment=PATH=/home/apiuser/alcf-facility-api/.venv/bin/
 Enivonment="PYTHONUNBUFFERED=1"
-ExecStart=/home/apiuser/miniconda3/envs/fastapi/bin/gunicorn -c gunicorn.config.py app.main:app
+ExecStart=/home/apiuser/alcf-facility-api/.venv/bin/gunicorn -c gunicorn.config.production.py app.main:APP
 ExecReload=/bin/kill -s HUP $MAINPID
 KillMode=mixed
 TimeoutStopSec=5
