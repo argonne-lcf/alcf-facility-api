@@ -2,9 +2,19 @@
 
 ## Install application
 
-Look at the main README to install your python environment with `make`. In the root folder of the project, activate your python environment and update required packages:
+Look at the main README to install your python environment with `make`. Make sure pip is installed:
 ```bash
 source .venv/bin/activate
+python -m ensurepip --upgrade
+cd .venv/bin
+ln -s pip3 pip
+deactivate
+cd ../../
+source .venv/bin/activate
+```
+
+In the root folder of the project, activate your python environment and update required packages:
+```bash
 uv pip install -r alcf/requirements.txt
 ```
 
