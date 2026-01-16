@@ -12,7 +12,10 @@ from alcf.config import DATABASE_URL
 engine = create_async_engine(
     DATABASE_URL, 
     echo=True,
-    future=True  # Ensures SQLAlchemy 2.0+ behavior
+    future=True,  # Ensures SQLAlchemy 2.0+ behavior
+    pool_pre_ping=True,  # Verify connections before using them
+    pool_size=5,  # Connection pool size (adjust based on your needs)
+    max_overflow=10  # Maximum overflow connections
 )
 
 AsyncSessionLocal = sessionmaker(
