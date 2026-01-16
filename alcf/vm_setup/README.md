@@ -49,74 +49,6 @@ Check status to make sure it's running
 sudo systemctl status nginx
 ```
 
-## Create postgres database
-
-Create username and password for the database
-```bash
-psql
-CREATE USER facilityapi_user WITH PASSWORD 'your-password-here';
-```
-
-Create database
-```bash
-CREATE DATABASE facilityapi_db
-    OWNER facilityapi_user
-    ENCODING 'UTF8'
-    TEMPLATE template0;
-```
-
-Quit postgres shell
-```bash
-\q
-```
-
-Connect to database
-```bash
-psql -U facilityapi_user -d facilityapi_db
-```
-
-The URL of the database will be:
-```bash
-# Without password
-DATABASE_URL=postgresql+asyncpg://facilityapi_user@localhost/facilityapi_db
-
-# With password
-DATABASE_URL=postgresql+asyncpg://facilityapi_user:your_password@localhost:5432/facilityapi_db
-```
-
-Check if you have your tables created:
-```bash
-psql -U facilityapi_user -d facilityapi_db -c "\dt"
-```
-
-Check how many entries you have for each table:
-```bash
-psql -U facilityapi_user -d facilityapi_db -c "SELECT 'facility' as table_name, COUNT(*) as row_count FROM facility UNION ALL SELECT 'location', COUNT(*) FROM location UNION ALL SELECT 'site', COUNT(*) FROM site UNION ALL SELECT 'resource', COUNT(*) FROM resource UNION ALL SELECT 'incident', COUNT(*) FROM incident UNION ALL SELECT 'event', COUNT(*) FROM event;"
-```
-
-Check status of resources according to the database:
-```bash
-psql -U facilityapi_user -d facilityapi_db -c "SELECT id, name, type, current_status FROM resource;"
-```
-
-**DANGER ZONE** Clear all data from all table:
-```bash
-# DANGER ZONE
-psql -U facilityapi_user -d facilityapi_db -c "
-TRUNCATE TABLE event, incident, resource, site, location, facility CASCADE;
-"
-# DANGER ZONE
-```
-
-**DANGER ZONE** Clear event and incident tables only:
-```bash
-# DANGER ZONE
-psql -U facilityapi_user -d facilityapi_db -c "
-TRUNCATE TABLE event, incident CASCADE;
-"
-# DANGER ZONE
-```
-
 ## API user account
 
 Create a new Unix user (`apiuser`) with a home directory to allow others to operate and maintain the API service (**DO NOT create users with UID and GUI above 1000**):
@@ -128,6 +60,90 @@ sudo useradd -K UID_MIN=800 -K UID_MAX=850 -K GID_MIN=800 -K GID_MAX=850 -m apiu
 Look at the UID, GID, and home directory of the `apiuser` account:
 ```bash
 cat /etc/passwd | grep "apiuser"
+```
+
+## Create postgres database
+
+Install postgres:
+```bash
+sudo apt update
+sudo apt install -y postgresql postgresql-client
+psql --version
+```
+
+Postgres runs as a systemctl service. Check its status:
+```bash
+sudo systemctl status postgresql
+```
+
+Start a Postgres shell as the admin user, and create `apiuser` user for the database (the user needs to be the same as the Unix user you created in the previous section). **Do not** use `@ : / ? # [ ] % < > !` characters for the password, it will cause issue when parsing the password from the database URL.
+```bash
+sudo -u postgres psql
+CREATE USER apiuser WITH PASSWORD 'your-password-here';
+```
+
+Create database:
+```bash
+CREATE DATABASE facilityapi_db OWNER apiuser;
+```
+
+Grant all privilages:
+```bash
+GRANT ALL PRIVILEGES ON DATABASE facilityapi_db TO apiuser;
+```
+
+Quit postgres shell:
+```bash
+\q
+```
+
+Sudo into the `apiuser` and and test that you can connect to database:
+```bash
+sudo -u apiuser /bin/bash
+psql -U apiuser -d facilityapi_db
+\q
+```
+
+The URL of the database will be:
+```bash
+# Without password
+DATABASE_URL=postgresql+asyncpg://apiuser@localhost/facilityapi_db
+
+# With password (needed for VM deployment)
+DATABASE_URL=postgresql+asyncpg://apiuser:your_password@localhost:5432/facilityapi_db
+```
+
+Check if you have your tables created:
+```bash
+psql -U apiuser -d facilityapi_db -c "\dt"
+```
+
+Check how many entries you have for each table:
+```bash
+psql -U apiuser -d facilityapi_db -c "SELECT 'facility' as table_name, COUNT(*) as row_count FROM facility UNION ALL SELECT 'location', COUNT(*) FROM location UNION ALL SELECT 'site', COUNT(*) FROM site UNION ALL SELECT 'resource', COUNT(*) FROM resource UNION ALL SELECT 'incident', COUNT(*) FROM incident UNION ALL SELECT 'event', COUNT(*) FROM event;"
+```
+
+Check status of resources according to the database:
+```bash
+psql -U apiuser -d facilityapi_db -c "SELECT id, name, type, current_status FROM resource;"
+```
+
+**DANGER ZONE** Clear all data from all table:
+```bash
+# DANGER ZONE
+psql -U apiuser -d facilityapi_db -c "
+TRUNCATE TABLE event, incident, resource, site, location, facility CASCADE;
+"
+# DANGER ZONE
+```
+
+**DANGER ZONE** Clear event and incident tables only:
+```bash
+# DANGER ZONE
+psql -U apiuser -d facilityapi_db -c "
+TRUNCATE TABLE event, incident CASCADE;
+"
+# DANGER ZONE
 ```
 
 ## FastAPI application
