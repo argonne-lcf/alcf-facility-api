@@ -30,6 +30,7 @@ class UserPydantic(BaseModel):
     idp_id: str
     idp_name: str
     auth_service: str
+    access_token: str = None
 
 class TokenValidationResponse(BaseModel):
     is_valid: bool = False
@@ -125,7 +126,7 @@ def _perform_token_introspection(access_token: str):
     try:
         client = get_globus_service_api_client()
     except Exception as e:
-        return None, [], f"Could not create Globus confidential client. {e}"
+        return None, [], None, f"Could not create Globus confidential client. {e}"
 
     # Prepare the introspection data
     introspect_body = {
@@ -139,31 +140,32 @@ def _perform_token_introspection(access_token: str):
         introspection = client.post("/v2/oauth2/token/introspect", data=introspect_body, encoding="form")
         introspection_data = dict(introspection.data) if hasattr(introspection, 'data') else dict(introspection)
     except Exception as e:
-        return None, [], f"Could not introspect token with Globus /v2/oauth2/token/introspect. {e}"
+        return None, [], None, f"Could not introspect token with Globus /v2/oauth2/token/introspect. {e}"
     
-    # Get dependent access token to view group membership
+    # Get dependent access token to view group membership and use Globus Compute
     try:
         dependent_tokens = client.oauth2_get_dependent_tokens(access_token)
         access_token = dependent_tokens.by_resource_server["groups.api.globus.org"]["access_token"]
+        globus_compute_access_token = dependent_tokens.by_resource_server["funcx_service"]["access_token"]
     except Exception as e:
-        return None, [], f"Could not recover dependent access token for groups.api.globus.org. {e}"
+        return None, [], None, f"Could not recover dependent access tokens. {e}"
 
     # Create a Globus Group Client using the access token sent by the user
     try:
         authorizer = globus_sdk.AccessTokenAuthorizer(access_token)
         groups_client = globus_sdk.GroupsClient(authorizer=authorizer)
     except Exception as e:
-        return None, [], f"Could not create GroupsClient. {e}"
+        return None, [], None, f"Could not create GroupsClient. {e}"
 
     # Get the list of user's group memberships
     try:
         user_groups_response = groups_client.get_my_groups()
         user_groups = [group["id"] for group in user_groups_response]
     except Exception as e:
-        return None, [], f"Could not recover user group memberships. {e}"
+        return None, [], None, f"Could not recover user group memberships. {e}"
         
-    # Return the introspection data along with the group (with empty error message)
-    return introspection_data, user_groups, ""
+    # Return the introspection data along with the group and compute token (with empty error message)
+    return introspection_data, user_groups, globus_compute_access_token, ""
 
 
 # Get user details
@@ -217,7 +219,7 @@ def validate_access_token(access_token):
     """This function returns an instance of the TokenValidationResponse pydantic data structure."""
 
     # Introspect the access token
-    introspection, user_groups, error_message = introspect_token(access_token)
+    introspection, user_groups, globus_compute_access_token, error_message = introspect_token(access_token)
     if len(error_message) > 0:
         raise HTTPException(
             status_code=HTTP_500_INTERNAL_SERVER_ERROR, 
@@ -267,6 +269,9 @@ def validate_access_token(access_token):
             is_authorized=False,
             user=None
         )
+    
+    # Add Globus Compute access token to the user details
+    user.access_token = globus_compute_access_token
     
     # Return the user details
     return TokenValidationResponse(
