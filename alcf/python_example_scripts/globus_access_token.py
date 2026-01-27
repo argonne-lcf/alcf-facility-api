@@ -10,8 +10,8 @@ APP_NAME = "alcf_facility_api_app"
 AUTH_CLIENT_ID = "8b84fc2d-49e9-49ea-b54d-b3a29a70cf31"
 
 # Globus scope
-SCOPE_CLIENT_ID = "5883c08d-86e0-4a5f-ad8c-ad4f1e8b1e51"
-SCOPE = f"https://auth.globus.org/scopes/{SCOPE_CLIENT_ID}/action_all"
+SCOPE_CLIENT_ID = "6be511f6-a071-471f-9bc0-02a0d0836723"
+SCOPE_STRING = f"https://auth.globus.org/scopes/{SCOPE_CLIENT_ID}/filesystem"
 
 # Path where access and refresh tokens are stored
 TOKENS_PATH = f"{os.path.expanduser('~')}/.globus/app/{AUTH_CLIENT_ID}/{APP_NAME}/tokens.json"
@@ -39,7 +39,7 @@ def get_auth_object(force=False):
     app = globus_sdk.UserApp(
         APP_NAME,
         client_id=AUTH_CLIENT_ID,
-        scope_requirements={SCOPE_CLIENT_ID: [SCOPE]},
+        scope_requirements={SCOPE_CLIENT_ID: [SCOPE_STRING]},
         config=globus_sdk.GlobusAppConfig(
             request_refresh_tokens=True,
             token_validation_error_handler=DomainBasedErrorHandler()
