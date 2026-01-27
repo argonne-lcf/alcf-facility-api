@@ -75,7 +75,7 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
         numeric_uid: bool, 
         recursive: bool, 
         dereference: bool,
-    ) -> filesystem_models.GetDirectoryLsResponse:
+    ) -> str:
         
         # Disable options that are not ready yet
         if recursive:
@@ -96,17 +96,29 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
         except Exception as e:
             raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=f"Input validation error: {str(e)}")
 
-        # Submit task to Globus Compute and wait for the result
-        result = globus_utils.submit_task_and_get_result("ls", resource, input_data, user)
+        # Submit task to Globus Compute and wait for the task ID
+        task_id = await globus_utils.submit_task("ls", resource, input_data, user)
 
+        # Return task ID to the user
+        return task_id
+    
+
+    # Ls get result
+    async def ls_get_result(
+        self: "AlcfAdapter",
+        user: account_models.User, 
+        task_id: str
+    ) -> filesystem_models.GetDirectoryLsResponse:
+        
+        return "A"
         # Recover all lines from the command
-        lines = [line.strip() for line in result.splitlines() if line.strip()]
+        #lines = [line.strip() for line in result.splitlines() if line.strip()]
 
         # Convert lines into IRI File and return array
-        return filesystem_models.GetDirectoryLsResponse(
-            output=[get_iri_file_from_ls_line(line) for line in lines if len(line.split()) > 2]
-        )
-    
+        #return filesystem_models.GetDirectoryLsResponse(
+        #    output=[get_iri_file_from_ls_line(line) for line in lines if len(line.split()) > 2]
+        #)
+          
 
     # Head
     async def head(
