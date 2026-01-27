@@ -1,5 +1,7 @@
+import asyncio
+import time
 from alcf.config import GLOBUS_COMPUTE_ENDPOINTS, GLOBUS_COMPUTE_FUNCTIONS
-from starlette.status import HTTP_501_NOT_IMPLEMENTED, HTTP_500_INTERNAL_SERVER_ERROR
+from starlette.status import HTTP_501_NOT_IMPLEMENTED, HTTP_500_INTERNAL_SERVER_ERROR, HTTP_408_REQUEST_TIMEOUT
 from fastapi import HTTPException
 from app.routers.account import models as account_models
 from app.routers.status import models as status_models
@@ -81,6 +83,7 @@ def get_compute_function_id(function_name: str) -> str:
     
 
 # Submit task and get result
+# TODO (if you keep this, make this async)
 def submit_task_and_get_result(
         function_name: str, 
         resource: status_models.Resource, 
@@ -93,7 +96,7 @@ def submit_task_and_get_result(
     endpoint_id = get_compute_endpoint_id(resource)
     function_id = get_compute_function_id(function_name)
         
-    # Get Globus Compute client from user's token
+    # Get Globus Compute executor from user's token
     gce = get_compute_executor(user)
     gce.endpoint_id = endpoint_id
 
@@ -133,3 +136,57 @@ def submit_task_and_get_result(
             status_code=HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Could not parse Globus Compute response: {e}"
         )
+    
+
+# Submit task
+async def submit_task(
+        function_name: str, 
+        resource: status_models.Resource, 
+        input_data: dict, 
+        user: account_models.User
+    ) -> str:
+    """Extract endpoint and function IDs, submit task, and return task ID."""
+        
+    # Extract Globus Compute endpoint and function IDs
+    endpoint_id = get_compute_endpoint_id(resource)
+    function_id = get_compute_function_id(function_name)
+        
+    # Get Globus Compute executor from user's token
+    gce = get_compute_executor(user)
+    gce.endpoint_id = endpoint_id
+
+    # Make sure the endpoint runs on the login node
+    gce.user_endpoint_config = {"provider": "local"}
+
+    # Submit task to Globus Compute
+    try:
+        future = gce.submit_to_registered_function(function_id, args=[input_data])
+    except Exception as e:
+        raise HTTPException(
+            status_code=HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Could not submit task to Globus Compute: {e}"
+        )
+    
+    # While the future object still does not have a task ID assigned ...
+    start = time.monotonic()
+    while future.task_id is None:
+
+        # Sleep for a little while
+        await asyncio.sleep(0.5)
+
+        # Raise an error is something went wrong
+        if future._exception:
+            raise HTTPException(
+                status_code=HTTP_500_INTERNAL_SERVER_ERROR, 
+                detail=f"Could not submit task to Globus Compute: {str(future._exception)}"
+            )
+        
+        # Raise an error if the process is taking too long
+        if time.monotonic() - start > 10:
+            raise HTTPException(
+                status_code=HTTP_408_REQUEST_TIMEOUT,
+                detail=f"Timeout while retrieving task ID from Globus Compute."
+            )
+        
+    # Return the Globus Compute task ID
+    return future.task_id
