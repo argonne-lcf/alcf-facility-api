@@ -1,5 +1,5 @@
 from sqlmodel import SQLModel, Field, JSON
-from sqlalchemy import Column
+from sqlalchemy import Column, DateTime
 from typing import List, Optional
 from datetime import datetime, timezone
 
@@ -10,7 +10,10 @@ class NamedObject(SQLModel):
     name: Optional[str] = None
     short_name: Optional[str] = None
     description: Optional[str] = None
-    last_updated: Optional[datetime] = Field(default_factory=lambda: datetime.now(timezone.utc))
+    last_updated: Optional[datetime] = Field(
+        sa_column=Column(DateTime(timezone=True),nullable=False),
+        default_factory=lambda: datetime.now(timezone.utc),
+    )
 
 class Facility(NamedObject, table=True):
     """Facility entity."""
@@ -66,7 +69,10 @@ class User(SQLModel, table=True):
     idp_id: Optional[str] = None
     idp_name: Optional[str] = None
     auth_service: Optional[str] = None
-    created_at: Optional[datetime] = Field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = Field(
+        sa_column=Column(DateTime(timezone=True),nullable=False),
+        default_factory=lambda: datetime.now(timezone.utc),
+    )
 
 class Task(SQLModel, table=True):
     """Task entity."""
