@@ -19,7 +19,7 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
         resource: status_models.Resource, 
         user: account_models.User, 
         request_model: filesystem_models.PutFileChmodRequest
-    ) -> filesystem_models.PutFileChmodResponse:
+    ) -> str:
     
         # Build data for the command
         input_data = request_model.model_dump()
@@ -30,8 +30,18 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
         except Exception as e:
             raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=f"Input validation error: {str(e)}")
 
-        # Submit task to Globus Compute and wait for the result
-        result = globus_utils.submit_task_and_get_result("chmod", resource, input_data, user)
+        # Submit task to Globus Compute and wait for the task ID
+        task_id = await globus_utils.submit_task("chmod", resource, input_data, user)
+
+        # Return task ID to the user
+        return task_id
+
+
+    # Format chmod response
+    def format_chmod_response(
+        self: "AlcfAdapter",
+        result
+    ) -> filesystem_models.PutFileChmodResponse:
         
         # Convert result (should only be one line) into IRI File and return the object
         return filesystem_models.PutFileChmodResponse(
@@ -45,7 +55,7 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
         resource: status_models.Resource, 
         user: account_models.User, 
         request_model: filesystem_models.PutFileChownRequest
-    ) -> filesystem_models.PutFileChownResponse:
+    ) -> str:
 
         # Build data for the command
         input_data = request_model.model_dump()
@@ -57,13 +67,23 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
             raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=f"Input validation error: {str(e)}")
 
         # Submit task to Globus Compute and wait for the result
-        result = globus_utils.submit_task_and_get_result("chown", resource, input_data, user)
+        task_id = await globus_utils.submit_task("chown", resource, input_data, user)
+
+        # Return task ID to the user
+        return task_id
+
+
+    # Format chown response
+    def format_chown_response(
+        self: "AlcfAdapter",
+        result
+    ) -> filesystem_models.PutFileChownResponse:
         
         # Convert result (should only be one line) into IRI File and return the object
         return filesystem_models.PutFileChmodResponse(
             output=get_iri_file_from_ls_line(result)
         )
-
+    
 
     # Ls
     async def ls(
@@ -103,21 +123,19 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
         return task_id
     
 
-    # Ls get result
-    async def ls_get_result(
+    # Format ls response
+    def format_ls_response(
         self: "AlcfAdapter",
-        user: account_models.User, 
-        task_id: str
+        result
     ) -> filesystem_models.GetDirectoryLsResponse:
         
-        return "A"
         # Recover all lines from the command
-        #lines = [line.strip() for line in result.splitlines() if line.strip()]
+        lines = [line.strip() for line in result.splitlines() if line.strip()]
 
         # Convert lines into IRI File and return array
-        #return filesystem_models.GetDirectoryLsResponse(
-        #    output=[get_iri_file_from_ls_line(line) for line in lines if len(line.split()) > 2]
-        #)
+        return filesystem_models.GetDirectoryLsResponse(
+            output=[get_iri_file_from_ls_line(line) for line in lines if len(line.split()) > 2]
+        )
           
 
     # Head
@@ -129,7 +147,7 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
         file_bytes: int, 
         lines: int, 
         skip_trailing: bool,
-    ) -> Tuple[Any, int]:
+    ) -> str:
         
         # Build data for the command
         input_data = {
@@ -145,15 +163,25 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
         except Exception as e:
             raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=f"Input validation error: {str(e)}")
 
-        # Submit task to Globus Compute and wait for the result
-        result = globus_utils.submit_task_and_get_result("head", resource, input_data, user)
+        # Submit task to Globus Compute and wait for the task ID
+        task_id = await globus_utils.submit_task("head", resource, input_data, user)
 
+        # Return task ID to the user
+        return task_id
+
+
+    # Format head response
+    def format_head_response(
+        self: "AlcfAdapter",
+        result
+    ) -> Tuple[Any, int]:
+        
         # Get the end_position
         end_position = len(result)
 
         # Return IRI response
         return result, end_position
-
+    
 
     # Tail
     async def tail(
@@ -176,7 +204,7 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
         path: str, 
         size: int,
         offset: int,
-    ) -> filesystem_models.GetViewFileResponse:
+    ) -> str:
         
         # Build data for the command
         input_data = {
@@ -191,9 +219,19 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
         except Exception as e:
             raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=f"Input validation error: {str(e)}")
 
-        # Submit task to Globus Compute and wait for the result
-        result = globus_utils.submit_task_and_get_result("view", resource, input_data, user)
+        # Submit task to Globus Compute and wait for the task ID
+        task_id = await globus_utils.submit_task("view", resource, input_data, user)
 
+        # Return task ID to the user
+        return task_id
+
+
+    # Format view response
+    def format_view_response(
+        self: "AlcfAdapter",
+        result
+    ) -> filesystem_models.GetViewFileResponse:
+        
         # Return IRI response
         return filesystem_models.GetViewFileResponse(output=result)
 
