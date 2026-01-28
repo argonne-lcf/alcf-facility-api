@@ -51,7 +51,7 @@ def rm(params):
     try:
         input_data = InputData(**params)
     except Exception as e:
-        return Response(error=f"Input validation error: {str(e)}").model_dump()
+        return Response(error=f"Input validation error. {str(e)}").model_dump()
 
     # Check if path exists
     if not os.path.exists(input_data.path):
@@ -70,13 +70,7 @@ def rm(params):
             shell=False          # Avoid shell injection
         )
     except Exception as e:
-        return Response(error=f"subprocess.run error: {str(e)}").model_dump()
-
-    !!!@#!@#$!@#$!@#$!@#$!
-    !!!!!!
-    I AM HERE I DO NOT (should I return the full response?)
-                 !!! I THINK YES, let the API do what it needs to do
-                 Just did not have time to think ... got to go 
+        return Response(error=f"subprocess.run error. {str(e)}").model_dump()
 
     # Return result
     return Response(output=result.stdout, error=result.stderr).model_dump()
