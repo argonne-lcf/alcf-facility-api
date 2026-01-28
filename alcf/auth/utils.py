@@ -142,6 +142,10 @@ def _perform_token_introspection(access_token: str):
     except Exception as e:
         return None, [], None, f"Could not introspect token with Globus /v2/oauth2/token/introspect. {e}"
     
+    # Make sure the token is valid/active
+    if introspection.get("active", False) is False:
+        return None, [], None, f"Token not active."
+    
     # Get dependent access token to view group membership and use Globus Compute
     try:
         dependent_tokens = client.oauth2_get_dependent_tokens(access_token)
@@ -221,13 +225,6 @@ def validate_access_token(access_token):
     # Introspect the access token
     introspection, user_groups, globus_compute_access_token, error_message = introspect_token(access_token)
     if len(error_message) > 0:
-        raise HTTPException(
-            status_code=HTTP_500_INTERNAL_SERVER_ERROR, 
-            detail=error_message
-        )
-
-    # Make sure the token is valid/active
-    if introspection["active"] is False:
         return TokenValidationResponse(
             is_valid=False, 
             is_authorized=False,
