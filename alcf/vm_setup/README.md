@@ -83,7 +83,7 @@ sudo systemctl status postgresql
 
 Start a Postgres shell as the admin user, and create `apiuser` user for the database (the user needs to be the same as the Unix user you created in the previous section). **Do not** use `@ : / ? # [ ] % < > !` characters for the password, it will cause issue when parsing the password from the database URL.
 ```bash
-sudo -u postgres psql
+sudo -u postgres psql # Or with local Mac: psql postgres
 CREATE USER apiuser WITH PASSWORD 'your-password-here';
 ```
 
@@ -123,9 +123,9 @@ Check if you have your tables created:
 psql -U apiuser -d facilityapi_db -c "\dt"
 ```
 
-Check how many entries you have for each table:
+Check how many entries you have for status tables:
 ```bash
-psql -U apiuser -d facilityapi_db -c "SELECT 'facility' as table_name, COUNT(*) as row_count FROM facility UNION ALL SELECT 'location', COUNT(*) FROM location UNION ALL SELECT 'site', COUNT(*) FROM site UNION ALL SELECT 'resource', COUNT(*) FROM resource UNION ALL SELECT 'incident', COUNT(*) FROM incident UNION ALL SELECT 'event', COUNT(*) FROM event UNION ALL SELECT 'task', COUNT(*) FROM task UNION ALL SELECT 'user', COUNT(*) FROM user;"
+psql -U apiuser -d facilityapi_db -c "SELECT 'facility' as table_name, COUNT(*) as row_count FROM facility UNION ALL SELECT 'location', COUNT(*) FROM location UNION ALL SELECT 'site', COUNT(*) FROM site UNION ALL SELECT 'resource', COUNT(*) FROM resource UNION ALL SELECT 'incident', COUNT(*) FROM incident UNION ALL SELECT 'event', COUNT(*) FROM event;"
 ```
 
 Check status of resources according to the database:
@@ -133,9 +133,14 @@ Check status of resources according to the database:
 psql -U apiuser -d facilityapi_db -c "SELECT id, name, type, current_status FROM resource;"
 ```
 
-Check usernames according to the database:
+Check how many entries you have for task and user:
 ```bash
-psql -U apiuser -d facilityapi_db -c "SELECT username FROM user;"
+psql -U apiuser -d facilityapi_db -c "SELECT 'user' as table_name, COUNT(*) as row_count FROM \"user\" UNION ALL SELECT 'task', COUNT(*) FROM task;"
+```
+
+Check basic details on each user:
+```bash
+psql -U apiuser -d facilityapi_db -c "SELECT username, idp_name, auth_service FROM \"user\";"
 ```
 
 **DANGER ZONE** Clear all data from all table:
