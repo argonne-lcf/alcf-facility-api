@@ -1,10 +1,12 @@
 import asyncio
 import time
+import json
 from alcf.config import GLOBUS_COMPUTE_ENDPOINTS, GLOBUS_COMPUTE_FUNCTIONS
 from starlette.status import HTTP_501_NOT_IMPLEMENTED, HTTP_500_INTERNAL_SERVER_ERROR, HTTP_408_REQUEST_TIMEOUT
 from fastapi import HTTPException
 from app.routers.account import models as account_models
 from app.routers.status import models as status_models
+from app.routers.task import models as task_models
 from globus_compute_sdk import Client, Executor
 from globus_compute_sdk.sdk.login_manager import AuthorizerLoginManager
 from globus_compute_sdk.sdk.login_manager.manager import ComputeScopeBuilder
@@ -190,3 +192,50 @@ async def submit_task(
         
     # Return the Globus Compute task ID
     return future.task_id
+
+
+# Get task status
+# TODO: cache this
+def get_task_status(user: account_models.User, task_id: str):
+    """Check the status of a task with Globus Compute and return result if completed."""
+
+    # Get Globus Compute client using user's credentials
+    gcc = get_compute_client(user)
+
+    # Try to get the task status from Globus
+    try:
+        task_status = gcc.get_task(task_id)
+    except Exception as e:
+        raise HTTPException(
+            status_code=HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Could not get task status from Globus Compute: {e}"
+        )
+
+    # Still pending
+    if task_status["pending"]:
+        status = task_models.TaskStatus.pending.value
+        result = None
+
+    # If function execution succeeded (but may still include an error) ...
+    elif task_status.get("status", None) == "success":
+
+        # Gather the result
+        result = task_status.get("result", None)
+
+        # Failed
+        if result["error"]:
+            status = task_models.TaskStatus.failed.value
+            result = result["error"]
+
+        # Completed
+        else:
+            status = task_models.TaskStatus.completed.value
+            result = result["output"]
+
+    # Failed if an error occured outside of the function execution
+    else:
+        status = task_models.TaskStatus.failed.value
+        result = "?????"
+
+    # Return the status and result (if any)
+    return status, result
