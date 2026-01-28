@@ -2,7 +2,7 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import select
 from fastapi import HTTPException
-from starlette.status import HTTP_404_NOT_FOUND
+from starlette.status import HTTP_404_NOT_FOUND, HTTP_500_INTERNAL_SERVER_ERROR
 from typing import List
 from contextlib import asynccontextmanager
 from . import models as db_models
@@ -39,6 +39,10 @@ async def exists_in_db(id, db_model_class):
         return result.scalar_one_or_none() is not None
 
 
+# ==================================================
+# ===== Add and update single database objects =====
+# ==================================================
+
 # Function to add an entry to the database
 async def add_to_db(data: dict, db_model_class):
     async with get_db_session_context() as session:
@@ -48,8 +52,10 @@ async def add_to_db(data: dict, db_model_class):
             await session.commit()
         except Exception as e:
             await session.rollback()
-            raise ValueError(f"Error creating database object: {e}")
-
+            raise HTTPException(
+                status_code=HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Error creating database object: {e}"
+            )
 
 # Function to update an existing entry to the database
 async def update_db(data: dict, db_model_class):
@@ -61,7 +67,10 @@ async def update_db(data: dict, db_model_class):
             existing_obj = result.scalar_one_or_none()
             
             if existing_obj is None:
-                raise ValueError(f"Object with id '{data['id']}' not found")
+                raise HTTPException(
+                    status_code=HTTP_404_NOT_FOUND,
+                    detail=f"Object with id '{data['id']}' not found"
+                )
             
             # Update the object with new data
             for key, value in data.items():
@@ -69,9 +78,28 @@ async def update_db(data: dict, db_model_class):
                     setattr(existing_obj, key, value)
             
             await session.commit()
+        except HTTPException:
+            await session.rollback()
+            raise
         except Exception as e:
             await session.rollback()
-            raise ValueError(f"Error updating database object: {e}")
+            raise HTTPException(
+                status_code=HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Error updating database object: {e}"
+            )
+
+# Function to add a single task entry
+async def add_task_to_db(data: dict):
+    await add_to_db(data, db_models.Task)
+
+# Function to update a single task entry
+async def update_task_in_db(data: dict):
+    await update_db(data, db_models.Task)
+
+# Function to add a single user entry
+async def add_user_to_db(data: dict):
+    await add_to_db(data, db_models.User)
+
 
 # =======================================
 # ===== Get single database objects =====
@@ -109,6 +137,14 @@ async def get_db_incident_from_id(id) -> db_models.Incident:
 # Function to extract a single event entry from its id
 async def get_db_event_from_id(id) -> db_models.Event:
     return await get_db_object_from_id(id, db_models.Event)
+
+# Function to extract a single user entry from its id
+async def get_db_user_from_id(id) -> db_models.User:
+    return await get_db_object_from_id(id, db_models.User)
+
+# Function to extract a single task entry from its id
+async def get_db_task_from_id(id) -> db_models.Task:
+    return await get_db_object_from_id(id, db_models.Task)
 
 # ========================================
 # ===== Get list of database objects =====
@@ -260,3 +296,38 @@ async def get_db_events(
         description=description,
         status=status
     )
+
+# Function to extract a list of user entries from a list of IDs (or all if no IDs provided)
+async def get_db_users(
+    ids: List[str] = None, 
+    offset: int = None, 
+    limit: int = None
+    ) -> List[db_models.User]:
+    return await get_db_objects(
+        db_models.User, 
+        ids=ids, 
+        offset=offset, 
+        limit=limit
+    )
+
+# Function to extract tasks for a specific user
+async def get_db_tasks_by_user(
+    user_id: str,
+    offset: int = None, 
+    limit: int = None,
+    status: str = None
+    ) -> List[db_models.Task]:
+    async with get_db_session_context() as session:
+        try:
+            stmt = select(db_models.Task).where(db_models.Task.user_id == user_id)
+            if status:
+                stmt = stmt.where(db_models.Task.status == status)
+            if offset is not None:
+                stmt = stmt.offset(offset)
+            if limit is not None:
+                stmt = stmt.limit(limit)
+            stmt = stmt.order_by(db_models.Task.created_at.desc())
+            result = await session.execute(stmt)
+            return result.scalars().all()
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Error retrieving tasks: {e}")
