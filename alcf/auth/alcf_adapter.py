@@ -7,19 +7,21 @@ from keycloak import KeycloakOpenID
 from alcf.auth.utils import validate_access_token
 from alcf.database.database import exists_in_db, add_user_to_db
 from alcf.database import models as db_models
+from alcf.config import KEYCLOAK_ENABLED
 import logging
 
 log = logging.getLogger(__name__)
 
 # Configure Keycloak client
-keycloak_openid = KeycloakOpenID(
-    server_url="https://keycloak-internal.alcf.anl.gov",
-    client_id=KEYCLOAK_CLIENT_ID,
-    realm_name=KEYCLOAK_REALM_NAME,
-    client_secret_key=KEYCLOAK_CLIENT_SECRET,
-    verify=True
-)
-config_well_known = keycloak_openid.well_known()
+if KEYCLOAK_ENABLED:
+    keycloak_openid = KeycloakOpenID(
+        server_url="https://keycloak-internal.alcf.anl.gov",
+        client_id=KEYCLOAK_CLIENT_ID,
+        realm_name=KEYCLOAK_REALM_NAME,
+        client_secret_key=KEYCLOAK_CLIENT_SECRET,
+        verify=True
+    )
+    config_well_known = keycloak_openid.well_known()
 
 
 class AlcfAuthenticatedAdapter(AuthenticatedAdapter):
@@ -80,38 +82,41 @@ class AlcfAuthenticatedAdapter(AuthenticatedAdapter):
 
         # If this is a Keyckoak token ...
         # -------------------------------
+        
+        # Only if Keycloak is enabled ...
+        if KEYCLOAK_ENABLED:
 
-        # Try to validate the API key with Keycloak
-        # TODO: Cache this
-        introspection = keycloak_openid.introspect(api_key)
+            # Try to validate the API key with Keycloak
+            # TODO: Cache this
+            introspection = keycloak_openid.introspect(api_key)
 
-        # If the token is a valid Keycloak token ...
-        if introspection.get("active", False):
+            # If the token is a valid Keycloak token ...
+            if introspection.get("active", False):
 
-            # Give permission to continue through the API if appropriate
-            # TODO look for ID instead
-            user_id = introspection.get("username", None)
-            
-            # Store user in database if not already present
-            try:
-                if not await exists_in_db(user_id, db_models.User):
-                    await add_user_to_db({
-                        "id": user_id,
-                        "name": introspection.get("name", ""),
-                        "username": introspection.get("username"),
-                        "idp_id": introspection.get("client_id"),
-                        "idp_name": introspection.get("iss", "iss-not found in Keycloak token"),
-                        "auth_service": "Keycloak"
-                    })
-                    log.info(f"Added new user to database: {user_id}")
-            except Exception as e:
-                raise HTTPException(
-                        status_code=HTTP_401_UNAUTHORIZED,
-                        detail=f"Failed to store or verify user in database. {e}"
-                    )
-            
-            # Give permission to continue through the API
-            return user_id
+                # Give permission to continue through the API if appropriate
+                # TODO look for ID instead
+                user_id = introspection.get("username", None)
+                
+                # Store user in database if not already present
+                try:
+                    if not await exists_in_db(user_id, db_models.User):
+                        await add_user_to_db({
+                            "id": user_id,
+                            "name": introspection.get("name", ""),
+                            "username": introspection.get("username"),
+                            "idp_id": introspection.get("client_id"),
+                            "idp_name": introspection.get("iss", "iss-not found in Keycloak token"),
+                            "auth_service": "Keycloak"
+                        })
+                        log.info(f"Added new user to database: {user_id}")
+                except Exception as e:
+                    raise HTTPException(
+                            status_code=HTTP_401_UNAUTHORIZED,
+                            detail=f"Failed to store or verify user in database. {e}"
+                        )
+                
+                # Give permission to continue through the API
+                return user_id
 
         # Revoke access if no introspection worked
         raise HTTPException(
