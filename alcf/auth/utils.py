@@ -207,7 +207,7 @@ def get_user_details(introspection, user_groups) -> UserPydantic:
             session_info_identities.append(identity)
 
             # If the domain is authorized by the service ...
-            if session_domain in AUTHORIZED_IDP_DOMAIN:
+            if session_domain == AUTHORIZED_IDP_DOMAIN:
 
                 # Create and return the User object from the Globus introspection
                 try:
