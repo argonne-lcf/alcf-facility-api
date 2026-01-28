@@ -10,10 +10,7 @@ class NamedObject(SQLModel):
     name: Optional[str] = None
     short_name: Optional[str] = None
     description: Optional[str] = None
-    last_updated: Optional[datetime] = Field(
-        sa_column=Column(DateTime(timezone=True),nullable=False),
-        default_factory=lambda: datetime.now(timezone.utc),
-    )
+    last_updated: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
 
 class Facility(NamedObject, table=True):
     """Facility entity."""
@@ -69,10 +66,7 @@ class User(SQLModel, table=True):
     idp_id: Optional[str] = None
     idp_name: Optional[str] = None
     auth_service: Optional[str] = None
-    created_at: datetime = Field(
-        sa_column=Column(DateTime(timezone=True),nullable=False),
-        default_factory=lambda: datetime.now(timezone.utc),
-    )
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
 
 class Task(SQLModel, table=True):
     """Task entity."""
@@ -81,5 +75,5 @@ class Task(SQLModel, table=True):
     status: str = Field(default="pending")  # pending, active, completed, failed, canceled
     result: Optional[str] = None
     command: str = Field(sa_column=Column(JSON))  # Store TaskCommand as JSON string
-    created_at: Optional[datetime] = Field(default_factory=lambda: datetime.now(timezone.utc))
-    updated_at: Optional[datetime] = Field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
