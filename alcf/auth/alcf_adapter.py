@@ -55,7 +55,7 @@ class AlcfAuthenticatedAdapter(AuthenticatedAdapter):
 
                 # Store user in database if not already present
                 try:
-                    if not await exists_in_db(user_id, db_models.User):
+                    if not await exists_in_db(token_response.user.id, db_models.User):
                         await add_user_to_db({
                             "id": token_response.user.id,
                             "name": token_response.user.name,
@@ -64,7 +64,7 @@ class AlcfAuthenticatedAdapter(AuthenticatedAdapter):
                             "idp_name": token_response.user.idp_name,
                             "auth_service": token_response.user.auth_service
                         })
-                        log.info(f"Added new user to database: {user_id}")
+                        log.info(f"Added new user to database: {token_response.user.id}")
                 except Exception as e:
                     raise HTTPException(
                         status_code=HTTP_401_UNAUTHORIZED,
