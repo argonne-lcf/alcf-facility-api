@@ -64,7 +64,7 @@ class AlcfAuthenticatedAdapter(AuthenticatedAdapter):
                         })
                         log.info(f"Added new user to database: {user_id}")
                 except Exception as e:
-                    HTTPException(
+                    raise HTTPException(
                         status_code=HTTP_401_UNAUTHORIZED,
                         detail=f"Failed to store or verify user in database. {e}"
                     )
@@ -73,9 +73,9 @@ class AlcfAuthenticatedAdapter(AuthenticatedAdapter):
             
             # Revoke access if not authorized
             else:
-                HTTPException(
+                raise HTTPException(
                     status_code=HTTP_401_UNAUTHORIZED,
-                    detail="User authenticated with Globus but unauthorized to access the service."
+                    detail=token_response.error_message
                 )
 
         # If this is a Keyckoak token ...
@@ -105,7 +105,7 @@ class AlcfAuthenticatedAdapter(AuthenticatedAdapter):
                     })
                     log.info(f"Added new user to database: {user_id}")
             except Exception as e:
-                HTTPException(
+                raise HTTPException(
                         status_code=HTTP_401_UNAUTHORIZED,
                         detail=f"Failed to store or verify user in database. {e}"
                     )
@@ -114,9 +114,9 @@ class AlcfAuthenticatedAdapter(AuthenticatedAdapter):
             return user_id
 
         # Revoke access if no introspection worked
-        HTTPException(
+        raise HTTPException(
             status_code=HTTP_401_UNAUTHORIZED,
-            detail="User token not valid."
+            detail="User token not valid with Keycloak or Globus Auth."
         )
 
 
