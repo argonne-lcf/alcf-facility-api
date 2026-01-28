@@ -78,7 +78,7 @@ def view(params):
             shell=False          # Avoid shell injection
         )
     except Exception as e:
-        return Response(error=f"subprocess.run error: {str(e)}").model_dump()
+        return Response(error=f"subprocess.run error. {str(e)}").model_dump()
 
     # Return result
     if result.stdout:
