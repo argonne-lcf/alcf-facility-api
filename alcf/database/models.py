@@ -57,3 +57,23 @@ class Resource(NamedObject, table=True):
     last_verified: Optional[datetime] = None
     site_id: str
     capability_ids: Optional[List[str]] = Field(default=None, sa_column=Column(JSON))
+
+class User(SQLModel, table=True):
+    """User entity."""
+    id: str = Field(primary_key=True, index=True)
+    name: Optional[str] = None
+    username: Optional[str] = None
+    idp_id: Optional[str] = None
+    idp_name: Optional[str] = None
+    auth_service: Optional[str] = None
+    created_at: Optional[datetime] = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class Task(SQLModel, table=True):
+    """Task entity."""
+    id: str = Field(primary_key=True, index=True)
+    user_id: str = Field(index=True)  # Foreign key to User
+    status: str = Field(default="pending")  # pending, active, completed, failed, canceled
+    result: Optional[str] = None
+    command: str = Field(sa_column=Column(JSON))  # Store TaskCommand as JSON string
+    created_at: Optional[datetime] = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: Optional[datetime] = Field(default_factory=lambda: datetime.now(timezone.utc))
