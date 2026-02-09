@@ -20,7 +20,11 @@ class Facility(NamedObject, table=True):
 class Site(NamedObject, table=True):
     """Site entity."""
     operating_organization: Optional[str] = None
-    location_id: Optional[str] = None
+    country_name: Optional[str] = None
+    locality_name: Optional[str] = None
+    state_or_province_name: Optional[str] = None
+    street_address: Optional[str] = None
+    unlocode: Optional[str] = None
 
 class Location(NamedObject, table=True):
     """Location entity."""
@@ -57,3 +61,5 @@ class Resource(NamedObject, table=True):
     current_status: str
     last_event_id: Optional[str] = None
     last_verified: Optional[datetime] = None
+    site_id: str
+    capability_ids: Optional[List[str]] = Field(default=None, sa_column=Column(JSON))
