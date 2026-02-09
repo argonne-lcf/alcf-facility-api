@@ -125,7 +125,9 @@ async def get_db_objects(
     limit: int = None,
     resource_type: str = None,
     status: str = None,
-    type: str = None
+    type: str = None,
+    current_status: str = None,
+    resolution: str = None
     ):
     async with get_db_session_context() as session:
         try:
@@ -148,6 +150,10 @@ async def get_db_objects(
                 stmt = stmt.where(db_model_class.type == type)
             if status:
                 stmt = stmt.where(db_model_class.status == status)
+            if current_status:
+                stmt = stmt.where(db_model_class.current_status == current_status)
+            if resolution:
+                stmt = stmt.where(db_model_class.resolution == resolution)
             result = await session.execute(stmt)
             return result.scalars().all()
         except Exception as e:
@@ -165,7 +171,8 @@ async def get_db_resources(
     group: str = None,
     offset: int = None,
     limit: int = None,
-    resource_type: str = None
+    resource_type: str = None,
+    current_status: str = None
     ) -> List[db_models.Resource]:
     return await get_db_objects(
         db_models.Resource, 
@@ -175,7 +182,8 @@ async def get_db_resources(
         group=group,
         offset=offset,
         limit=limit,
-        resource_type=resource_type
+        resource_type=resource_type,
+        current_status=current_status
     )
 
 # Function to extract a list of site entries from a list of IDs (or all if no IDs provided)
@@ -212,7 +220,8 @@ async def get_db_incidents(
     name: str = None,
     description: str = None,
     status: str = None,
-    type: str = None
+    type: str = None,
+    resolution: str = None
     ) -> List[db_models.Incident]:
     return await get_db_objects(
         db_models.Incident, 
@@ -222,7 +231,8 @@ async def get_db_incidents(
         name=name,
         description=description,
         status=status,
-        type=type
+        type=type,
+        resolution=resolution
     )
 
 # Function to extract a list of event entries from a list of IDs (or all if no IDs provided)
