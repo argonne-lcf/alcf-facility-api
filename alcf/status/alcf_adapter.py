@@ -1,13 +1,15 @@
 import asyncio
 import datetime
-from fastapi import HTTPException
+from fastapi import HTTPException, Query
 from starlette.status import HTTP_304_NOT_MODIFIED, HTTP_400_BAD_REQUEST, HTTP_501_NOT_IMPLEMENTED
 from app.routers.status.facility_adapter import FacilityAdapter as StatusFacilityAdapter
+from app.config import API_URL_ROOT, API_PREFIX, API_URL
 
 # Typing
 from typing import List
 from app.routers.status import models as status_models
 from alcf.database import models as db_models
+from app.types.models import Capability
 
 # Safety net to recover resource status
 from alcf.database.ingestion.ingest_activity_data import ingest_activity_data_for_resource
@@ -25,8 +27,7 @@ from alcf.database.database import (
 
 
 class AlcfAdapter(StatusFacilityAdapter):
-    """Facility adapter definition for the IRI Facility API."""
-    FACILITY_ID = "8da81144-304b-4fd0-b2fe-eda33bb38720"
+    """Facility adapter definition for the Status component of the IRI Facility API."""
 
     # Get resources
     async def get_resources(
@@ -34,16 +35,21 @@ class AlcfAdapter(StatusFacilityAdapter):
         offset : int,
         limit : int,
         name : str | None = None,
-        description : str | None = None,        
+        description : str | None = None,
         group : str | None = None,
         modified_since : datetime.datetime | None = None,
-        resource_type : status_models.ResourceType | None = None,
+        resource_type: status_models.ResourceType = Query(default=None),
+        current_status: status_models.Status = Query(default=None),
+        capability: Capability | None = None,
+        site_id: str | None = None
         ) -> list[status_models.Resource]:
         """Update and return all resources from the database."""
 
         # Error for unsupported filters
         if modified_since:
             raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="'modified_since' filter not supported yet.")
+        if site_id:
+            raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="'site_id' not supported yet.")
 
         # Gather resources from database with filters
         resources = await get_db_resources(
@@ -52,7 +58,8 @@ class AlcfAdapter(StatusFacilityAdapter):
             group=group,
             offset=offset,
             limit=limit,
-            resource_type=resource_type.value if resource_type else None
+            resource_type=resource_type.value if resource_type else None,
+            current_status=current_status.value if current_status else None
         )
 
         # Update resources if needed
@@ -85,7 +92,7 @@ class AlcfAdapter(StatusFacilityAdapter):
         status : status_models.Status | None = None,
         from_ : datetime.datetime | None = None,
         to : datetime.datetime | None = None,
-        time : datetime.datetime | None = None,
+        time_ : datetime.datetime | None = None,
         modified_since : datetime.datetime | None = None,
         ) -> list[status_models.Event]:
         """Return all events from the database."""
@@ -97,7 +104,7 @@ class AlcfAdapter(StatusFacilityAdapter):
             raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="'from' filter not supported yet.")
         if to:
             raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="'to' filter not supported yet.")
-        if time:
+        if time_:
             raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="'time' filter not supported yet.")
 
         # Get incident from database
@@ -148,12 +155,13 @@ class AlcfAdapter(StatusFacilityAdapter):
         name : str | None = None,
         description : str | None = None,
         status : status_models.Status | None = None,
-        type : status_models.IncidentType | None = None,
+        type_ : status_models.IncidentType | None = None,
         from_ : datetime.datetime | None = None,
         to : datetime.datetime | None = None,
         time_ : datetime.datetime | None = None,
         modified_since : datetime.datetime | None = None,
         resource_id : str | None = None,
+        resolution: status_models.Resolution | None = None
         ) -> list[status_models.Incident]:
         """Return all incidents from the database."""
 
@@ -174,7 +182,8 @@ class AlcfAdapter(StatusFacilityAdapter):
             name=name,
             description=description,
             status=status.value if status else None,
-            type=type.value if type else None
+            type=type_.value if type_ else None,
+            resolution=resolution.value if resolution else None
         )
 
         # Filter based on resource ID
@@ -283,7 +292,9 @@ class AlcfAdapter(StatusFacilityAdapter):
             current_status=db_resource.current_status,
             capability_ids=[],
             group=db_resource.group,
-            resource_type=db_resource.type
+            resource_type=db_resource.type,
+            site_id=db_resource.site_id,
+            located_at_uri=f"{API_URL_ROOT}{API_PREFIX}{API_URL}/facility/sites/{db_resource.site_id}"
         )
 
     # Format incident
