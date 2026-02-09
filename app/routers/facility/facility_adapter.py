@@ -1,9 +1,8 @@
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 from . import models as facility_models
-from ..iri_router import AuthenticatedAdapter
 
 
-class FacilityAdapter(AuthenticatedAdapter):
+class FacilityAdapter(ABC):
     """
     Facility-specific code is handled by the implementation of this interface.
     Use the `IRI_API_ADAPTER` environment variable (defaults to `app.demo_adapter.FacilityAdapter`)
@@ -11,21 +10,13 @@ class FacilityAdapter(AuthenticatedAdapter):
     """
 
     @abstractmethod
-    async def get_facility(
-        self: "FacilityAdapter",
-        modified_since: str | None = None
-        ) -> facility_models.Facility | None:
+    async def get_facility(self: "FacilityAdapter", modified_since: str | None = None) -> facility_models.Facility | None:
         pass
 
     @abstractmethod
     async def list_sites(
-        self: "FacilityAdapter",
-        modified_since: str | None = None,
-        name: str | None = None,
-        offset: int | None = None,
-        limit: int | None = None,
-        short_name: str | None = None
-        ) -> list[facility_models.Site]:
+        self: "FacilityAdapter", modified_since: str | None = None, name: str | None = None, offset: int | None = None, limit: int | None = None, short_name: str | None = None
+    ) -> list[facility_models.Site]:
         pass
 
     @abstractmethod
