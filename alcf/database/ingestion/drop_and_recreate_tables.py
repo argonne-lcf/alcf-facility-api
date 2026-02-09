@@ -21,7 +21,7 @@ from alcf.database.models import Facility, Site, Resource, Location, Event, Inci
 from alcf.database.database import engine
 
 # Define which models/tables should be managed by this script
-MANAGED_MODELS = [Facility, Site, Resource, Location, Event, Incident]
+MANAGED_MODELS = [Facility, Site, Resource, Location]
 
 
 async def drop_and_recreate_tables():
