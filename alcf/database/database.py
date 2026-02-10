@@ -119,6 +119,7 @@ async def get_db_objects(
     db_model_class, 
     ids: List[str] = None, 
     name: str = None, 
+    short_name: str = None,
     description: str = None,
     group: str = None,
     offset: int = None,
@@ -136,6 +137,8 @@ async def get_db_objects(
                 stmt = stmt.where(db_model_class.id.in_(ids))
             if name:
                 stmt = stmt.where(db_model_class.name == name)
+            if short_name:
+                stmt = stmt.where(db_model_class.short_name == short_name)
             if description:
                 stmt = stmt.where(db_model_class.description == description)
             if group:
@@ -189,6 +192,8 @@ async def get_db_resources(
 # Function to extract a list of site entries from a list of IDs (or all if no IDs provided)
 async def get_db_sites(
     ids: List[str] = None, 
+    name: str = None, 
+    short_name: str = None,
     offset: int = None, 
     limit: int = None
     ) -> List[db_models.Site]:
@@ -196,7 +201,9 @@ async def get_db_sites(
         db_models.Site, 
         ids=ids, 
         offset=offset, 
-        limit=limit
+        limit=limit,
+        name=name,
+        short_name=short_name
     )
 
 # Function to extract a list of location entries from a list of IDs (or all if no IDs provided)
