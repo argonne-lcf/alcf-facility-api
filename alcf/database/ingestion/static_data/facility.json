@@ -5,5 +5,8 @@
     "description": "The Argonne Leadership Computing Facility provides users with access to supercomputing resources for open scientific research.",
     "last_updated": "2025-07-10T11:28:40.969Z",
     "organization_name": "Argonne Leadership Computing Facility",
-    "support_url": "https://docs.alcf.anl.gov/"
+    "support_uri": "https://docs.alcf.anl.gov/",
+    "site_ids": [
+        "afb8a6d7-cd5b-4040-8be7-6e917b30af08"
+    ]
 }
