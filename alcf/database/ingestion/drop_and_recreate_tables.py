@@ -3,8 +3,8 @@
 Script to drop and recreate only the tables used in static data ingestion.
 Use this when you've modified the ingestion models and need to update the database schema.
 
-IMPORTANT: This only affects the tables used in ingestion (Facility, Site, Resource, 
-Location, Event, Incident). Other tables in your database will not be touched.
+IMPORTANT: This only affects the tables used in ingestion (Facility, Site, Resource). 
+Other tables in your database will not be touched.
 """
 import asyncio
 import sys
@@ -17,11 +17,11 @@ if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
 from sqlmodel import SQLModel
-from alcf.database.models import Facility, Site, Resource, Location, Event, Incident
+from alcf.database.models import Facility, Site, Resource
 from alcf.database.database import engine
 
 # Define which models/tables should be managed by this script
-MANAGED_MODELS = [Facility, Site, Resource, Location]
+MANAGED_MODELS = [Facility, Site, Resource]
 
 
 async def drop_and_recreate_tables():
