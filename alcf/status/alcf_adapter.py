@@ -3,7 +3,6 @@ import datetime
 from fastapi import HTTPException, Query
 from starlette.status import HTTP_304_NOT_MODIFIED, HTTP_400_BAD_REQUEST, HTTP_501_NOT_IMPLEMENTED
 from app.routers.status.facility_adapter import FacilityAdapter as StatusFacilityAdapter
-from app.config import API_URL_ROOT, API_PREFIX, API_URL
 
 # Typing
 from typing import List
@@ -294,7 +293,6 @@ class AlcfAdapter(StatusFacilityAdapter):
             group=db_resource.group,
             resource_type=db_resource.type,
             site_id=db_resource.site_id,
-            located_at_uri=f"{API_URL_ROOT}{API_PREFIX}{API_URL}/facility/sites/{db_resource.site_id}"
         )
 
     # Format incident
