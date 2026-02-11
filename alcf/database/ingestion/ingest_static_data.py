@@ -12,7 +12,7 @@ import argparse
 from datetime import datetime, timezone
 from sqlalchemy import delete
 from sqlmodel import SQLModel
-from alcf.database.models import Facility, Site, Resource, Location, Event, Incident
+from alcf.database.models import Facility, Site, Resource
 from alcf.database.database import get_db_session_context, engine
 
 
@@ -40,7 +40,7 @@ class DataIngestion:
         
         # For each static data file ...
         self.__json_data = {}
-        for filename in ['facility.json', 'locations.json', 'sites.json', 'resources.json']:
+        for filename in ['facility.json', 'sites.json', 'resources.json']:
             with open(os.path.join(data_dir, filename), 'r', encoding='utf-8') as f:
 
                 # Load the data and make sure it is a list
@@ -126,7 +126,6 @@ class DataIngestion:
         """Run the complete data ingestion process."""
         try:
             await self.__ingest_model(db, "facility.json", Facility)
-            await self.__ingest_model(db, "locations.json", Location)
             await self.__ingest_model(db, "sites.json", Site)
             await self.__ingest_model(db, "resources.json", Resource)
             
@@ -141,10 +140,7 @@ class DataIngestion:
         try:
             await db.execute(delete(Resource))
             await db.execute(delete(Site))
-            await db.execute(delete(Location))
             await db.execute(delete(Facility))
-            await db.execute(delete(Event))
-            await db.execute(delete(Incident))
             await db.commit()
         except Exception as e:
             await db.rollback()

@@ -6,6 +6,16 @@
         "description": "Building 240",
         "last_updated": "2025-07-10T11:28:40.969Z",
         "operating_organization": "Argonne Leadership Computing Facility",
-        "location_id": "404e75ea-1b00-4ffc-bf07-b56dbbd6306f"
+        "country_name": "United States",
+        "locality_name": "Lemont",
+        "state_or_province_name": "Illinois",
+        "street_address": "9700 S Cass Ave (Building 240)",
+        "unlocode": "US",
+        "resource_ids": [
+            "55c1c993-1124-47f9-b823-514ba3849a9a", 
+            "9674c7e1-aecc-4dbb-bf01-c9197e027cd6", 
+            "8b9b42f7-572a-4909-8472-a0453436304c", 
+            "0325fc07-6fb7-4453-b772-3d5030b2df72"
+        ]
     }
 ]

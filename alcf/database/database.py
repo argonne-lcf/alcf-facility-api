@@ -119,13 +119,16 @@ async def get_db_objects(
     db_model_class, 
     ids: List[str] = None, 
     name: str = None, 
+    short_name: str = None,
     description: str = None,
     group: str = None,
     offset: int = None,
     limit: int = None,
     resource_type: str = None,
     status: str = None,
-    type: str = None
+    type: str = None,
+    current_status: str = None,
+    resolution: str = None
     ):
     async with get_db_session_context() as session:
         try:
@@ -134,6 +137,8 @@ async def get_db_objects(
                 stmt = stmt.where(db_model_class.id.in_(ids))
             if name:
                 stmt = stmt.where(db_model_class.name == name)
+            if short_name:
+                stmt = stmt.where(db_model_class.short_name == short_name)
             if description:
                 stmt = stmt.where(db_model_class.description == description)
             if group:
@@ -148,6 +153,10 @@ async def get_db_objects(
                 stmt = stmt.where(db_model_class.type == type)
             if status:
                 stmt = stmt.where(db_model_class.status == status)
+            if current_status:
+                stmt = stmt.where(db_model_class.current_status == current_status)
+            if resolution:
+                stmt = stmt.where(db_model_class.resolution == resolution)
             result = await session.execute(stmt)
             return result.scalars().all()
         except Exception as e:
@@ -165,7 +174,8 @@ async def get_db_resources(
     group: str = None,
     offset: int = None,
     limit: int = None,
-    resource_type: str = None
+    resource_type: str = None,
+    current_status: str = None
     ) -> List[db_models.Resource]:
     return await get_db_objects(
         db_models.Resource, 
@@ -175,12 +185,15 @@ async def get_db_resources(
         group=group,
         offset=offset,
         limit=limit,
-        resource_type=resource_type
+        resource_type=resource_type,
+        current_status=current_status
     )
 
 # Function to extract a list of site entries from a list of IDs (or all if no IDs provided)
 async def get_db_sites(
     ids: List[str] = None, 
+    name: str = None, 
+    short_name: str = None,
     offset: int = None, 
     limit: int = None
     ) -> List[db_models.Site]:
@@ -188,7 +201,9 @@ async def get_db_sites(
         db_models.Site, 
         ids=ids, 
         offset=offset, 
-        limit=limit
+        limit=limit,
+        name=name,
+        short_name=short_name
     )
 
 # Function to extract a list of location entries from a list of IDs (or all if no IDs provided)
@@ -212,7 +227,8 @@ async def get_db_incidents(
     name: str = None,
     description: str = None,
     status: str = None,
-    type: str = None
+    type: str = None,
+    resolution: str = None
     ) -> List[db_models.Incident]:
     return await get_db_objects(
         db_models.Incident, 
@@ -222,7 +238,8 @@ async def get_db_incidents(
         name=name,
         description=description,
         status=status,
-        type=type
+        type=type,
+        resolution=resolution
     )
 
 # Function to extract a list of event entries from a list of IDs (or all if no IDs provided)

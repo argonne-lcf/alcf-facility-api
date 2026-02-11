@@ -15,15 +15,12 @@ class NamedObject(SQLModel):
 class Facility(NamedObject, table=True):
     """Facility entity."""
     organization_name: Optional[str] = None
-    support_url: Optional[str] = None
+    support_uri: Optional[str] = None
+    site_ids: Optional[List[str]] = Field(default=None, sa_column=Column(JSON))
 
 class Site(NamedObject, table=True):
     """Site entity."""
     operating_organization: Optional[str] = None
-    location_id: Optional[str] = None
-
-class Location(NamedObject, table=True):
-    """Location entity."""
     country_name: Optional[str] = None
     locality_name: Optional[str] = None
     state_or_province_name: Optional[str] = None
@@ -32,6 +29,7 @@ class Location(NamedObject, table=True):
     altitude: Optional[float] = None
     latitude: Optional[float] = None
     longitude: Optional[float] = None
+    resource_ids: Optional[List[str]] = Field(default=None, sa_column=Column(JSON))
 
 class Incident(NamedObject, table=True):
     """Incident entity."""
@@ -57,3 +55,5 @@ class Resource(NamedObject, table=True):
     current_status: str
     last_event_id: Optional[str] = None
     last_verified: Optional[datetime] = None
+    site_id: str
+    capability_ids: Optional[List[str]] = Field(default=None, sa_column=Column(JSON))
