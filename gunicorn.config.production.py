@@ -1,3 +1,5 @@
+import logging
+
 # Localhost port to communicate between Nginx and Gunicorn
 bind = '127.0.0.1:8000'
 
@@ -28,3 +30,16 @@ capture_output = True
 # How verbose the Gunicorn error logs should be
 loglevel = "info"
 enable_stdio_inheritance = True
+
+# Add timestamp to access logs
+access_log_format = '%(t)s %(h)s "%(r)s" %(s)s %(b)s "%(f)s" "%(a)s"'
+
+# Configure uvicorn access log to add timestamps
+def post_worker_init(worker):
+    access_logger = logging.getLogger("uvicorn.access")
+    if access_logger.handlers:
+        for handler in access_logger.handlers:
+            handler.setFormatter(logging.Formatter(
+                "%(asctime)s %(message)s",
+                datefmt="%Y-%m-%d %H:%M:%S"
+            ))
