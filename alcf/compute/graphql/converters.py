@@ -64,7 +64,7 @@ def get_graphql_job_from_iri_jobspec(iri_jobspec: compute_models.JobSpec) -> gra
         'workDir': 'directory',
         'errorPath': 'stderr_path',
         'outputPath': 'stdout_path',
-        'resourcesRequested.jobResources.wallClockTime': lambda js: js.attributes.duration.seconds if js.attributes and js.attributes.duration else None,
+        'resourcesRequested.jobResources.wallClockTime': lambda js: js.attributes.duration if js.attributes and js.attributes.duration else None,
         'resourcesRequested.jobResources.physicalMemory': lambda js: js.resources.memory if js.resources else None,
         'queue.name': lambda js: js.attributes.queue_name if js.attributes else None,
     }
