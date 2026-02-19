@@ -14,7 +14,7 @@ Install dependencies:
 pip install -r requirements.txt
 ```
 
-## Prepare your `.env` file
+Prepare your `.env` file
 
 ```bash
 BASE_URL=<API-base-url>
@@ -22,6 +22,24 @@ BASE_URL=<API-base-url>
 #BASE_URL="https://api-dev.alcf.anl.gov/api/v1" # internal server (need VPN)
 #BASE_URL="https://api.alcf.anl.gov/api/v1" # production server
 ```
+
+## Keycloak Access Token for Compute Operations
+
+Make sure the token script is executable:
+```bash
+chmod u+x keycloak_access_token.sh
+```
+
+Execute the auth script and enter your username and MobilePass+ credentials:
+```bash
+sh keycloak_access_token.sh
+```
+
+Copy the `access_token` field from the response and add it to your `.env` file as `ACCESS_TOKEN=...`.
+
+## Compute Operations
+
+Execute any of the `compute_....py` file. Make sure you adjust the input parameters in the files. 
 
 ## Globus Access Token for Filesystem Operations
 
