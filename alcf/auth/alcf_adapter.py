@@ -2,7 +2,7 @@ from fastapi import HTTPException
 from starlette.status import HTTP_401_UNAUTHORIZED
 from app.routers.iri_router import AuthenticatedAdapter
 from app.routers.account.models import User
-from alcf.config import KEYCLOAK_CLIENT_ID, KEYCLOAK_CLIENT_SECRET, KEYCLOAK_REALM_NAME, SECRET_DEV_KEY
+from alcf.config import KEYCLOAK_CLIENT_ID, KEYCLOAK_CLIENT_SECRET, KEYCLOAK_REALM_NAME, KEYCLOAK_SERVER_URL
 from keycloak import KeycloakOpenID
 from alcf.auth.utils import validate_access_token
 from alcf.database.database import exists_in_db, add_user_to_db
@@ -15,7 +15,7 @@ log = logging.getLogger(__name__)
 # Configure Keycloak client
 if KEYCLOAK_ENABLED:
     keycloak_openid = KeycloakOpenID(
-        server_url="https://keycloak-internal.alcf.anl.gov",
+        server_url=KEYCLOAK_SERVER_URL,
         client_id=KEYCLOAK_CLIENT_ID,
         realm_name=KEYCLOAK_REALM_NAME,
         client_secret_key=KEYCLOAK_CLIENT_SECRET,
