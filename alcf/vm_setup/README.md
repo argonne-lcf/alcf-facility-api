@@ -191,7 +191,7 @@ cd ~
 
 Create directory for the gunicorn logs:
 ```bash
-mkdir /home/apiuser/logs
+mkdir /home/apiuser/alcf-facility-api/logs
 ```
 
 Install `uv`:
