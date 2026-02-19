@@ -34,7 +34,7 @@ data = {
         "memory": 2222
     },
     "attributes": {
-        "duration": "PT12M",
+        "duration": 60,
         "queue_name": "workq"
     }
 }
