@@ -27,6 +27,8 @@ data = {
     "executable": "/bin/bash",
     "arguments": ["-c", commands],
     "name": "TEST",
+    "stdout_path": "/home/bcote/qsub",
+    "stderr_path": "/home/bcote/qsub",
     "resources": {
         "memory": 2222
     },
