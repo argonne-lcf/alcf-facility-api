@@ -39,7 +39,7 @@ Copy the `access_token` field from the response and add it to your `.env` file a
 
 ## Compute Operations
 
-Execute any of the `compute_....py` file. Make sure you adjust the input parameters in the files. 
+Execute any of the `compute_....py` file. Make sure you adjust the input parameters in the files. When you submit a job through `compute_submit_job.py`, make sure you adjust the `stdout_path` and `stderr_path` variable in the file to point to a directory you can access.
 
 ## Globus Access Token for Filesystem Operations
 
