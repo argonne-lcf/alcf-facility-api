@@ -11,6 +11,7 @@ ln -s pip3 pip
 deactivate
 cd ../../
 source .venv/bin/activate
+which pip
 ```
 
 In the root folder of the project, activate your python environment and update required packages:
