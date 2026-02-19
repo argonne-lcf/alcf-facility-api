@@ -148,7 +148,13 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
         user: account_models.User, 
         job_id: str,
         historical: bool = False,
+        include_spec: bool = False,
     ) -> compute_models.Job:
+
+        # [TEMPORARY]
+        # Error if input variables are not supported yet
+        if include_spec:
+            raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="'include_spec' not supported yet.")
         
         # Submit query to GraphQL API
         response = await post_graphql(
