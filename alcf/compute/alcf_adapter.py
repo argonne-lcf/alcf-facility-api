@@ -186,6 +186,7 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
         limit : int,
         filters: dict[str, object] | None = None,
         historical: bool = False,
+        include_spec: bool = False,
     ) -> list[compute_models.Job]:
         
         # [TEMPORARY]
@@ -196,6 +197,8 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
             raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="limit not implemented")
         if offset > 0:
             raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="offset not implemented")
+        if include_spec:
+            raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="'include_spec' not supported yet.")
 
         # Submit query to GraphQL API
         response = await post_graphql(
