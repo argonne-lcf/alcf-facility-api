@@ -150,6 +150,8 @@ class AlcfAuthenticatedAdapter(AuthenticatedAdapter):
             return User(id="bcote", name="Benoit Cote", api_key=api_key, client_ip=client_ip)
         elif user_id == "richp":
             return User(id="richp", name="Paul Rich", api_key=api_key, client_ip=client_ip)
+        elif user_id == "jgarrett":
+            return User(id="jgarrett", name="Jess Garrett", api_key=api_key, client_ip=client_ip)
         elif user_id == "eaba2ae5-b943-453e-9bef-4e137a7032cf": # Globus bcote@alcf.anl.gov
             return User(id="eaba2ae5-b943-453e-9bef-4e137a7032cf", name="Benoit Cote", api_key=api_key, client_ip=client_ip)
         else:
