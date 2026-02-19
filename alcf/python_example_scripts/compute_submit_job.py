@@ -14,8 +14,7 @@ echo "slept for 10 secs"
 sleep 60
 echo "using following python executable"
 which python
-echo "executing python file"
-python test.py
+echo End
 """
 
 # Convert commands into a single-line string separated with ";" and escaped quotes
@@ -28,8 +27,6 @@ data = {
     "executable": "/bin/bash",
     "arguments": ["-c", commands],
     "name": "TEST",
-    "stdout_path": "/home/bcote/qsub/",
-    "stderr_path": "/home/bcote/qsub/",
     "resources": {
         "memory": 2222
     },
