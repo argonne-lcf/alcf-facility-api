@@ -20,6 +20,7 @@ GRAPHQL_HTTPX_TRUST_ENV = os.getenv("GRAPHQL_URL", "True").lower() in ("true", "
 KEYCLOAK_CLIENT_ID = os.getenv("KEYCLOAK_CLIENT_ID", None)
 KEYCLOAK_CLIENT_SECRET = os.getenv("KEYCLOAK_CLIENT_SECRET", None)
 KEYCLOAK_REALM_NAME = os.getenv("KEYCLOAK_REALM_NAME", None)
+KEYCLOAK_SERVER_URL = os.getenv("KEYCLOAK_SERVER_URL", None)
 KEYCLOAK_ENABLED = KEYCLOAK_CLIENT_ID is not None
 
 # Globus authorization
