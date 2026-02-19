@@ -87,6 +87,12 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
             if job_spec.attributes.custom_attributes:
                 raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="'custom_attributes' not supported yet.")
             
+        # Mandatory fields for PBS
+        if not job_spec.stdout_path:
+            raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="'stdout_path' is mandatory.")
+        if not job_spec.stderr_path:
+            raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="'stderr_path' is mandatory.")
+
         # Convert IRI Job spec into GraphQL Job spec
         graphql_data = get_graphql_job_from_iri_jobspec(job_spec)
 
