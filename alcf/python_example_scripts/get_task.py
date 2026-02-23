@@ -10,9 +10,6 @@ task_id = "2c99e2aa-b3bf-4ab7-afd3-4e7c36e0ebc8"
 # Get Globus access token
 ACCESS_TOKEN = get_access_token()
 
-# Targeted resource
-resource_id = "7f7d0593-162e-43b9-8476-07d7d137d6ab" # Edith
-
 # Build headers
 headers = {
     "Authorization": f"Bearer {ACCESS_TOKEN}",
