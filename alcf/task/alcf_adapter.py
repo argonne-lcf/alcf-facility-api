@@ -118,6 +118,18 @@ class AlcfAdapter(TaskFacilityAdapter, AlcfAuthenticatedAdapter):
                 status_code=HTTP_404_NOT_FOUND, 
                 detail=f"Router {command.router} not found."
             )
+
+
+    # Delete task
+    async def delete_task(
+        self: "AlcfAdapter", 
+        user: account_models.User, 
+        task_id: str
+    ) -> None:
+        raise HTTPException(
+            status_code=HTTP_501_NOT_IMPLEMENTED, 
+            detail="Delete task method not implemented yet."
+        )
         
 
     # Convert DB task to IRI task
