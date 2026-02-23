@@ -98,10 +98,6 @@ async def get_db_resource_from_id(id) -> db_models.Resource:
 async def get_db_site_from_id(id) -> db_models.Site:
     return await get_db_object_from_id(id, db_models.Site)
 
-# Function to extract a single location entry from its id
-async def get_db_location_from_id(id) -> db_models.Location:
-    return await get_db_object_from_id(id, db_models.Location)
-
 # Function to extract a single incident entry from its id
 async def get_db_incident_from_id(id) -> db_models.Incident:
     return await get_db_object_from_id(id, db_models.Incident)
@@ -204,19 +200,6 @@ async def get_db_sites(
         limit=limit,
         name=name,
         short_name=short_name
-    )
-
-# Function to extract a list of location entries from a list of IDs (or all if no IDs provided)
-async def get_db_locations(
-    ids: List[str] = None, 
-    offset: int = None, 
-    limit: int = None
-    ) -> List[db_models.Location]:
-    return await get_db_objects(
-        db_models.Location, 
-        ids=ids, 
-        offset=offset, 
-        limit=limit
     )
 
 # Function to extract a list of incident entries from a list of IDs (or all if no IDs provided)
