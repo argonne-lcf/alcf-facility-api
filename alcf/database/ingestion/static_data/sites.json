@@ -11,6 +11,9 @@
         "state_or_province_name": "Illinois",
         "street_address": "9700 S Cass Ave (Building 240)",
         "unlocode": "US",
+        "altitude": 735,
+        "latitude": 41.7091,
+        "longitude": -87.9786,
         "resource_ids": [
             "55c1c993-1124-47f9-b823-514ba3849a9a", 
             "9674c7e1-aecc-4dbb-bf01-c9197e027cd6", 
