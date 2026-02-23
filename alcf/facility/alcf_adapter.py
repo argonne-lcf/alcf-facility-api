@@ -40,16 +40,13 @@ class AlcfAdapter(FacilityFacilityAdapter):
         short_name: str | None = None
         ) -> list[facility_models.Site]:
 
-        # Error for unsupported filters
-        if modified_since:
-            raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="'modified_since' filter not supported yet.")
-
         # Gather sites from database
         sites = await get_db_sites(
             name=name,
             short_name=short_name,
             offset=offset,
             limit=limit,
+            modified_since=modified_since,
         )
 
         # Format sites into IRI specification and return

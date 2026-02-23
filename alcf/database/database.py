@@ -3,6 +3,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy import select
 from fastapi import HTTPException
 from starlette.status import HTTP_404_NOT_FOUND
+import datetime
 from typing import List
 from contextlib import asynccontextmanager
 from . import models as db_models
@@ -118,6 +119,7 @@ async def get_db_objects(
     short_name: str = None,
     description: str = None,
     group: str = None,
+    modified_since: datetime.datetime | None = None,
     offset: int = None,
     limit: int = None,
     resource_type: str = None,
@@ -139,6 +141,12 @@ async def get_db_objects(
                 stmt = stmt.where(db_model_class.description == description)
             if group:
                 stmt = stmt.where(db_model_class.group == group)
+            if modified_since is not None and hasattr(db_model_class, "last_updated"):
+                ms = modified_since
+                # DB stores timestamps as "timestamp without time zone" (naive).
+                if isinstance(ms, datetime.datetime) and ms.tzinfo is not None:
+                    ms = ms.astimezone(datetime.timezone.utc).replace(tzinfo=None)
+                stmt = stmt.where(db_model_class.last_updated >= ms)
             if offset is not None:
                 stmt = stmt.offset(offset)
             if limit is not None:
@@ -168,6 +176,7 @@ async def get_db_resources(
     name: str = None, 
     description: str = None,
     group: str = None,
+    modified_since: datetime.datetime | None = None,
     offset: int = None,
     limit: int = None,
     resource_type: str = None,
@@ -179,6 +188,7 @@ async def get_db_resources(
         name=name, 
         description=description, 
         group=group,
+        modified_since=modified_since,
         offset=offset,
         limit=limit,
         resource_type=resource_type,
@@ -191,7 +201,8 @@ async def get_db_sites(
     name: str = None, 
     short_name: str = None,
     offset: int = None, 
-    limit: int = None
+    limit: int = None,
+    modified_since: datetime.datetime | None = None,
     ) -> List[db_models.Site]:
     return await get_db_objects(
         db_models.Site, 
@@ -199,7 +210,8 @@ async def get_db_sites(
         offset=offset, 
         limit=limit,
         name=name,
-        short_name=short_name
+        short_name=short_name,
+        modified_since=modified_since,
     )
 
 # Function to extract a list of incident entries from a list of IDs (or all if no IDs provided)
@@ -211,7 +223,8 @@ async def get_db_incidents(
     description: str = None,
     status: str = None,
     type: str = None,
-    resolution: str = None
+    resolution: str = None,
+    modified_since: datetime.datetime | None = None
     ) -> List[db_models.Incident]:
     return await get_db_objects(
         db_models.Incident, 
@@ -222,7 +235,8 @@ async def get_db_incidents(
         description=description,
         status=status,
         type=type,
-        resolution=resolution
+        resolution=resolution,
+        modified_since=modified_since,
     )
 
 # Function to extract a list of event entries from a list of IDs (or all if no IDs provided)
@@ -232,7 +246,8 @@ async def get_db_events(
     limit: int = None,
     name: str = None,
     description: str = None,
-    status: str = None
+    status: str = None,
+    modified_since: datetime.datetime | None = None,
     ) -> List[db_models.Event]:
     return await get_db_objects(
         db_models.Event, 
@@ -241,5 +256,6 @@ async def get_db_events(
         limit=limit,
         name=name,
         description=description,
-        status=status
+        status=status,
+        modified_since=modified_since,
     )
