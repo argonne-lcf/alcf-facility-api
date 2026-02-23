@@ -45,8 +45,6 @@ class AlcfAdapter(StatusFacilityAdapter):
         """Update and return all resources from the database."""
 
         # Error for unsupported filters
-        if modified_since:
-            raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="'modified_since' filter not supported yet.")
         if site_id:
             raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="'site_id' not supported yet.")
 
@@ -55,6 +53,7 @@ class AlcfAdapter(StatusFacilityAdapter):
             name=name,
             description=description,
             group=group,
+            modified_since=modified_since,
             offset=offset,
             limit=limit,
             resource_type=resource_type.value if resource_type else None,
@@ -97,8 +96,6 @@ class AlcfAdapter(StatusFacilityAdapter):
         """Return all events from the database."""
 
         # Error for unsupported filters
-        if modified_since:
-            raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="'modified_since' filter not supported yet.")
         if from_:
             raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="'from' filter not supported yet.")
         if to:
@@ -116,7 +113,8 @@ class AlcfAdapter(StatusFacilityAdapter):
             limit=limit,
             name=name,
             description=description,
-            status=status.value if status else None
+            status=status.value if status else None,
+            modified_since=modified_since,
         )
 
         # Filter based on resource ID
@@ -165,8 +163,6 @@ class AlcfAdapter(StatusFacilityAdapter):
         """Return all incidents from the database."""
 
         # Error for unsupported filters
-        if modified_since:
-            raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="'modified_since' filter not supported yet.")
         if from_:
             raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="'from' filter not supported yet.")
         if to:
@@ -182,7 +178,8 @@ class AlcfAdapter(StatusFacilityAdapter):
             description=description,
             status=status.value if status else None,
             type=type_.value if type_ else None,
-            resolution=resolution.value if resolution else None
+            resolution=resolution.value if resolution else None,
+            modified_since=modified_since,
         )
 
         # Filter based on resource ID
@@ -202,83 +199,6 @@ class AlcfAdapter(StatusFacilityAdapter):
         incident = await get_db_incident_from_id(id)
         return self.__format_incident(incident)
 
-
-    # --------------------
-    #  Get related objects
-    # --------------------
-
-    # Get resource by event
-    #async def get_resource_by_event(self, event_id: str, str = None) -> status_models.Resource:
-    #    """Return the resource object associated with the specified event id via the impacts relationship."""
-    #    event = await get_db_event_from_id(event_id)
-    #    resource = await get_db_resource_from_id(event.resource_id)
-    #    return self.__format_resource(resource)
-
-    # Get incident by event
-    #async def get_incident_by_event(self, event_id: str, db_session: AsyncSession, if_modified_since: str = None) -> Incident:
-    #    """Return the incident object associated with the specified event id via the generatedBy relationship."""
-    #    event = await get_db_event_from_id(event_id, db_session)
-    #    return await self.get_incident(event.incident_id, db_session)
-
-    # Get location by site
-    #async def get_location_by_site(self, site_id: str, db_session: AsyncSession, if_modified_since: str = None) -> Location:
-    #    """Return the location object tied to a given site."""
-    #    site = await get_db_site_from_id(site_id, db_session)
-    #    return await self.get_location(site.location_id, db_session)
-
-    # Get resources by site
-    #async def get_resources_by_site(self, site_id: str, db_session: AsyncSession, if_modified_since: str = None) -> List[Resource]:
-    #    """Return list of resource objects tied to a given site."""
-    #    #TODO: check for updates needed
-    #    site = await get_db_site_from_id(site_id, db_session)
-    #    return await self.get_resources(db_session, if_modified_since, ids=site.resource_ids)
-
-    # Get events by incident
-    #async def get_events_by_incident(self, incident_id: str, db_session: AsyncSession, if_modified_since: str = None) -> List[Event]:
-    #    """Return list of event objects tied to a given incident."""
-    #    incident = await get_db_incident_from_id(incident_id, db_session)
-    #    return await self.get_events(db_session, if_modified_since, ids=incident.event_ids)
-
-    # Get resources by incident
-    #async def get_resources_by_incident(self, incident_id: str, db_session: AsyncSession, if_modified_since: str = None) -> List[Resource]:
-    #    """Return list of resource objects tied to a given incident."""
-    #    #TODO: check for updates needed
-    #    incident = await get_db_incident_from_id(incident_id, db_session)
-    #    return await self.get_resources(db_session, if_modified_since, ids=incident.resource_ids)
-
-    # --------------------------------------
-    #  Private frontend formatting functions
-    # --------------------------------------
-
-    # Format site
-    #def __format_site(self, db_site: db_models.Site) -> status_models.Site:
-    #    """Format a database site object into a pydantic site object."""
-    #
-    #    # Build data structure from pydantic model
-    #    return status_models.Site(
-    #        id=db_site.id,
-    #        name=db_site.name,
-    #        description=db_site.description,
-    #        last_modified=db_site.last_modified,
-    #        operating_organization=db_site.operating_organization
-    #    )
-
-    # Format location
-    #def __format_location(self, db_location: db_models.Location) -> status_models.Location:
-    #    """Format a database location object into a pydantic location object."""
-    #
-    #    # Build data structure from pydantic model
-    #    return status_models.Location(
-    #        id=db_location.id,
-    #        name=db_location.name,
-    #        description=db_location.description,
-    #        last_modified=db_location.last_modified,
-    #        country_name=db_location.country_name,
-    #        locality_name=db_location.locality_name,
-    #        state_or_province_name=db_location.state_or_province_name,
-    #        street_address=db_location.street_address,
-    #        unlocode=db_location.unlocode
-    #    )
 
     # Format resource
     def __format_resource(self, db_resource: db_models.Resource) -> status_models.Resource:
