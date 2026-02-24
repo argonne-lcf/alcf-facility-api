@@ -29,7 +29,7 @@ class AlcfAdapter(TaskFacilityAdapter, AlcfAuthenticatedAdapter):
         self : "AlcfAdapter",
         user: account_models.User,
         task_id: str,
-        ) -> task_models.Task|None:
+        ) -> task_models.Task | None:
 
         # Retrieve task from database
         db_task = await get_db_task_from_id(task_id)
@@ -98,7 +98,7 @@ class AlcfAdapter(TaskFacilityAdapter, AlcfAuthenticatedAdapter):
                     "id": task_id,
                     "user_id": user.id,
                     "status": task_models.TaskStatus.pending.value,
-                    "task": json.dumps(task.model_dump()),
+                    "task_command": json.dumps(task.model_dump()),
                     "result": None
                 })
                 
@@ -140,8 +140,8 @@ class AlcfAdapter(TaskFacilityAdapter, AlcfAuthenticatedAdapter):
 
         # Convert database data to IRI TaskCommand model
         try:
-            command_dict = json.loads(db_task.command) if db_task.command else None
-            command = task_models.TaskCommand(**command_dict) if command_dict else None
+            task_command_dict = json.loads(db_task.task_command) if db_task.task_command else None
+            task_command = task_models.TaskCommand(**task_command_dict) if task_command_dict else None
         except Exception as e:
             raise HTTPException(
                 status_code=HTTP_500_INTERNAL_SERVER_ERROR,
@@ -154,7 +154,7 @@ class AlcfAdapter(TaskFacilityAdapter, AlcfAuthenticatedAdapter):
                 id=db_task.id,
                 status=task_models.TaskStatus(db_task.status),
                 result=db_task.result,
-                command=command
+                command=task_command
             )
         except Exception as e:
             raise HTTPException(
