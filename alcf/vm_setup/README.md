@@ -163,14 +163,14 @@ TRUNCATE TABLE event, incident CASCADE;
 
 ### Migrate database if fields are changed
 
-Example with task, which changed `command` to `task`. Check current columns:
+Example with task, which changed `command` to `task_command`. Check current columns:
 ```bash
 psql -U apiuser -d facilityapi_db -c "\d task"
 ```
 
-Apply the migration
+Apply the migration:
 ```bash
-psql -U apiuser -d facilityapi_db -c "ALTER TABLE task RENAME COLUMN command TO task;"
+psql -U apiuser -d facilityapi_db -c "ALTER TABLE task RENAME COLUMN command TO task_command;"
 ```
 
 ## Redis cache
