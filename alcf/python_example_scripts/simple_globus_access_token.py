@@ -24,3 +24,4 @@ token_response = client.oauth2_exchange_code_for_tokens(auth_code)
 
 # Collect access token for ALCF Facility API
 access_token = token_response.by_resource_server[SCOPE_CLIENT_ID]["access_token"]
+print(access_token)
