@@ -61,3 +61,36 @@ Execute any of the `filesystem_....py` file. Make sure you adjust the input para
 
 Use the `get_task.py` file to recover your result (or see the status). Make sure you include your `task_id` in the file.
 
+## Access Dev API with SSH Tunnel
+
+If you need to access the internal dev API from outside Argonne's network, you can create an ssh tunnel through one of the ALCF login node:
+```bash
+ssh -N -D 8001 <your-username>@edtb-02.alcf.anl.gov
+```
+
+You can verify the tunnel on port 8001 with:
+```bash
+ps aux | grep 8001
+```
+
+With `curl`, make queries through SOCKS5 to avoid SSL certificate issues:
+```
+curl -x socks5h://127.0.0.1:8001 https://api-dev.alcf.anl.gov/api/v1/status/resources
+```
+
+With `python`, make sure you `requests` is installed with the `socks` option:
+```bash
+pip install "requests[socks]"
+```
+
+Then query the API with:
+```python
+import requests
+
+proxies = {"https": "socks5h://127.0.0.1:8001"}
+
+response = requests.get("https://api-dev.alcf.anl.gov/api/v1/status/resources", proxies=proxies)
+
+print(response.status_code)
+print(response.text)
+```
