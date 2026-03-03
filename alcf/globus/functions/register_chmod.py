@@ -47,7 +47,7 @@ def chmod(params):
     class File(BaseModelWithForbiddenExtra):
         name: str
         type: str
-        link_target: Optional[str] = None
+        link_target: Optional[str] = ""
         user: str
         group: str
         permissions: str
@@ -181,8 +181,8 @@ def chmod(params):
             stat_info.st_mtime, tz=timezone.utc
         ).isoformat().replace("+00:00", "Z")
 
-        # Set link target to None since chmod will not follow symlinks
-        link_target = None
+        # Set link target to empty since chmod will not follow symlinks
+        link_target = ""
 
         # Build and return the entry info dictionary
         return File(
