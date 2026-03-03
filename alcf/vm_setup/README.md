@@ -9,6 +9,11 @@ Make sure the VM has access to the latest packages
 sudo apt update && sudo apt upgrade -y
 ```
 
+Add packages
+```bash
+sudo apt install make
+```
+
 ## Firewall
 
 Make sure the Uncomplicated Firewall (UFW) is disabled and reset to its original setting:
@@ -78,7 +83,7 @@ sudo systemctl status postgresql
 
 Start a Postgres shell as the admin user, and create `apiuser` user for the database (the user needs to be the same as the Unix user you created in the previous section). **Do not** use `@ : / ? # [ ] % < > !` characters for the password, it will cause issue when parsing the password from the database URL.
 ```bash
-sudo -u postgres psql
+sudo -u postgres psql # Or with local Mac: psql postgres
 CREATE USER apiuser WITH PASSWORD 'your-password-here';
 ```
 
@@ -118,7 +123,7 @@ Check if you have your tables created:
 psql -U apiuser -d facilityapi_db -c "\dt"
 ```
 
-Check how many entries you have for each table:
+Check how many entries you have for status tables:
 ```bash
 psql -U apiuser -d facilityapi_db -c "SELECT 'facility' as table_name, COUNT(*) as row_count FROM facility UNION ALL SELECT 'location', COUNT(*) FROM location UNION ALL SELECT 'site', COUNT(*) FROM site UNION ALL SELECT 'resource', COUNT(*) FROM resource UNION ALL SELECT 'incident', COUNT(*) FROM incident UNION ALL SELECT 'event', COUNT(*) FROM event;"
 ```
@@ -126,6 +131,16 @@ psql -U apiuser -d facilityapi_db -c "SELECT 'facility' as table_name, COUNT(*) 
 Check status of resources according to the database:
 ```bash
 psql -U apiuser -d facilityapi_db -c "SELECT id, name, type, current_status FROM resource;"
+```
+
+Check how many entries you have for task and user:
+```bash
+psql -U apiuser -d facilityapi_db -c "SELECT 'user' as table_name, COUNT(*) as row_count FROM \"user\" UNION ALL SELECT 'task', COUNT(*) FROM task;"
+```
+
+Check basic details on each user:
+```bash
+psql -U apiuser -d facilityapi_db -c "SELECT username, idp_name, auth_service FROM \"user\";"
 ```
 
 **DANGER ZONE** Clear all data from all table:
@@ -146,6 +161,38 @@ TRUNCATE TABLE event, incident CASCADE;
 # DANGER ZONE
 ```
 
+### Migrate database if fields are changed
+
+Example with task, which changed `command` to `task_command`. Check current columns:
+```bash
+psql -U apiuser -d facilityapi_db -c "\d task"
+```
+
+Apply the migration:
+```bash
+psql -U apiuser -d facilityapi_db -c "ALTER TABLE task RENAME COLUMN command TO task_command;"
+```
+
+## Redis cache
+
+Install redis
+```bash
+sudo apt update
+sudo apt install -y redis-server
+```
+
+Enable Redis as a systemctl service
+```bash
+sudo systemctl enable redis-server
+sudo systemctl start redis-server
+systemctl status redis-server
+```
+
+Check connectivity
+```bash
+redis-cli ping
+```
+
 ## FastAPI application
 
 Sudo into the `apiuser` account and go to its home directory:
@@ -154,14 +201,21 @@ sudo -u apiuser /bin/bash
 cd ~
 ```
 
-Create directory for the gunicorn logs
+Create directory for the gunicorn logs:
 ```bash
-mkdir /home/apiuser/logs
+mkdir /home/apiuser/alcf-facility-api/logs
+```
+
+Install `uv`:
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+# You may need to exit the shell and come back to see the uv package
 ```
 
 Clone the alcf-facility-api code, and follow the instructions in the previous README file to install the application:
 ```bash
 git clone https://github.com/argonne-lcf/alcf-facility-api
+cd alcf-facility-api
 git checkout -b alcf-deployment --track origin/alcf-deployment
 ```
 

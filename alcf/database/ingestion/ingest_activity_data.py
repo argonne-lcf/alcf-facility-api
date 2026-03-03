@@ -31,6 +31,7 @@ class ALCF_RESOURCE_ID_LIST(str, Enum):
     sophia = "9674c7e1-aecc-4dbb-bf01-c9197e027cd6"
     crux = "8b9b42f7-572a-4909-8472-a0453436304c"
     aurora = "0325fc07-6fb7-4453-b772-3d5030b2df72"
+    edith = "7f7d0593-162e-43b9-8476-07d7d137d6ab"
 
 # List of URLs to fetch activity.json files
 class ALCF_RESOURCE_URLS(str, Enum):
@@ -343,8 +344,9 @@ async def ingest_activity_data_for_resource(resource_id: str, db):
             # If the last event is the same as the new event ...
             if last_event.description == event.description and last_event.status == event.status:
                 
-                # Update the time when the resource status was last verified
+                # Update the time when the resource status was last verified and ensure current_status is synced
                 resource.last_verified = current_datetime
+                resource.current_status = event.status
                 await db.commit()
 
                 # Skip the creation of a new event or incident

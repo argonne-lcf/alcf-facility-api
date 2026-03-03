@@ -12,9 +12,13 @@ locust>=2.30.0
 sqlmodel>=0.0.14
 asyncache>=0.1.0
 cachetools>=5.0.0
+redis>=5.0.0
 fastapi[standard]>=0.100.0
 uvicorn[standard]>=0.22.0
 humps>=0.2.2
 psij-python==0.9.11
 python-dotenv>=1.0.0
 gunicorn>=23.0.0
+python-keycloak>=5.8.1
+globus_compute_sdk
+globus_sdk

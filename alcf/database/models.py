@@ -1,5 +1,5 @@
 from sqlmodel import SQLModel, Field, JSON
-from sqlalchemy import Column
+from sqlalchemy import Column, DateTime
 from typing import List, Optional
 from datetime import datetime, timezone
 
@@ -10,7 +10,7 @@ class NamedObject(SQLModel):
     name: Optional[str] = None
     short_name: Optional[str] = None
     description: Optional[str] = None
-    last_updated: Optional[datetime] = Field(default_factory=lambda: datetime.now(timezone.utc))
+    last_updated: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
 
 class Facility(NamedObject, table=True):
     """Facility entity."""
@@ -57,3 +57,23 @@ class Resource(NamedObject, table=True):
     last_verified: Optional[datetime] = None
     site_id: str
     capability_ids: Optional[List[str]] = Field(default=None, sa_column=Column(JSON))
+
+class User(SQLModel, table=True):
+    """User entity."""
+    id: str = Field(primary_key=True, index=True)
+    name: Optional[str] = None
+    username: Optional[str] = None
+    idp_id: Optional[str] = None
+    idp_name: Optional[str] = None
+    auth_service: Optional[str] = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
+
+class Task(SQLModel, table=True):
+    """Task entity."""
+    id: str = Field(primary_key=True, index=True)
+    user_id: str = Field(index=True)  # Foreign key to User
+    status: str = Field(default="pending")  # pending, active, completed, failed, canceled
+    result: Optional[str] = None
+    task_command: str = Field(sa_column=Column(JSON))  # Store TaskCommand as JSON string
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
