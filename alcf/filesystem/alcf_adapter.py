@@ -41,12 +41,8 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
     def format_chmod_response(
         self: "AlcfAdapter",
         result
-    ) -> filesystem_models.PutFileChmodResponse:
-        
-        # Convert result (should only be one line) into IRI File and return the object
-        return filesystem_models.PutFileChmodResponse(
-            output=get_iri_file_from_ls_line(result)
-        )
+    ) -> filesystem_models.PutFileChmodResponse:        
+        return filesystem_models.PutFileChmodResponse(output=result)
 
 
     # Chown
@@ -59,6 +55,7 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
 
         # Build data for the command
         input_data = request_model.model_dump()
+        input_data["user"] = input_data.pop("owner")
 
         # Validate data
         try:
@@ -78,11 +75,7 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
         self: "AlcfAdapter",
         result
     ) -> filesystem_models.PutFileChownResponse:
-        
-        # Convert result (should only be one line) into IRI File and return the object
-        return filesystem_models.PutFileChmodResponse(
-            output=get_iri_file_from_ls_line(result)
-        )
+        return filesystem_models.PutFileChmodResponse(output=result)
     
 
     # Ls
@@ -128,14 +121,7 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
         self: "AlcfAdapter",
         result
     ) -> filesystem_models.GetDirectoryLsResponse:
-        
-        # Recover all lines from the command
-        lines = [line.strip() for line in result.splitlines() if line.strip()]
-
-        # Convert lines into IRI File and return array
-        return filesystem_models.GetDirectoryLsResponse(
-            output=[get_iri_file_from_ls_line(line) for line in lines if len(line.split()) > 2]
-        )
+        return filesystem_models.GetDirectoryLsResponse(output=result)
           
 
     # Head
@@ -174,13 +160,8 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
     def format_head_response(
         self: "AlcfAdapter",
         result
-    ) -> Tuple[Any, int]:
-        
-        # Get the end_position
-        end_position = len(result)
-
-        # Return IRI response
-        return result, end_position
+    ) -> filesystem_models.GetFileHeadResponse:
+        return filesystem_models.GetFileHeadResponse(**result)
     
 
     # Tail
@@ -231,9 +212,8 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
         self: "AlcfAdapter",
         result
     ) -> filesystem_models.GetViewFileResponse:
-        
-        # Return IRI response
-        return filesystem_models.GetViewFileResponse(output=result)
+        content = result["output"]["content"]
+        return filesystem_models.GetViewFileResponse(output=content)
 
 
     # Checksum
