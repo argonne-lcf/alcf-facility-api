@@ -162,11 +162,9 @@ async def submit_task(
     # Get Globus Compute client from user's token
     gcc = get_compute_client(user.name, user.api_key)
 
-
-
     # Submit task to Globus Compute
     try:
-        batch = gcc.create_batch(user_endpoint_config={"provider": "local"})
+        batch = gcc.create_batch()
         batch.add(function_id, [input_data])
         batch_response = gcc.batch_run(endpoint_id, batch)
     except Exception as e:
