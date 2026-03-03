@@ -155,28 +155,26 @@ IRI_SHOW_MISSING_ROUTES=False
 GRAPHQL_URL="https://your-api-url"
 
 # Keycloak integration
-KEYCLOAK_CLIENT_ID="PBS-EDTB"
+KEYCLOAK_CLIENT_ID="<your-client-id>"
 KEYCLOAK_CLIENT_SECRET="your-keycloak-secret"
-KEYCLOAK_REALM_NAME="PBS-EDTB"
-KEYCLOAK_SERVER_URL="https://keycloak-internal.alcf.anl.gov/realms/PBS-EDTB"
-KEYCLOAK_AUTHORIZATION_ENDPOINT="https://keycloak-internal.alcf.anl.gov/realms/PBS-EDTB/protocol/openid-connect/auth"
-KEYCLOAK_REDIRECT_URI="http://localhost:8000/auth/callback"
+KEYCLOAK_REALM_NAME="<your-realm>"
+KEYCLOAK_SERVER_URL="https://<your-domain>/realms/<your-realm>"
 
 
 # Compute functions -> function_name: function_UUID
 GLOBUS_COMPUTE_FUNCTIONS='
 {
-    "chmod": "8f9a8eb8-495c-4122-a7cf-44c616d98d1b",
-    "chown": "6e8635cc-1f90-4051-bbbe-f44a0135ab50",
-    "ls": "1b1dc9be-b6e1-48f0-96e5-ad42cbd3b7f0",
-    "head": "ee15b751-fb5c-43ef-be27-856c5073fac2",
-    "view": "7494c19d-3967-43c9-9240-f99dbcf77661"
+    "chmod": "...",
+    "chown": "...",
+    "ls": "...",
+    "head": "...",
+    "view": "..."
 }
 '
 # Compute endpoints -> resource_name: endpoint_UUID
 GLOBUS_COMPUTE_ENDPOINTS='
 {  
-    "edith": "your-globus-compute-endpoint"
+    "your-resource": "your-globus-compute-endpoint-id"
 }
 '
 ```
