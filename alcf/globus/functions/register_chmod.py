@@ -7,7 +7,7 @@ import os
 FILE_NAME = "function_ids.json"
 COMMAND = "chmod"
 
-# Globus Compute function definition (subprocess - chmod)
+# Globus Compute function definition (chmod)
 def chmod(params):
     
     # Import all necessary packages
