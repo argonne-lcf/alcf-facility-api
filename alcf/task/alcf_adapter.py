@@ -29,7 +29,7 @@ class AlcfAdapter(TaskFacilityAdapter, AlcfAuthenticatedAdapter):
         self : "AlcfAdapter",
         user: account_models.User,
         task_id: str,
-        ) -> task_models.Task|None:
+        ) -> task_models.Task | None:
 
         # Retrieve task from database
         db_task = await get_db_task_from_id(task_id)
@@ -77,46 +77,48 @@ class AlcfAdapter(TaskFacilityAdapter, AlcfAuthenticatedAdapter):
     async def put_task(
         self: "AlcfAdapter",
         user: account_models.User,
-        resource: status_models.Resource|None,
-        command: task_models.TaskCommand
-    ) -> str:
-                
+        resource: status_models.Resource | None,
+        task: task_models.TaskCommand
+    ) -> task_models.TaskSubmitResponse:
+
         # Create input dictionary
-        kwargs = {"user": user, "resource": resource} | command.args
+        kwargs = {"user": user, "resource": resource} | task.args
 
         # Filesystem operations
-        if command.router == "filesystem":
+        if task.router == "filesystem":
 
             # If this is a supported command ...
-            if command.command in filesystem_commands:
+            if task.command in filesystem_commands:
 
                 # Execute the command and get the task ID
-                task_id = await filesystem_commands[command.command](**kwargs)
+                task_id = await filesystem_commands[task.command](**kwargs)
 
                 # Create task entry in database
                 await add_task_to_db({
                     "id": task_id,
                     "user_id": user.id,
                     "status": task_models.TaskStatus.pending.value,
-                    "command": json.dumps(command.model_dump()),
+                    "task_command": json.dumps(task.model_dump()),
                     "result": None
                 })
                 
                 # Return the task ID to the user
-                return task_id
+                return task_models.TaskSubmitResponse(
+                    task_id=task_id
+                )
             
             # Unsupported commands
             else:
                 raise HTTPException(
                     status_code=HTTP_501_NOT_IMPLEMENTED, 
-                    detail=f"Command {command.command} option not implemented yet."
+                    detail=f"Command {task.command} option not implemented yet."
                 )
 
         # Other operations not implemented yet
         else:
             raise HTTPException(
                 status_code=HTTP_404_NOT_FOUND, 
-                detail=f"Router {command.router} not found."
+                detail=f"Router {task.router} not found."
             )
 
 
@@ -138,8 +140,8 @@ class AlcfAdapter(TaskFacilityAdapter, AlcfAuthenticatedAdapter):
 
         # Convert database data to IRI TaskCommand model
         try:
-            command_dict = json.loads(db_task.command) if db_task.command else None
-            command = task_models.TaskCommand(**command_dict) if command_dict else None
+            task_command_dict = json.loads(db_task.task_command) if db_task.task_command else None
+            task_command = task_models.TaskCommand(**task_command_dict) if task_command_dict else None
         except Exception as e:
             raise HTTPException(
                 status_code=HTTP_500_INTERNAL_SERVER_ERROR,
@@ -152,7 +154,7 @@ class AlcfAdapter(TaskFacilityAdapter, AlcfAuthenticatedAdapter):
                 id=db_task.id,
                 status=task_models.TaskStatus(db_task.status),
                 result=db_task.result,
-                command=command
+                command=task_command
             )
         except Exception as e:
             raise HTTPException(

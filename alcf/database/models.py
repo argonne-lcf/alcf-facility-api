@@ -74,6 +74,6 @@ class Task(SQLModel, table=True):
     user_id: str = Field(index=True)  # Foreign key to User
     status: str = Field(default="pending")  # pending, active, completed, failed, canceled
     result: Optional[str] = None
-    command: str = Field(sa_column=Column(JSON))  # Store TaskCommand as JSON string
+    task_command: str = Field(sa_column=Column(JSON))  # Store TaskCommand as JSON string
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None))

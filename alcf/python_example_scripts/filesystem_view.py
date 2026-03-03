@@ -8,12 +8,14 @@ load_dotenv()
 ACCESS_TOKEN = get_access_token()
 
 # Targeted resource
-resource_id = "7f7d0593-162e-43b9-8476-07d7d137d6ab" # Edith
+#resource_id = "7f7d0593-162e-43b9-8476-07d7d137d6ab" # Edith
+resource_id = "9674c7e1-aecc-4dbb-bf01-c9197e027cd6" # Sophia
 
 # Build input data
 data = {
     "path": "/home/bcote/test.txt",
-    "size": 10
+    "size": 10,
+    "offset": 3
 }
 
 # Build headers
