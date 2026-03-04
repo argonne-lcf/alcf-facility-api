@@ -188,6 +188,47 @@ class HeadInputData(BaseModelWithForbiddenExtra):
         return self
     
 
+# Input data for tail command
+class TailInputData(BaseModelWithForbiddenExtra):
+    path: Path
+    file_bytes: Optional[int] = Field(default=None, ge=0, le=MAX_BYTES)
+    lines: Optional[int] = Field(default=None, ge=0)
+    skip_trailing: Optional[bool] = Field(default=False)
+
+    # Path validation: forbidden chars, absolute required
+    @field_validator("path", mode="before")
+    @classmethod
+    def validate_path_format(cls, v) -> Path:
+        s = str(v) if not isinstance(v, Path) else str(v)
+        if "\0" in s:
+            raise ValueError("Null byte not allowed in path.")
+        if not re.compile(r"^[\w\-./\\]+$").fullmatch(s):
+            raise ValueError("Path contains forbidden characters.")
+        p = Path(s)
+        if not p.is_absolute():
+            raise ValueError("Path must be absolute.")
+        if any(part in (".", "..") for part in p.parts):
+            raise ValueError("Path cannot contain '.' or '..' segments.")
+        return p
+
+    # Path allowlist validation: /home/<username>, /eagle, /lus/eagle
+    @field_validator("path")
+    @classmethod
+    def validate_path_prefix(cls, p: Path) -> Path:
+        if not is_allowed_path(p):
+            raise ValueError(f"Path must start with one of: {ALLOWED_PATHS_TEXT}.")
+        return p
+
+    # file_bytes and lines: exactly one must be provided (mutually exclusive)
+    @model_validator(mode="after")
+    def validate_file_bytes_and_lines(self):
+        if self.file_bytes is not None and self.lines is not None:
+            raise ValueError("Cannot use 'file_bytes' and 'lines' at the same time.")
+        if self.file_bytes is None and self.lines is None:
+            raise ValueError("At least one of 'file_bytes' or 'lines' must be provided.")
+        return self
+    
+
 # Input data for ls command
 class LsInputData(BaseModelWithForbiddenExtra):
     path: Path

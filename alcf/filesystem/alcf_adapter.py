@@ -205,8 +205,35 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
         file_bytes: int | None, 
         lines: int | None, 
         skip_trailing: bool,
-    ) -> Tuple[Any, int]:
-        raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="Not implemented yet.")
+    ) -> str:
+        
+        # Build data for the command
+        input_data = {
+            "path": path,
+            "file_bytes": file_bytes,
+            "lines": lines,
+            "skip_trailing": skip_trailing
+        }
+
+        # Validate data
+        try:
+            _ = validation.TailInputData(**input_data)
+        except Exception as e:
+            raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=f"Input validation error: {str(e)}")
+
+        # Submit task to Globus Compute and wait for the task ID
+        task_id = await globus_utils.submit_task("tail", resource, input_data, user)
+
+        # Return task ID to the user
+        return task_id
+
+
+    # Format tail response
+    def format_tail_response(
+        self: "AlcfAdapter",
+        result
+    ) -> filesystem_models.GetFileTailResponse:
+        return filesystem_models.GetFileTailResponse(**result)
 
 
     # View
