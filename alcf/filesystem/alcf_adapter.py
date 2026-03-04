@@ -117,6 +117,8 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
         # Disable options that are not ready yet
         if recursive:
             raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="'recursive' option not implemented yet.")
+        if dereference:
+            raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="'dereference' option not implemented yet.")
         
         # Build data for the command
         input_data = {
@@ -357,8 +359,37 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
         user: account_models.User, 
         path: str, 
         dereference: bool,
+    ) -> str:
+        
+        # Disable options that are not ready yet
+        if dereference:
+            raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="'dereference' option not implemented yet.")
+
+        # Build data for the command
+        input_data = {
+            "path": path,
+            "dereference": dereference
+        }
+
+        # Validate data
+        try:
+            _ = validation.StatInputData(**input_data)
+        except Exception as e:
+            raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=f"Input validation error: {str(e)}")
+
+        # Submit task to Globus Compute and wait for the task ID
+        task_id = await globus_utils.submit_task("stat", resource, input_data, user)
+
+        # Return task ID to the user
+        return task_id
+
+
+    # Format stat response
+    def format_stat_response(
+        self: "AlcfAdapter",
+        result
     ) -> filesystem_models.GetFileStatResponse:
-        raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="Not implemented yet.")
+        return filesystem_models.GetFileStatResponse(output=result)
 
 
     # Rm
