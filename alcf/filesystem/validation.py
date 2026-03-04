@@ -193,7 +193,7 @@ class TailInputData(BaseModelWithForbiddenExtra):
     path: Path
     file_bytes: Optional[int] = Field(default=None, ge=0, le=MAX_BYTES)
     lines: Optional[int] = Field(default=None, ge=0)
-    skip_trailing: Optional[bool] = Field(default=False)
+    skip_heading: Optional[bool] = Field(default=False)
 
     # Path validation: forbidden chars, absolute required
     @field_validator("path", mode="before")

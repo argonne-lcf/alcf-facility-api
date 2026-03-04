@@ -204,7 +204,7 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
         path: str, 
         file_bytes: int | None, 
         lines: int | None, 
-        skip_trailing: bool,
+        skip_heading: bool,
     ) -> str:
         
         # Build data for the command
@@ -212,7 +212,7 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
             "path": path,
             "file_bytes": file_bytes,
             "lines": lines,
-            "skip_trailing": skip_trailing
+            "skip_heading": skip_heading
         }
 
         # Validate data
