@@ -14,6 +14,7 @@ filesystem_commands = {
     "view": filesystem_adaptor.view,
     "checksum": filesystem_adaptor.checksum,
     "file": filesystem_adaptor.file,
+    "stat": filesystem_adaptor.stat,
 }
 
 # Mapping between filesystem commands and result formating functions (needed for newly generate result)
@@ -26,6 +27,7 @@ filesystem_format_functions = {
     "view": filesystem_adaptor.format_view_response,
     "checksum": filesystem_adaptor.format_checksum_response,
     "file": filesystem_adaptor.format_file_response,
+    "stat": filesystem_adaptor.format_stat_response,
 }
 
 # Mapping between filesystem commands and response type (needed for database extraction)
@@ -37,4 +39,5 @@ filesystem_model_responses = {
     "view": filesystem_models.GetViewFileResponse,
     "checksum": filesystem_models.GetFileChecksumResponse,
     "file": filesystem_models.GetFileTypeResponse,
+    "stat": filesystem_models.GetFileStatResponse,
 }
