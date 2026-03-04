@@ -7,7 +7,9 @@ resource_id = "9674c7e1-aecc-4dbb-bf01-c9197e027cd6" # Sophia
 # Build input data
 data = {
     "path": "/home/bcote/test.txt",
-    "lines": 3
+    "lines": None,
+    "bytes": 6,
+    "skipTrailing": False
 }
 
 # Send request to Facility API
