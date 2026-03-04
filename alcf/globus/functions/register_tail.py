@@ -69,7 +69,7 @@ def tail(params):
         path: Path
         file_bytes: Optional[int] = Field(default=None, ge=0, le=MAX_BYTES)
         lines: Optional[int] = Field(default=None, ge=0)
-        skip_trailing: Optional[bool] = Field(default=False)
+        skip_heading: Optional[bool] = Field(default=False)
 
         # Path validation: forbidden chars, absolute required
         @field_validator("path", mode="before")
@@ -210,9 +210,9 @@ def tail(params):
                 n_lines_actual = len(tail_lines)
                 response_offset = remaining
 
-        # Remove trailing newline if skip_trailing is True
-        if input_data.skip_trailing and content.endswith("\n"):
-            content = content.rstrip("\n")
+        # Remove heading newline if skip_heading is True
+        if input_data.skip_heading and content.startswith("\n"):
+            content = content.lstrip("\n")
 
         # Validate that the file was not changed during the operation (inode match)
         stat_after = os.fstat(fd)
