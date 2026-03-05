@@ -398,8 +398,32 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
         resource: status_models.Resource, 
         user: account_models.User, 
         path: str, 
-    ):
-        raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="Not implemented yet.")
+    ) -> str:
+        
+        # Build data for the command
+        input_data = {
+            "path": path,
+        }
+
+        # Validate data
+        try:
+            _ = validation.RmInputData(**input_data)
+        except Exception as e:
+            raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=f"Input validation error: {str(e)}")
+
+        # Submit task to Globus Compute and wait for the task ID
+        task_id = await globus_utils.submit_task("rm", resource, input_data, user)
+
+        # Return task ID to the user
+        return task_id
+    
+
+    # Format rm response
+    def format_rm_response(
+        self: "AlcfAdapter",
+        result
+    ) -> filesystem_models.RemoveResponse:
+        return filesystem_models.RemoveResponse(output=result)
 
 
     # Mkdir
