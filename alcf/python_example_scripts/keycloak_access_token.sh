@@ -5,20 +5,11 @@ echo
 read -sp "cryptoauth: " passvar
 echo
 
-# EDTB
-response=$(curl -s -k -X POST "https://keycloak.alcf.anl.gov/realms/PBS-EDTB/protocol/openid-connect/token" \
+response=$(curl -s -k -X POST "https://keycloak.alcf.anl.gov/realms/ALCF-PBS/protocol/openid-connect/token" \
  -H 'Content-Type: application/x-www-form-urlencoded' \
  -d 'grant_type=password' \
- -d 'client_id=PBS-EDTB-PUBLIC' \
+ -d 'client_id=ALCF-PBS-PUBLIC' \
  -d "username=${username}" \
  -d "password=${passvar}")
-
-# SIRIUS
-#response=$(curl -s -k -X POST "https://keycloak.alcf.anl.gov/realms/PBS-SIRIUS/protocol/openid-connect/token" \
-# -H 'Content-Type: application/x-www-form-urlencoded' \
-# -d 'grant_type=password' \
-# -d 'client_id=PBS-SIRIUS-PUBLIC' \
-# -d "username=${username}" \
-# -d "password=${passvar}")
 
 echo "$response" | jq
