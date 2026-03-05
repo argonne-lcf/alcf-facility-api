@@ -13,5 +13,6 @@ data = {
 submit(
     resource_id=resource_id,
     data=data,
-    function="stat"
+    function="stat",
+    method="get"
 )

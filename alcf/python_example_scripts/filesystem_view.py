@@ -15,5 +15,6 @@ data = {
 submit(
     resource_id=resource_id,
     data=data,
-    function="view"
+    function="view",
+    method="get"
 )

@@ -14,13 +14,22 @@ HEADERS = {
 }
 
 # Function to submit Filesystem request to Facility API 
-def submit(resource_id=None, data=None, function=None):
+def submit(resource_id=None, data=None, function=None, method=None):
 
     # Build URL
     url = f"{os.getenv('BASE_URL')}/filesystem/{function}/{resource_id}"
 
     # Send request to Facility API
-    response = requests.get(url, params=data, headers=HEADERS)
+    if method.lower() == "get":
+        response = requests.get(url, params=data, headers=HEADERS)
+    elif method.lower() == "delete":
+        response = requests.delete(url, params=data, headers=HEADERS)
+    elif method.lower() == "put":
+        response = requests.put(url, json=data, headers=HEADERS)
+    elif method.lower() == "post":
+        response = requests.post(url, json=data, headers=HEADERS)
+    else:
+        response = None
 
     # Print response
     print(response.status_code)

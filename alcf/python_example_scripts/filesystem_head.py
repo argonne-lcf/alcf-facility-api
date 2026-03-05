@@ -16,5 +16,6 @@ data = {
 submit(
     resource_id=resource_id,
     data=data,
-    function="head"
+    function="head",
+    method="get"
 )

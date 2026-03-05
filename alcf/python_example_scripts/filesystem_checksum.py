@@ -13,5 +13,6 @@ data = {
 submit(
     resource_id=resource_id,
     data=data,
-    function="checksum"
+    function="checksum",
+    method="get"
 )

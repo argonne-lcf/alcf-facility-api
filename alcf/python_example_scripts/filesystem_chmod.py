@@ -14,5 +14,6 @@ data = {
 submit(
     resource_id=resource_id,
     data=data,
-    function="chmod"
+    function="chmod",
+    method="put"
 )
