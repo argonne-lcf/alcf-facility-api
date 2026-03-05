@@ -88,7 +88,13 @@ class AlcfAuthenticatedAdapter(AuthenticatedAdapter):
 
             # Try to validate the API key with Keycloak
             # TODO: Cache this
-            introspection = keycloak_openid.introspect(api_key)
+            try:
+                introspection = keycloak_openid.introspect(api_key)
+            except Exception:
+                raise HTTPException(
+                    status_code=HTTP_401_UNAUTHORIZED,
+                    detail=f"Could not introspect token with Keycloak."
+                )
 
             # If the token is a valid Keycloak token ...
             if introspection.get("active", False):
@@ -111,9 +117,9 @@ class AlcfAuthenticatedAdapter(AuthenticatedAdapter):
                         log.info(f"Added new user to database: {user_id}")
                 except Exception as e:
                     raise HTTPException(
-                            status_code=HTTP_401_UNAUTHORIZED,
-                            detail=f"Failed to store or verify user in database. {e}"
-                        )
+                        status_code=HTTP_401_UNAUTHORIZED,
+                        detail=f"Failed to store or verify user in database. {e}"
+                    )
                 
                 # Give permission to continue through the API
                 return user_id
