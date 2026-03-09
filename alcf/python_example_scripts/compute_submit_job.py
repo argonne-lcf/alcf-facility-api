@@ -1,3 +1,4 @@
+import json
 import os
 import requests
 from dotenv import load_dotenv
@@ -55,4 +56,4 @@ response = requests.post(url, json=data, headers=headers)
 
 # Print response
 print(response.status_code)
-print(response.json())
+print(json.dumps(response.json(), indent=2))
