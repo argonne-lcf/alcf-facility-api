@@ -1,3 +1,4 @@
+import json
 import os
 import requests
 from dotenv import load_dotenv
@@ -24,4 +25,4 @@ url = f"{os.getenv('BASE_URL')}/compute/status/{resource_id}/{job_id}?historical
 # Send request to Facility API
 response = requests.get(url, headers=headers)
 print(response.status_code)
-print(response.json())
+print(json.dumps(response.json(), indent=2))
