@@ -4,12 +4,16 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Targeted resource
-resource_id = "7f7d0593-162e-43b9-8476-07d7d137d6ab" # Edith
-job_id = "78335"
+#resource_id = "7f7d0593-162e-43b9-8476-07d7d137d6ab" # Edith
+resource_id = "55c1c993-1124-47f9-b823-514ba3849a9a" # Polaris
 
-# Build input data
+# Request data
+job_id = "6958717"
 data = {
     "name": "updated_named",
+    "attributes": {
+        "account": "datascience",
+    }
 }
 
 # Build headers
