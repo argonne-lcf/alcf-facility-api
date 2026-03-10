@@ -29,7 +29,7 @@ def dictionary_to_graphql_str(d: dict, base_indent: int = 0, indent: int = 4) ->
 
     # Convert each key-value pair in the dictionary
     for key, value in d.items():
-        convertion = format_graphql_block(value, base_indent=base_indent, indent=indent)
+        convertion = format_graphql_block(key, value, base_indent=base_indent, indent=indent)
         string += base_indent_str + indent_str + f"{key}: {convertion}\n"
 
     # Close the dictionary and return the string
@@ -49,7 +49,7 @@ def list_to_graphql_str(l: list, indent: int = 4, base_indent: int = 0) -> str:
     # Convert each item in the list
     last_i = len(l) - 1
     for i, item in enumerate(l):
-        convertion = format_graphql_block(item, base_indent=base_indent, indent=indent)
+        convertion = format_graphql_block(i, item, base_indent=base_indent, indent=indent)
         string += base_indent_str + indent_str + convertion
         if i != last_i:
             string += ",\n"
@@ -59,7 +59,7 @@ def list_to_graphql_str(l: list, indent: int = 4, base_indent: int = 0) -> str:
 
 
 # Format GraphQL block
-def format_graphql_block(block, base_indent: int = 0, indent: int = 4) -> str:
+def format_graphql_block(key, block, base_indent: int = 0, indent: int = 4) -> str:
     """Generic fonction to format a block of a dictionary into a GraphQL-compatible string."""
 
     # Boolean
@@ -68,7 +68,10 @@ def format_graphql_block(block, base_indent: int = 0, indent: int = 4) -> str:
 
     # String
     elif isinstance(block, str):
-        return f"\"{block}\""
+        if key == "customResources":
+            return block
+        else:
+            return f"\"{block}\""
     
     # Number
     elif isinstance (block, (int, float)):
