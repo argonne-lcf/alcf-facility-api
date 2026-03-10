@@ -152,29 +152,17 @@ IRI_API_PARAMS='{
 
 IRI_SHOW_MISSING_ROUTES=False
 
-GRAPHQL_URL="https://your-api-url"
+GRAPHQL_URLS={"your-machine": "https:/.../your-machine/graphql", ...}
 
-# Keycloak integration
+# Token introspection
 KEYCLOAK_CLIENT_ID="<your-client-id>"
 KEYCLOAK_CLIENT_SECRET="your-keycloak-secret"
 KEYCLOAK_REALM_NAME="<your-realm>"
 KEYCLOAK_SERVER_URL="https://<your-domain>/realms/<your-realm>"
 
-
 # Compute functions -> function_name: function_UUID
-GLOBUS_COMPUTE_FUNCTIONS='
-{
-    "chmod": "...",
-    "chown": "...",
-    "ls": "...",
-    "head": "...",
-    "view": "..."
-}
-'
+GLOBUS_COMPUTE_FUNCTIONS={"chmod": "...", "chown": "...", "ls": "...", "head": "...", "view": "..."}
+
 # Compute endpoints -> resource_name: endpoint_UUID
-GLOBUS_COMPUTE_ENDPOINTS='
-{  
-    "your-resource": "your-globus-compute-endpoint-id"
-}
-'
+GLOBUS_COMPUTE_ENDPOINTS={"your-resource": "your-globus-compute-endpoint-id", ...}
 ```
