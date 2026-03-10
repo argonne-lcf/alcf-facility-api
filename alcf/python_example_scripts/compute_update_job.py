@@ -1,3 +1,4 @@
+import json
 import os
 import requests
 from dotenv import load_dotenv
@@ -28,4 +29,4 @@ url = f"{os.getenv('BASE_URL')}/compute/job/{resource_id}/{job_id}"
 # Send request to Facility API
 response = requests.put(url, json=data, headers=headers)
 print(response.status_code)
-print(response.json())
+print(json.dumps(response.json(), indent=2))
