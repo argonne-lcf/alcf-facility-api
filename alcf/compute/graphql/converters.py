@@ -136,17 +136,17 @@ def get_iri_state_from_pbs_state(state: int) -> int:
     """Return the IRI Facility API compliant state from a PBS GraphQL state."""
 
     # Known states
-    if state in [2]:
+    if state in [1, 2, 3, 14]:
         return compute_models.JobState.NEW.value
-    elif state in [0,3]:
+    elif state in [0, 8]:
         return compute_models.JobState.QUEUED.value
-    elif state in [6, 7]:
+    elif state in [5, 6, 7, 9]:
         return compute_models.JobState.ACTIVE.value
     elif state in [10]:
         return compute_models.JobState.COMPLETED.value
-    elif state in [12]:
+    elif state in [12, 13]:
         return compute_models.JobState.CANCELED.value
-    elif state in [11]:
+    elif state in [4, 11]:
         return compute_models.JobState.FAILED.value
 
     # Unknown state
