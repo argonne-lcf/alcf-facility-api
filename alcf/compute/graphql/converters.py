@@ -55,6 +55,18 @@ def set_nested_value(data: dict, path: str, value: Any) -> dict:
 # Get GraphQL Job from IRI JobSpec
 def get_graphql_job_from_iri_jobspec(iri_jobspec: compute_models.JobSpec) -> graphql_models.Job:
     """Convert an IRI JobSpec to a GraphQL Job model."""
+
+    # Define custom resources
+    def format_custom_resources(iri_jobspec):
+        customResources = None
+        if iri_jobspec.attributes:
+            if iri_jobspec.attributes.custom_attributes:
+                customResources = ""
+                for name, value in iri_jobspec.attributes.custom_attributes.items():
+                    customResources += '{name: "' + name + '", value: "' + value + '"}'
+        if customResources:
+            customResources = f"[{customResources}]"
+        return customResources
     
     # Define mapping ('graphql_job':'iri_job')
     field_mapping = {
@@ -66,12 +78,14 @@ def get_graphql_job_from_iri_jobspec(iri_jobspec: compute_models.JobSpec) -> gra
         'outputPath': 'stdout_path',
         'resourcesRequested.jobResources.wallClockTime': lambda js: js.attributes.duration if js.attributes and js.attributes.duration else None,
         'resourcesRequested.jobResources.physicalMemory': lambda js: js.resources.memory if js.resources else None,
+        'resourcesRequested.jobResources.customResources': lambda js: format_custom_resources(js) if js.attributes else None,
         'queue.name': lambda js: js.attributes.queue_name if js.attributes else None,
+        'accountingId': lambda js: js.attributes.account if js.attributes else None,
     }
     
     # Apply mapping
     graphql_data = generate_dictionary_from_mapping(iri_jobspec, field_mapping)
-        
+    
     # Create and return the GraphQL Job object
     return graphql_models.Job(**graphql_data)
 
@@ -122,9 +136,9 @@ def get_iri_state_from_pbs_state(state: int) -> int:
     """Return the IRI Facility API compliant state from a PBS GraphQL state."""
 
     # Known states
-    if state in [0]:
+    if state in [2]:
         return compute_models.JobState.NEW.value
-    elif state in [3]:
+    elif state in [0,3]:
         return compute_models.JobState.QUEUED.value
     elif state in [6, 7]:
         return compute_models.JobState.ACTIVE.value
