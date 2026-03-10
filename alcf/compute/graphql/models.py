@@ -5,6 +5,7 @@ class JobTasksResources(BaseModel):
     index: Optional[str] = ""
     wallClockTime: Optional[int] = None
     physicalMemory: Optional[int] = None
+    customResources: Optional[str] = None
 
 class JobResources(BaseModel):
     peName: Optional[str] = None
@@ -33,6 +34,7 @@ class Job(BaseModel):
     name: Optional[str] = None
     errorPath: Optional[str] = None
     outputPath: Optional[str] = None
+    accountingId: Optional[str] = None
 
 class ErrorResponse(BaseModel):
     errorCode: int
