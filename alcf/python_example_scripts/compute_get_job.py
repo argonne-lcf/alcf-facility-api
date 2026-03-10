@@ -8,7 +8,7 @@ load_dotenv()
 resource_id = "55c1c993-1124-47f9-b823-514ba3849a9a" # Polaris
 
 # Request data
-job_id = "6958717"
+job_id = "78335"
 historical = True
 
 # Build headers
