@@ -48,5 +48,15 @@
         "type": "compute",
         "group": "computes",
         "site_id": "afb8a6d7-cd5b-4040-8be7-6e917b30af08"
+    },
+    {
+        "id": "2fef6c82-a982-491e-91a3-d75b59b707af",
+        "name": "Sirius",
+        "short_name": "sirius",
+        "description": "Sirius is an ALCF staging cluster.",
+        "last_updated": "2025-07-10T11:28:40.969Z",
+        "type": "compute",
+        "group": "computes",
+        "site_id": "afb8a6d7-cd5b-4040-8be7-6e917b30af08"
     }
 ]
