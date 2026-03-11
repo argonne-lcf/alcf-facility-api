@@ -1,7 +1,7 @@
 from fastapi import HTTPException
 from app.routers.compute.facility_adapter import FacilityAdapter as ComputeFacilityAdapter
 from alcf.database.ingestion.ingest_activity_data import ALCF_RESOURCE_ID_LIST
-from alcf.auth.alcf_adapter import AlcfAuthenticatedAdapter
+from alcf.auth.alcf_adapter import AlcfAuthenticatedAdapter, AMSC_DEMO_FLAG
 from alcf.config import GRAPHQL_URL
 from alcf.compute.graphql.converters import (
     get_graphql_job_from_iri_jobspec,
@@ -52,6 +52,14 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
         job_spec: compute_models.JobSpec,
     ) -> compute_models.Job:
         
+        # [TEMPORARY]
+        # TODO: Need to swap to a service account
+        if AMSC_DEMO_FLAG in user.id:
+            raise HTTPException(
+                status_code=HTTP_501_NOT_IMPLEMENTED,
+                detail="Mapping to service account not supported yet."
+            )
+
         # [TEMPORARY]
         # Error if input variables are not supported yet
         if job_spec.inherit_environment == False:
@@ -130,6 +138,14 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
         job_id: str,
     ) -> compute_models.Job:
         
+        # [TEMPORARY]
+        # TODO: Need to swap to a service account
+        if AMSC_DEMO_FLAG in user.id:
+            raise HTTPException(
+                status_code=HTTP_501_NOT_IMPLEMENTED,
+                detail="Mapping to service account not supported yet."
+            )
+        
         # Convert IRI Job spec into GraphQL Job spec
         graphql_data = get_graphql_job_from_iri_jobspec(job_spec)
         
@@ -156,6 +172,14 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
         historical: bool = False,
         include_spec: bool = False,
     ) -> compute_models.Job:
+        
+        # [TEMPORARY]
+        # TODO: Need to swap to a service account
+        if AMSC_DEMO_FLAG in user.id:
+            raise HTTPException(
+                status_code=HTTP_501_NOT_IMPLEMENTED,
+                detail="Mapping to service account not supported yet."
+            )
 
         # [TEMPORARY]
         # Error if input variables are not supported yet
@@ -194,6 +218,14 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
         historical: bool = False,
         include_spec: bool = False,
     ) -> list[compute_models.Job]:
+        
+        # [TEMPORARY]
+        # TODO: Need to swap to a service account
+        if AMSC_DEMO_FLAG in user.id:
+            raise HTTPException(
+                status_code=HTTP_501_NOT_IMPLEMENTED,
+                detail="Mapping to service account not supported yet."
+            )
         
         # [TEMPORARY]
         # Error if input variables are not supported yet
@@ -236,6 +268,14 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
         user: account_models.User, 
         job_id: str,
     ) -> bool:
+        
+        # [TEMPORARY]
+        # TODO: Need to swap to a service account
+        if AMSC_DEMO_FLAG in user.id:
+            raise HTTPException(
+                status_code=HTTP_501_NOT_IMPLEMENTED,
+                detail="Mapping to service account not supported yet."
+            )
         
         # Submit query to GraphQL API
         response = await post_graphql(
