@@ -3,7 +3,6 @@ import os
 from dotenv import load_dotenv
 load_dotenv()
 
-
 # Load AmSC client credentials
 GLOBUS_AMSC_CLIENT_ID = os.getenv("GLOBUS_AMSC_CLIENT_ID", None)
 GLOBUS_AMSC_CLIENT_SECRET = os.getenv("GLOBUS_AMSC_CLIENT_SECRET", None)
