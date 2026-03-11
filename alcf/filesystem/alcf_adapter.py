@@ -4,7 +4,7 @@ from app.routers.filesystem.facility_adapter import FacilityAdapter as Filesyste
 from app.routers.status import models as status_models
 from app.routers.account import models as account_models
 from app.routers.filesystem import models as filesystem_models
-from alcf.auth.alcf_adapter import AlcfAuthenticatedAdapter
+from alcf.auth.alcf_adapter import AlcfAuthenticatedAdapter, AMSC_DEMO_FLAG
 from starlette.status import HTTP_501_NOT_IMPLEMENTED, HTTP_400_BAD_REQUEST 
 from typing import Any, Tuple
 from alcf.filesystem.utils import get_iri_file_from_ls_line
@@ -20,6 +20,14 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
         user: account_models.User, 
         request_model: filesystem_models.PutFileChmodRequest
     ) -> str:
+        
+        # [TEMPORARY]
+        # TODO: Need to swap to a service account
+        if AMSC_DEMO_FLAG in user.id:
+            raise HTTPException(
+                status_code=HTTP_501_NOT_IMPLEMENTED,
+                detail="Mapping to service account not supported yet."
+            )
     
         # Build data for the command
         input_data = request_model.model_dump()
@@ -52,6 +60,14 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
         user: account_models.User, 
         request_model: filesystem_models.PutFileChownRequest
     ) -> str:
+        
+        # [TEMPORARY]
+        # TODO: Need to swap to a service account
+        if AMSC_DEMO_FLAG in user.id:
+            raise HTTPException(
+                status_code=HTTP_501_NOT_IMPLEMENTED,
+                detail="Mapping to service account not supported yet."
+            )
 
         # Build data for the command
         input_data = request_model.model_dump()
@@ -89,6 +105,14 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
         recursive: bool, 
         dereference: bool,
     ) -> str:
+        
+        # [TEMPORARY]
+        # TODO: Need to swap to a service account
+        if AMSC_DEMO_FLAG in user.id:
+            raise HTTPException(
+                status_code=HTTP_501_NOT_IMPLEMENTED,
+                detail="Mapping to service account not supported yet."
+            )
         
         # Disable options that are not ready yet
         if recursive:
@@ -134,6 +158,14 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
         lines: int, 
         skip_trailing: bool,
     ) -> str:
+        
+        # [TEMPORARY]
+        # TODO: Need to swap to a service account
+        if AMSC_DEMO_FLAG in user.id:
+            raise HTTPException(
+                status_code=HTTP_501_NOT_IMPLEMENTED,
+                detail="Mapping to service account not supported yet."
+            )
         
         # Build data for the command
         input_data = {
@@ -186,6 +218,14 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
         size: int,
         offset: int,
     ) -> str:
+        
+        # [TEMPORARY]
+        # TODO: Need to swap to a service account
+        if AMSC_DEMO_FLAG in user.id:
+            raise HTTPException(
+                status_code=HTTP_501_NOT_IMPLEMENTED,
+                detail="Mapping to service account not supported yet."
+            )
         
         # Build data for the command
         input_data = {
