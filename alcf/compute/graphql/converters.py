@@ -136,8 +136,10 @@ def get_iri_state_from_pbs_state(state: int) -> int:
     """Return the IRI Facility API compliant state from a PBS GraphQL state."""
 
     # Known states
-    if state in [1, 2, 3, 14]:
+    if state in [1, 14]:
         return compute_models.JobState.NEW.value
+    elif state in [2, 3]:
+        return compute_models.JobState.HELD.value
     elif state in [0, 8]:
         return compute_models.JobState.QUEUED.value
     elif state in [5, 6, 7, 9]:
