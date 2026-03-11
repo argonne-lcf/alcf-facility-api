@@ -13,8 +13,8 @@ DATABASE_URL = os.getenv("DATABASE_URL", "postgresql+asyncpg://facilityapi_user@
 SECRET_DEV_KEY = os.getenv("SECRET_DEV_KEY", None)
 
 # PBS GraphQL API URL
-GRAPHQL_URL = os.getenv("GRAPHQL_URL", "")
-GRAPHQL_HTTPX_TRUST_ENV = os.getenv("GRAPHQL_URL", "True").lower() in ("true", "1", "t")
+GRAPHQL_URLS = json.loads(os.getenv("GRAPHQL_URLS", "{}"))
+GRAPHQL_HTTPX_TRUST_ENV = os.getenv("GRAPHQL_HTTPX_TRUST_ENV", "True").lower() in ("true", "1", "t")
 
 # Keycloak integration
 KEYCLOAK_CLIENT_ID = os.getenv("KEYCLOAK_CLIENT_ID", None)

@@ -2,7 +2,7 @@ from fastapi import HTTPException
 from app.routers.compute.facility_adapter import FacilityAdapter as ComputeFacilityAdapter
 from alcf.database.ingestion.ingest_activity_data import ALCF_RESOURCE_ID_LIST
 from alcf.auth.alcf_adapter import AlcfAuthenticatedAdapter, AMSC_DEMO_FLAG
-from alcf.config import GRAPHQL_URL
+from alcf.config import GRAPHQL_URLS
 from alcf.compute.graphql.converters import (
     get_graphql_job_from_iri_jobspec,
     get_iri_job_from_graphql_job
@@ -34,15 +34,6 @@ from alcf.compute.graphql.utils import (
 
 class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
     """Compute facility adapter definition for the IRI Facility API."""
-
-    # Initialization for constants and convertions 
-    def __init__(self):
-
-        # URLs for PBS GraphQL API on different resource 
-        # For now just hardcoded to Edith
-        self.__pbs_graphql_api_urls = {
-           ALCF_RESOURCE_ID_LIST.edith.value: GRAPHQL_URL
-        }
 
     # Submit job
     async def submit_job(
@@ -88,18 +79,17 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
             if job_spec.resources.exclusive_node_use == False:
                 raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="'exclusive_node_use' not supported yet.")
         if job_spec.attributes:
-            if job_spec.attributes.account:
-                raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="'account' not supported yet.")
             if job_spec.attributes.reservation_id:
                 raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="'reservation_id' not supported yet.")
-            if job_spec.attributes.custom_attributes:
-                raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="'custom_attributes' not supported yet.")
             
         # Mandatory fields for PBS
         if not job_spec.stdout_path:
             raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="'stdout_path' is mandatory.")
         if not job_spec.stderr_path:
             raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="'stderr_path' is mandatory.")
+        
+        # Recover GraphQL URL
+        graphql_url = self.__get_graphql_url(resource.name)
 
         # Convert IRI Job spec into GraphQL Job spec
         graphql_data = get_graphql_job_from_iri_jobspec(job_spec)
@@ -108,7 +98,7 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
         response = await post_graphql(
             user=user,
             query=build_submit_job_query(user, graphql_data),
-            url=self.__pbs_graphql_api_urls[resource.id]
+            url=graphql_url
         )
 
         # Extract raw job response into GraphQL JobResponse pydantic object
@@ -145,6 +135,9 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
                 status_code=HTTP_501_NOT_IMPLEMENTED,
                 detail="Mapping to service account not supported yet."
             )
+
+        # Recover GraphQL URL
+        graphql_url = self.__get_graphql_url(resource.name)
         
         # Convert IRI Job spec into GraphQL Job spec
         graphql_data = get_graphql_job_from_iri_jobspec(job_spec)
@@ -153,7 +146,7 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
         response = await post_graphql(
             user=user,
             query=build_update_job_query(user, graphql_data, job_id),
-            url=self.__pbs_graphql_api_urls[resource.id]
+            url=graphql_url
         )
 
         # Extract raw job response into GraphQL JobResponse pydantic object
@@ -186,11 +179,14 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
         if include_spec:
             raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="'include_spec' not supported yet.")
         
+        # Recover GraphQL URL
+        graphql_url = self.__get_graphql_url(resource.name)
+        
         # Submit query to GraphQL API
         response = await post_graphql(
             user=user,
             query=build_get_job_query(user, job_id=job_id, historical=historical),
-            url=self.__pbs_graphql_api_urls[resource.id]
+            url=graphql_url
         )
 
         # Extract raw job response into GraphQL JobResponse pydantic object
@@ -237,12 +233,15 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
             raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="offset not implemented")
         if include_spec:
             raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="'include_spec' not supported yet.")
+        
+        # Recover GraphQL URL
+        graphql_url = self.__get_graphql_url(resource.name)
 
         # Submit query to GraphQL API
         response = await post_graphql(
             user=user,
             query=build_get_job_query(user, historical=historical),
-            url=self.__pbs_graphql_api_urls[resource.id]
+            url=graphql_url
         )
         
         # Access relevant data from the response
@@ -276,12 +275,15 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
                 status_code=HTTP_501_NOT_IMPLEMENTED,
                 detail="Mapping to service account not supported yet."
             )
+
+        # Recover GraphQL URL
+        graphql_url = self.__get_graphql_url(resource.name)
         
         # Submit query to GraphQL API
         response = await post_graphql(
             user=user,
             query=build_cancel_job_query(user, job_id),
-            url=self.__pbs_graphql_api_urls[resource.id]
+            url=graphql_url
         )
 
         # Extract raw job response into GraphQL JobResponse pydantic object
@@ -323,3 +325,19 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
         
         # Return JobResponse object
         return response
+    
+    # Get GraphQL URL
+    def __get_graphql_url(self, resource_name: str) -> str:
+
+        # Extract GraphQL for the targetted resource
+        graphql_url = GRAPHQL_URLS.get(resource_name.lower(), None)
+
+        # Error if resource does not have GraphQL
+        if graphql_url is None:
+            raise HTTPException(
+                status_code=HTTP_501_NOT_IMPLEMENTED, 
+                detail=f"Job submission for {resource_name} not available yet."
+            )
+        
+        # Return URL
+        return graphql_url

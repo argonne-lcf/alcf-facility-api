@@ -1,10 +1,12 @@
+import json
 import os
 import requests
 from dotenv import load_dotenv
 load_dotenv()
 
 # Targeted resource
-resource_id = "7f7d0593-162e-43b9-8476-07d7d137d6ab" # Edith
+#resource_id = "7f7d0593-162e-43b9-8476-07d7d137d6ab" # Edith
+resource_id = "55c1c993-1124-47f9-b823-514ba3849a9a" # Polaris
 
 # Build commands (everything the qsub would have, besides the #PBS instructions)
 commands = """
@@ -33,8 +35,10 @@ data = {
         "memory": 2222
     },
     "attributes": {
-        "duration": 60,
-        "queue_name": "workq"
+        "duration": 300,
+        "queue_name": "debug",
+        "account": "datascience",
+        "custom_attributes": {"filesystems": "eagle"}
     }
 }
 
@@ -52,4 +56,4 @@ response = requests.post(url, json=data, headers=headers)
 
 # Print response
 print(response.status_code)
-print(response.json())
+print(json.dumps(response.json(), indent=2))
