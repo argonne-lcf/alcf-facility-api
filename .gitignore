@@ -9,3 +9,4 @@ local.env
 # [Addition from upstream]
 logs/
 .DS_Store
+venv/
