@@ -177,4 +177,9 @@ GLOBUS_COMPUTE_ENDPOINTS='
     "your-resource": "your-globus-compute-endpoint-id"
 }
 '
+
+# Manual authorization layer
+KEYCLOAK_AUTHORIZED_USERNAMES=["the-user", ...]
+GLOBUS_AUTHORIZED_USERNAMES=["the-user@the-domain", ...]
+GLOBUS_AMSC_AUTHORIZED_USERNAMES=["the-user@the-domain", ...]
 ```
