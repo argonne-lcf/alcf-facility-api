@@ -1,6 +1,5 @@
 import os
 from abc import abstractmethod
-from typing import Any, Tuple
 from ..status import models as status_models
 from ..account import models as account_models
 from . import models as filesystem_models
@@ -47,7 +46,7 @@ class FacilityAdapter(AuthenticatedAdapter):
         pass
 
     @abstractmethod
-    async def tail(self: "FacilityAdapter", resource: status_models.Resource, user: account_models.User, path: str, file_bytes: int | None, lines: int | None, skip_trailing: bool) -> filesystem_models.GetFileTailResponse:
+    async def tail(self: "FacilityAdapter", resource: status_models.Resource, user: account_models.User, path: str, file_bytes: int | None, lines: int | None, skip_heading: bool) -> filesystem_models.GetFileTailResponse:
         pass
 
     @abstractmethod

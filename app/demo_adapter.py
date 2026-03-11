@@ -13,7 +13,6 @@ import random
 import stat
 import subprocess
 import uuid
-from typing import Any, Tuple
 
 from fastapi import HTTPException
 from fastapi.encoders import jsonable_encoder
@@ -415,9 +414,9 @@ class DemoAdapter(
 
     async def get_events(
         self: "DemoAdapter",
-        incident_id: str,
         offset: int,
         limit: int,
+        incident_id: str | None = None,
         resource_id: str | None = None,
         name: str | None = None,
         description: str | None = None,
@@ -428,7 +427,8 @@ class DemoAdapter(
         modified_since: datetime.datetime | None = None,
     ) -> list[status_models.Event]:
         events = status_models.Event.find(
-            [e for e in self.events if e.incident_id == incident_id],
+            self.events,
+            incident_id=incident_id,
             resource_id=resource_id,
             name=name,
             description=description,
@@ -440,7 +440,7 @@ class DemoAdapter(
         )
         return paginate_list(events, offset, limit)
 
-    async def get_event(self: "DemoAdapter", incident_id: str, id_: str) -> status_models.Event:
+    async def get_event(self: "DemoAdapter", id_: str) -> status_models.Event:
         return status_models.Event.find_by_id(self.events, id_)
 
     async def get_incidents(
@@ -731,7 +731,7 @@ class DemoAdapter(
         lines: int | None,
         skip_heading: bool = False,
         skip_trailing: bool = False,
-    ) -> Tuple[Any, int]:
+    ) -> str:
         args = [cmd]
 
         if cmd == "tail" and skip_heading:
@@ -754,8 +754,7 @@ class DemoAdapter(
         args.append(rp)
 
         result = self._run(args)
-        content = result.stdout
-        return content, len(content)
+        return result.stdout
 
     async def head(
         self: "DemoAdapter",
@@ -766,7 +765,7 @@ class DemoAdapter(
         lines: int | None,
         skip_trailing: bool = False,
     ) -> filesystem_models.GetFileHeadResponse:
-        content, offset = self._headtail("head", path, file_bytes, lines, skip_trailing=skip_trailing)
+        content = self._headtail("head", path, file_bytes, lines, skip_trailing=skip_trailing)
 
         fc = filesystem_models.FileContent(
             content=content,
@@ -776,7 +775,7 @@ class DemoAdapter(
             start_position=0,
             end_position=len(content))
 
-        return filesystem_models.GetFileHeadResponse(output=fc, offset=offset)
+        return filesystem_models.GetFileHeadResponse(output=fc)
 
     async def tail(
         self: "DemoAdapter",
@@ -788,7 +787,7 @@ class DemoAdapter(
         skip_heading: bool = False,
     ) -> filesystem_models.GetFileTailResponse:
 
-        content, offset = self._headtail("tail", path, file_bytes, lines, skip_heading=skip_heading)
+        content = self._headtail("tail", path, file_bytes, lines, skip_heading=skip_heading)
 
         fc = filesystem_models.FileContent(
             content=content,
@@ -798,7 +797,7 @@ class DemoAdapter(
             start_position=0,
             end_position=len(content))
 
-        return filesystem_models.GetFileTailResponse(output=fc, offset=offset)
+        return filesystem_models.GetFileTailResponse(output=fc)
 
 
 
@@ -807,7 +806,12 @@ class DemoAdapter(
         result = self._run(f"tail -c +{offset + 1} {rp} | head -c {size}", shell=True)
         content = result.stdout
         return filesystem_models.GetViewFileResponse(
-            output=content,
+            output=filesystem_models.FileContent(
+                content=content,
+                content_type=filesystem_models.ContentUnit.bytes,
+                start_position=offset,
+                end_position=offset + len(content)
+            ),
         )
 
     async def checksum(self: "DemoAdapter", resource: status_models.Resource, user: account_models.User, path: str) -> filesystem_models.GetFileChecksumResponse:
@@ -998,7 +1002,7 @@ class DemoTask(BaseModel):
     user: account_models.User
     start: float
     status: task_models.TaskStatus = task_models.TaskStatus.pending
-    result: Any | None = None
+    result: dict | None = None
 
 
 class DemoTaskQueue:
@@ -1020,7 +1024,12 @@ class DemoTaskQueue:
             elif t.status == task_models.TaskStatus.active and now - t.start > DEMO_QUEUE_UPDATE_SECS:
                 cmd = task_models.TaskCommand.model_validate_json(t.task)
                 (result, status) = await DemoAdapter.on_task(t.resource, t.user, cmd)
-                t.result = jsonable_encoder(result)
+                if isinstance(result, BaseModel):
+                    t.result = result.model_dump()
+                elif isinstance(result, dict):
+                    t.result = result
+                else:
+                    t.result = {"output": result}
                 t.status = status
             _tasks.append(t)
         DemoTaskQueue.tasks = _tasks
