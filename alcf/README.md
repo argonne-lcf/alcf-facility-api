@@ -136,10 +136,12 @@ API_URL="api/current"
 
 DATABASE_URL="sqlite+aiosqlite:///alcf/facilityapi.db"
 
+IRI_API_ADAPTER_facility=alcf.facility.alcf_adapter.AlcfAdapter
 IRI_API_ADAPTER_status="alcf.status.alcf_adapter.AlcfAdapter"
 IRI_API_ADAPTER_compute="alcf.compute.alcf_adapter.AlcfAdapter"
 IRI_API_ADAPTER_filesystem=alcf.filesystem.alcf_adapter.AlcfAdapter
 IRI_API_ADAPTER_task=alcf.task.alcf_adapter.AlcfAdapter
+IRI_API_ADAPTER_account=alcf.account.alcf_adapter.AlcfAdapter
 IRI_API_PARAMS='{
     "title": "ALCF implementation of the IRI Facility API",
     "description": "IRI facility API for ALCF.\n\nFor more information, see: [https://iri.science/](https://iri.science/)\n\n<img src=\"https://iri.science/images/doe-icon-old.png\" height=50 />",
