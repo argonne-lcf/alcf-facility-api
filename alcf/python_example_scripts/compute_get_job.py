@@ -9,12 +9,12 @@ load_dotenv()
 resource_id = "55c1c993-1124-47f9-b823-514ba3849a9a" # Polaris
 
 # Request data
-job_id = "78335"
+job_id = "6960265"
 historical = True
 
 # Build headers
 headers = {
-    "Authorization": f"Bearer {os.getenv("ACCESS_TOKEN", None)}",
+    "Authorization": f"Bearer {os.getenv('ACCESS_TOKEN', None)}",
     "Content-Type": "application/json"
 }
 
