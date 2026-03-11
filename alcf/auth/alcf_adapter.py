@@ -4,13 +4,21 @@ from app.routers.iri_router import AuthenticatedAdapter
 from app.routers.account.models import User
 from alcf.config import KEYCLOAK_CLIENT_ID, KEYCLOAK_CLIENT_SECRET, KEYCLOAK_REALM_NAME, KEYCLOAK_SERVER_URL
 from keycloak import KeycloakOpenID
-from alcf.auth.utils import validate_access_token
-from alcf.database.database import exists_in_db, add_user_to_db
+from alcf.auth.utils import validate_access_token, validate_amsc_demo_access_token, TokenValidationResponse
+from alcf.database.database import exists_in_db, add_user_to_db, get_db_user_from_id
 from alcf.database import models as db_models
-from alcf.config import KEYCLOAK_ENABLED
+from alcf.config import (
+    KEYCLOAK_ENABLED,
+    KEYCLOAK_AUTHORIZED_USERNAMES,
+    GLOBUS_AUTHORIZED_USERNAMES,
+    GLOBUS_AMSC_AUTHORIZED_USERNAMES,
+)
 import logging
 
 log = logging.getLogger(__name__)
+
+# [TEMPORARY]
+AMSC_DEMO_FLAG = "-amsc-demo"
 
 # Configure Keycloak client
 if KEYCLOAK_ENABLED:
@@ -33,53 +41,39 @@ class AlcfAuthenticatedAdapter(AuthenticatedAdapter):
         ip_address: str = None,
         ) -> str:
         """
-            Decode the api_key and return the authenticated user's id.
-            This method is not called directly, rather authorized endpoints "depend" on it.
-            (https://fastapi.tiangolo.com/tutorial/dependencies/)
+        Decode the api_key and return the authenticated user's id.
+        This method is not called directly, rather authorized endpoints "depend" on it.
+        (https://fastapi.tiangolo.com/tutorial/dependencies/)
         """
 
         # Clean API key
         api_key = api_key.replace("Bearer ", "")
+
+        # Auth for Globus AmSC demo token ...
+        # -----------------------------------
+
+        # AmSC demo token userinfo details
+        amsc_demo_token_response = validate_amsc_demo_access_token(api_key)
+
+        # Try to extract the user ID (will only return the ID if authorized)
+        if amsc_demo_token_response.is_valid:
+            user_id = await self.__get_authorized_globus_user_id(amsc_demo_token_response)
+            if user_id:
+                return user_id+AMSC_DEMO_FLAG
+
     
-        # If this is a Globus token ...
-        # -----------------------------
+        # Auth for Facility Globus token
+        # ------------------------------
 
         # Try to validate the API key with Globus Auth
         token_response = validate_access_token(api_key)
 
-        # If the token is a valid Globus Auth token ...
+        # Try to extract the user ID (will only return the ID if authorized)
         if token_response.is_valid:
-
-            # If the user is authorized ...
-            if token_response.is_authorized and token_response.user is not None:
-
-                # Store user in database if not already present
-                try:
-                    if not await exists_in_db(token_response.user.id, db_models.User):
-                        await add_user_to_db({
-                            "id": token_response.user.id,
-                            "name": token_response.user.name,
-                            "username": token_response.user.username,
-                            "idp_id": token_response.user.idp_id,
-                            "idp_name": token_response.user.idp_name,
-                            "auth_service": token_response.user.auth_service
-                        })
-                        log.info(f"Added new user to database: {token_response.user.id}")
-                except Exception as e:
-                    raise HTTPException(
-                        status_code=HTTP_401_UNAUTHORIZED,
-                        detail=f"Failed to store or verify user in database. {e}"
-                    )
-                # Give permission to continue through the API
-                return token_response.user.id
-            
-            # Revoke access if not authorized
-            else:
-                raise HTTPException(
-                    status_code=HTTP_401_UNAUTHORIZED,
-                    detail=token_response.error_message
-                )
-
+            user_id = await self.__get_authorized_globus_user_id(token_response)
+            if user_id:
+                return user_id
+        
         # If this is a Keyckoak token ...
         # -------------------------------
         
@@ -139,26 +133,107 @@ class AlcfAuthenticatedAdapter(AuthenticatedAdapter):
         client_ip: str = None
         ) -> User:
         """
-            Retrieve additional user information (name, email, etc.) for the given user_id.
+        Retrieve additional user information (name, email, etc.) for the given user_id.
         """
 
         # Clean API key
         api_key = api_key.replace("Bearer ", "")
 
         # Swap API key to use the Globus Compute dependent token if necessary
+        # Only relevant for Facility Globus token
         token_response = validate_access_token(api_key)
         if token_response.is_valid:
             if token_response.is_authorized and token_response.user is not None:
                 api_key = token_response.user.access_token
+
+        # Extract user from the database
+        try:
+            if AMSC_DEMO_FLAG in user_id:
+                user_id_for_db = user_id.replace(AMSC_DEMO_FLAG, "")
+            else:
+                user_id_for_db = user_id
+            db_user = await get_db_user_from_id(user_id_for_db)
+        except Exception:
+            raise HTTPException(
+                status_code=HTTP_401_UNAUTHORIZED,
+                detail=f"User ID {user_id} could not be recovered from the database"
+            )
         
-        # Temporary - allow specific username
-        if user_id == "bcote":
-            return User(id="bcote", name="Benoit Cote", api_key=api_key, client_ip=client_ip)
-        elif user_id == "richp":
-            return User(id="richp", name="Paul Rich", api_key=api_key, client_ip=client_ip)
-        elif user_id == "jgarrett":
-            return User(id="jgarrett", name="Jess Garrett", api_key=api_key, client_ip=client_ip)
-        elif user_id == "eaba2ae5-b943-453e-9bef-4e137a7032cf": # Globus bcote@alcf.anl.gov
-            return User(id="eaba2ae5-b943-453e-9bef-4e137a7032cf", name="Benoit Cote", api_key=api_key, client_ip=client_ip)
+        # Facility Globus token: authorized if in list or if list is none
+        if db_user.auth_service == "Globus":
+            if GLOBUS_AUTHORIZED_USERNAMES:
+                is_authorized = db_user.username in GLOBUS_AUTHORIZED_USERNAMES
+            else:
+                is_authorized = True
+
+        # AmSC demo Globus token: only authorized if in list
+        elif "Globus AmSC Demo" in db_user.auth_service:
+            if GLOBUS_AMSC_AUTHORIZED_USERNAMES:
+                is_authorized = db_user.username in GLOBUS_AMSC_AUTHORIZED_USERNAMES
+            else:
+                is_authorized = False
+        
+        # Facility Keycloak token: authorized if in list or if list is none
+        elif db_user.auth_service == "Keycloak":
+            if KEYCLOAK_AUTHORIZED_USERNAMES:
+                is_authorized = db_user.username in KEYCLOAK_AUTHORIZED_USERNAMES
+            else:
+                is_authorized = True
+
+        # Unsuported auth service
         else:
-            return None
+            is_authorized = False
+
+        # Return user object if authorized
+        if is_authorized:
+            return User(id=user_id, name=db_user.name, api_key=api_key, client_ip=client_ip)
+        else:
+            raise HTTPException(
+                status_code=HTTP_401_UNAUTHORIZED,
+                detail=f"User {db_user.name} ({db_user.username}) not authorized."
+            )
+
+
+    # Get user ID if user is authorized
+    async def __get_authorized_globus_user_id(self, token_response: TokenValidationResponse):
+        """
+        Return user ID if the token is valid and if the user is authorized.
+        If the token is valid, but user is not authorized, raise error.
+        If the token is not valid, return None.
+        """
+
+        # If the token is a valid Globus Auth token ...
+        if token_response.is_valid:
+
+            # If the user is authorized ...
+            if token_response.is_authorized and token_response.user is not None:
+
+                # Store user in database if not already present
+                try:
+                    if not await exists_in_db(token_response.user.id, db_models.User):
+                        await add_user_to_db({
+                            "id": token_response.user.id,
+                            "name": token_response.user.name,
+                            "username": token_response.user.username,
+                            "idp_id": token_response.user.idp_id,
+                            "idp_name": token_response.user.idp_name,
+                            "auth_service": token_response.user.auth_service
+                        })
+                        log.info(f"Added new user to database: {token_response.user.id}")
+                except Exception as e:
+                    raise HTTPException(
+                        status_code=HTTP_401_UNAUTHORIZED,
+                        detail=f"Failed to store or verify user in database. {e}"
+                    )
+                # Give permission to continue through the API
+                return token_response.user.id
+            
+            # Revoke access if not authorized
+            else:
+                raise HTTPException(
+                    status_code=HTTP_401_UNAUTHORIZED,
+                    detail=token_response.error_message
+                )
+            
+        # Return None if token is not valid
+        return None
