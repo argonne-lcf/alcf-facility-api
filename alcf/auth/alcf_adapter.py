@@ -53,13 +53,13 @@ class AlcfAuthenticatedAdapter(AuthenticatedAdapter):
         # -----------------------------------
 
         # AmSC demo token userinfo details
-        amsc_demo_token_response = validate_amsc_demo_access_token(api_key)
+        #amsc_demo_token_response = validate_amsc_demo_access_token(api_key)
 
         # Try to extract the user ID (will only return the ID if authorized)
-        if amsc_demo_token_response.is_valid:
-            user_id = await self.__get_authorized_globus_user_id(amsc_demo_token_response)
-            if user_id:
-                return user_id+AMSC_DEMO_FLAG
+        #if amsc_demo_token_response.is_valid:
+        #    user_id = await self.__get_authorized_globus_user_id(amsc_demo_token_response)
+        #    if user_id:
+        #        return user_id+AMSC_DEMO_FLAG
 
     
         # Auth for Facility Globus token
