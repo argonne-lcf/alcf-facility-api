@@ -2,7 +2,7 @@ from app.routers.facility import models as facility_models
 from app.routers.facility.facility_adapter import FacilityAdapter as FacilityFacilityAdapter
 from fastapi import HTTPException
 from starlette.status import HTTP_501_NOT_IMPLEMENTED
-from alcf.database.database import get_db_facility_from_id, get_db_sites, get_db_site_from_id
+from alcf.database.database import get_db_facilities, get_db_sites, get_db_site_from_id
 from alcf.database import models as db_models
 
 class AlcfAdapter(FacilityFacilityAdapter):
@@ -17,17 +17,17 @@ class AlcfAdapter(FacilityFacilityAdapter):
         modified_since: str | None = None
         ) -> facility_models.Facility | None:
 
-        # Error for unsupported filters
-        if modified_since:
-            raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="'modified_since' filter not supported yet.")
-
-        # Gather resources from database
-        facility = await get_db_facility_from_id(
-            id=self.FACILITY_ID
+        # Gather facility from database
+        facilities = await get_db_facilities(
+            ids=[self.FACILITY_ID],
+            modified_since=modified_since,
         )
 
         # Format facility into IRI specification and return
-        return self.__format_facility(facility)
+        if facilities:
+            return self.__format_facility(facilities[0])
+        else:
+            return None
 
 
     # List sites
