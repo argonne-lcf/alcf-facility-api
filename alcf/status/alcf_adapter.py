@@ -1,7 +1,7 @@
 import asyncio
 import datetime
 from fastapi import HTTPException, Query
-from starlette.status import HTTP_304_NOT_MODIFIED, HTTP_400_BAD_REQUEST, HTTP_501_NOT_IMPLEMENTED
+from starlette.status import HTTP_304_NOT_MODIFIED, HTTP_400_BAD_REQUEST
 from app.routers.status.facility_adapter import FacilityAdapter as StatusFacilityAdapter
 
 # Typing
@@ -44,10 +44,6 @@ class AlcfAdapter(StatusFacilityAdapter):
         ) -> list[status_models.Resource]:
         """Update and return all resources from the database."""
 
-        # Error for unsupported filters
-        if site_id:
-            raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="'site_id' not supported yet.")
-
         # Gather resources from database with filters
         resources = await get_db_resources(
             name=name,
@@ -57,7 +53,8 @@ class AlcfAdapter(StatusFacilityAdapter):
             offset=offset,
             limit=limit,
             resource_type=resource_type.value if resource_type else None,
-            current_status=current_status.value if current_status else None
+            current_status=current_status.value if current_status else None,
+            site_id=site_id
         )
 
         # Update resources if needed
@@ -95,14 +92,6 @@ class AlcfAdapter(StatusFacilityAdapter):
         ) -> list[status_models.Event]:
         """Return all events from the database."""
 
-        # Error for unsupported filters
-        if from_:
-            raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="'from' filter not supported yet.")
-        if to:
-            raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="'to' filter not supported yet.")
-        if time_:
-            raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="'time' filter not supported yet.")
-
         # Get incident from database
         if incident_id:
             incident = await get_db_incident_from_id(incident_id)
@@ -119,6 +108,9 @@ class AlcfAdapter(StatusFacilityAdapter):
             description=description,
             status=status.value if status else None,
             modified_since=modified_since,
+            from_=from_,
+            to=to,
+            time_=time_,
         )
 
         # Filter based on resource ID
@@ -161,14 +153,6 @@ class AlcfAdapter(StatusFacilityAdapter):
         ) -> list[status_models.Incident]:
         """Return all incidents from the database."""
 
-        # Error for unsupported filters
-        if from_:
-            raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="'from' filter not supported yet.")
-        if to:
-            raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="'to' filter not supported yet.")
-        if time_:
-            raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="'time' filter not supported yet.")
-
         # Gather incidents from database with filters
         incidents = await get_db_incidents(
             offset=offset,
@@ -179,6 +163,9 @@ class AlcfAdapter(StatusFacilityAdapter):
             type=type_.value if type_ else None,
             resolution=resolution.value if resolution else None,
             modified_since=modified_since,
+            from_=from_,
+            to=to,
+            time_=time_,
         )
 
         # Filter based on resource ID

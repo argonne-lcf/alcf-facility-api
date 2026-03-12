@@ -1,6 +1,6 @@
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy import select
+from sqlalchemy import select, or_
 from fastapi import HTTPException
 from starlette.status import HTTP_404_NOT_FOUND, HTTP_500_INTERNAL_SERVER_ERROR
 import datetime
@@ -38,6 +38,16 @@ async def exists_in_db(id, db_model_class):
         stmt = select(db_model_class).where(db_model_class.id == id).limit(1)
         result = await session.execute(stmt)
         return result.scalar_one_or_none() is not None
+
+# Function to reject null bytes in strings
+def _reject_null_bytes(*strings: str | None):
+    """Raise 404 if any string contains a null byte (rejected by PostgreSQL UTF-8)."""
+    for s in strings:
+        if s and '\x00' in s:
+            raise HTTPException(
+                status_code=HTTP_404_NOT_FOUND,
+                detail=f"'{s}' not found."
+            )
 
 
 # ==================================================
@@ -108,6 +118,7 @@ async def add_user_to_db(data: dict):
 
 # Function to extract a single database entry from its id
 async def get_db_object_from_id(id, db_model_class):
+    _reject_null_bytes(id)
     async with get_db_session_context() as session:
         entry = await session.get(db_model_class, id)
         if entry is None:
@@ -162,8 +173,27 @@ async def get_db_objects(
     status: str = None,
     type: str = None,
     current_status: str = None,
-    resolution: str = None
+    site_id: str = None,
+    resolution: str = None,
+    from_: datetime.datetime | None = None,
+    to: datetime.datetime | None = None,
+    time_: datetime.datetime | None = None,
     ):
+    _reject_null_bytes(
+        *(ids or []),
+        name,
+        short_name,
+        description,
+        group,
+        resource_type,
+        status,
+        type,
+        current_status,
+        site_id,
+        resolution
+    )
+    if offset:
+        offset = min(offset, 9000000000000000000)
     async with get_db_session_context() as session:
         try:
             stmt = select(db_model_class)
@@ -179,7 +209,6 @@ async def get_db_objects(
                 stmt = stmt.where(db_model_class.group == group)
             if modified_since is not None and hasattr(db_model_class, "last_updated"):
                 ms = modified_since
-                # DB stores timestamps as "timestamp without time zone" (naive).
                 if isinstance(ms, datetime.datetime) and ms.tzinfo is not None:
                     ms = ms.astimezone(datetime.timezone.utc).replace(tzinfo=None)
                 stmt = stmt.where(db_model_class.last_updated >= ms)
@@ -195,16 +224,44 @@ async def get_db_objects(
                 stmt = stmt.where(db_model_class.status == status)
             if current_status:
                 stmt = stmt.where(db_model_class.current_status == current_status)
+            if site_id:
+                stmt = stmt.where(db_model_class.site_id == site_id)
             if resolution:
                 stmt = stmt.where(db_model_class.resolution == resolution)
+            if from_ is not None:
+                ms = from_.astimezone(datetime.timezone.utc).replace(tzinfo=None) if from_.tzinfo else from_
+                if hasattr(db_model_class, "start"):
+                    stmt = stmt.where(db_model_class.start >= ms)
+                elif hasattr(db_model_class, "occurred_at"):
+                    stmt = stmt.where(db_model_class.occurred_at >= ms)
+            if to is not None:
+                ms = to.astimezone(datetime.timezone.utc).replace(tzinfo=None) if to.tzinfo else to
+                if hasattr(db_model_class, "end"):
+                    stmt = stmt.where(db_model_class.end.isnot(None), db_model_class.end < ms)
+                elif hasattr(db_model_class, "occurred_at"):
+                    stmt = stmt.where(db_model_class.occurred_at < ms)
+            if time_ is not None:
+                ms = time_.astimezone(datetime.timezone.utc).replace(tzinfo=None) if time_.tzinfo else time_
+                if hasattr(db_model_class, "start") and hasattr(db_model_class, "end"):
+                    stmt = stmt.where(db_model_class.start <= ms)
+                    stmt = stmt.where(or_(db_model_class.end.is_(None), db_model_class.end > ms))
+                elif hasattr(db_model_class, "occurred_at"):
+                    stmt = stmt.where(db_model_class.occurred_at == ms)
             result = await session.execute(stmt)
             return result.scalars().all()
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Error retrieving database objects: {e}")
 
 # Function to extract a list of facility entries from a list of IDs (or all if no IDs provided)
-async def get_db_facilities(ids: List[str] = None) -> List[db_models.Facility]:
-    return await get_db_objects(db_models.Facility, ids)
+async def get_db_facilities(
+    ids: List[str] = None,
+    modified_since: datetime.datetime | None = None,
+    ) -> List[db_models.Facility]:
+    return await get_db_objects(
+        db_models.Facility, 
+        ids=ids,
+        modified_since=modified_since
+    )
 
 # Function to extract a list of resource entries from a list of IDs (or all if no IDs provided)
 async def get_db_resources(
@@ -216,7 +273,8 @@ async def get_db_resources(
     offset: int = None,
     limit: int = None,
     resource_type: str = None,
-    current_status: str = None
+    current_status: str = None,
+    site_id: str = None
     ) -> List[db_models.Resource]:
     return await get_db_objects(
         db_models.Resource, 
@@ -228,7 +286,8 @@ async def get_db_resources(
         offset=offset,
         limit=limit,
         resource_type=resource_type,
-        current_status=current_status
+        current_status=current_status,
+        site_id=site_id
     )
 
 # Function to extract a list of site entries from a list of IDs (or all if no IDs provided)
@@ -260,7 +319,10 @@ async def get_db_incidents(
     status: str = None,
     type: str = None,
     resolution: str = None,
-    modified_since: datetime.datetime | None = None
+    modified_since: datetime.datetime | None = None,
+    from_: datetime.datetime | None = None,
+    to: datetime.datetime | None = None,
+    time_: datetime.datetime | None = None,
     ) -> List[db_models.Incident]:
     return await get_db_objects(
         db_models.Incident, 
@@ -273,6 +335,9 @@ async def get_db_incidents(
         type=type,
         resolution=resolution,
         modified_since=modified_since,
+        from_=from_,
+        to=to,
+        time_=time_,
     )
 
 # Function to extract a list of event entries from a list of IDs (or all if no IDs provided)
@@ -284,6 +349,9 @@ async def get_db_events(
     description: str = None,
     status: str = None,
     modified_since: datetime.datetime | None = None,
+    from_: datetime.datetime | None = None,
+    to: datetime.datetime | None = None,
+    time_: datetime.datetime | None = None,
     ) -> List[db_models.Event]:
     return await get_db_objects(
         db_models.Event, 
@@ -294,6 +362,9 @@ async def get_db_events(
         description=description,
         status=status,
         modified_since=modified_since,
+        from_=from_,
+        to=to,
+        time_=time_,
     )
 
 # Function to extract a list of user entries from a list of IDs (or all if no IDs provided)
@@ -316,6 +387,8 @@ async def get_db_tasks_by_user(
     limit: int = None,
     status: str = None
     ) -> List[db_models.Task]:
+    if offset:
+        offset = min(offset, 9000000000000000000)
     async with get_db_session_context() as session:
         try:
             stmt = select(db_models.Task).where(db_models.Task.user_id == user_id)
