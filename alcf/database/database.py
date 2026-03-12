@@ -164,6 +164,7 @@ async def get_db_objects(
     current_status: str = None,
     resolution: str = None
     ):
+    offset = min(offset, 9000000000000000000)
     async with get_db_session_context() as session:
         try:
             stmt = select(db_model_class)
@@ -316,6 +317,7 @@ async def get_db_tasks_by_user(
     limit: int = None,
     status: str = None
     ) -> List[db_models.Task]:
+    offset = min(offset, 9000000000000000000)
     async with get_db_session_context() as session:
         try:
             stmt = select(db_models.Task).where(db_models.Task.user_id == user_id)
