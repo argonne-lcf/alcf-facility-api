@@ -162,6 +162,7 @@ async def get_db_objects(
     status: str = None,
     type: str = None,
     current_status: str = None,
+    site_id: str = None,
     resolution: str = None
     ):
     offset = min(offset, 9000000000000000000)
@@ -196,6 +197,8 @@ async def get_db_objects(
                 stmt = stmt.where(db_model_class.status == status)
             if current_status:
                 stmt = stmt.where(db_model_class.current_status == current_status)
+            if site_id:
+                stmt = stmt.where(db_model_class.site_id == site_id)
             if resolution:
                 stmt = stmt.where(db_model_class.resolution == resolution)
             result = await session.execute(stmt)
@@ -217,7 +220,8 @@ async def get_db_resources(
     offset: int = None,
     limit: int = None,
     resource_type: str = None,
-    current_status: str = None
+    current_status: str = None,
+    site_id: str = None
     ) -> List[db_models.Resource]:
     return await get_db_objects(
         db_models.Resource, 
@@ -229,7 +233,8 @@ async def get_db_resources(
         offset=offset,
         limit=limit,
         resource_type=resource_type,
-        current_status=current_status
+        current_status=current_status,
+        site_id=site_id
     )
 
 # Function to extract a list of site entries from a list of IDs (or all if no IDs provided)
