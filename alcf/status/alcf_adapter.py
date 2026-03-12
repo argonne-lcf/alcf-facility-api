@@ -1,7 +1,7 @@
 import asyncio
 import datetime
 from fastapi import HTTPException, Query
-from starlette.status import HTTP_304_NOT_MODIFIED, HTTP_400_BAD_REQUEST, HTTP_501_NOT_IMPLEMENTED
+from starlette.status import HTTP_304_NOT_MODIFIED, HTTP_400_BAD_REQUEST
 from app.routers.status.facility_adapter import FacilityAdapter as StatusFacilityAdapter
 
 # Typing
@@ -92,14 +92,6 @@ class AlcfAdapter(StatusFacilityAdapter):
         ) -> list[status_models.Event]:
         """Return all events from the database."""
 
-        # Error for unsupported filters
-        if from_:
-            raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="'from' filter not supported yet.")
-        if to:
-            raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="'to' filter not supported yet.")
-        if time_:
-            raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="'time' filter not supported yet.")
-
         # Get incident from database
         if incident_id:
             incident = await get_db_incident_from_id(incident_id)
@@ -116,6 +108,9 @@ class AlcfAdapter(StatusFacilityAdapter):
             description=description,
             status=status.value if status else None,
             modified_since=modified_since,
+            from_=from_,
+            to=to,
+            time_=time_,
         )
 
         # Filter based on resource ID
