@@ -31,16 +31,16 @@ class AlcfAdapter(StatusFacilityAdapter):
     # Get resources
     async def get_resources(
         self : "AlcfAdapter",
-        offset : int,
-        limit : int,
-        name : str | None = None,
-        description : str | None = None,
-        group : str | None = None,
-        modified_since : datetime.datetime | None = None,
-        resource_type: status_models.ResourceType = Query(default=None),
-        current_status: status_models.Status = Query(default=None),
+        offset: int,
+        limit: int,
+        name: str | None = None,
+        description: str | None = None,
+        group: str | None = None,
+        modified_since: datetime.datetime | None = None,
+        resource_type: status_models.ResourceType | None = None,
+        current_status: status_models.Status | None = None,
         capability: Capability | None = None,
-        site_id: str | None = None
+        site_id: str | None = None,
         ) -> list[status_models.Resource]:
         """Update and return all resources from the database."""
 
@@ -81,17 +81,17 @@ class AlcfAdapter(StatusFacilityAdapter):
     # Get events
     async def get_events(
         self : "AlcfAdapter",
-        incident_id : str,
-        offset : int,
-        limit : int,
-        resource_id : str | None = None,
-        name : str | None = None,
-        description : str | None = None,
-        status : status_models.Status | None = None,
-        from_ : datetime.datetime | None = None,
-        to : datetime.datetime | None = None,
-        time_ : datetime.datetime | None = None,
-        modified_since : datetime.datetime | None = None,
+        offset: int,
+        limit: int,
+        incident_id: str | None = None,
+        resource_id: str | None = None,
+        name: str | None = None,
+        description: str | None = None,
+        status: status_models.Status | None = None,
+        from_: datetime.datetime | None = None,
+        to: datetime.datetime | None = None,
+        time_: datetime.datetime | None = None,
+        modified_since: datetime.datetime | None = None,
         ) -> list[status_models.Event]:
         """Return all events from the database."""
 
@@ -104,11 +104,15 @@ class AlcfAdapter(StatusFacilityAdapter):
             raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="'time' filter not supported yet.")
 
         # Get incident from database
-        incident = await get_db_incident_from_id(incident_id)
+        if incident_id:
+            incident = await get_db_incident_from_id(incident_id)
+            event_ids = incident.event_ids
+        else:
+            event_ids = None
 
         # Gather events from database with filters
         events = await get_db_events(
-            ids=incident.event_ids,
+            ids=event_ids,
             offset=offset,
             limit=limit,
             name=name,
@@ -128,17 +132,12 @@ class AlcfAdapter(StatusFacilityAdapter):
     # Get event
     async def get_event(
         self : "AlcfAdapter",
-        incident_id : str,
         id : str
         ) -> status_models.Event:
         """Return the event object tied to a given event ID."""
 
         # Get event from database
         event = await get_db_event_from_id(id)
-
-        # Make sure the event belongs to the incident
-        if event.incident_id != incident_id:
-            raise HTTPException(status_code=404, detail=f"Event not found for Incident {incident_id}.")
 
         # Format event into IRI specification and return
         return self.__format_event(event)
@@ -147,18 +146,18 @@ class AlcfAdapter(StatusFacilityAdapter):
     # Get incidents
     async def get_incidents(
         self : "AlcfAdapter",
-        offset : int,
-        limit : int,
-        name : str | None = None,
-        description : str | None = None,
-        status : status_models.Status | None = None,
-        type_ : status_models.IncidentType | None = None,
-        from_ : datetime.datetime | None = None,
-        to : datetime.datetime | None = None,
-        time_ : datetime.datetime | None = None,
-        modified_since : datetime.datetime | None = None,
-        resource_id : str | None = None,
-        resolution: status_models.Resolution | None = None
+        offset: int,
+        limit: int,
+        name: str | None = None,
+        description: str | None = None,
+        status: status_models.Status | None = None,
+        type_: status_models.IncidentType | None = None,
+        from_: datetime.datetime | None = None,
+        to: datetime.datetime | None = None,
+        time_: datetime.datetime | None = None,
+        modified_since: datetime.datetime | None = None,
+        resource_id: str | None = None,
+        resolution: status_models.Resolution | None = None,
         ) -> list[status_models.Incident]:
         """Return all incidents from the database."""
 
