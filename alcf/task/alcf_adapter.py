@@ -153,7 +153,7 @@ class AlcfAdapter(TaskFacilityAdapter, AlcfAuthenticatedAdapter):
             iri_task = task_models.Task(
                 id=db_task.id,
                 status=task_models.TaskStatus(db_task.status),
-                result=db_task.result,
+                result=json.loads(db_task.result) if db_task.result else None,
                 command=task_command
             )
         except Exception as e:
@@ -167,9 +167,9 @@ class AlcfAdapter(TaskFacilityAdapter, AlcfAuthenticatedAdapter):
             if iri_task.status == task_models.TaskStatus.completed.value:
                 if iri_task.result:
                     if iri_task.command.command in filesystem_model_responses:
-                        iri_task.result = filesystem_model_responses[iri_task.command.command](**json.loads(iri_task.result))
+                        iri_task.result = filesystem_model_responses[iri_task.command.command](**iri_task.result)
                     else:
-                        iri_task.result = json.loads(iri_task.result)
+                        iri_task.result = iri_task.result
         except Exception as e:
             raise HTTPException(
                 status_code=HTTP_500_INTERNAL_SERVER_ERROR,
