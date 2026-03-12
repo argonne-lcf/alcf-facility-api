@@ -12,7 +12,7 @@ job_id = "78337"
 
 # Build headers
 headers = {
-    "Authorization": f"Bearer {os.getenv("ACCESS_TOKEN", None)}",
+    "Authorization": f"Bearer {os.getenv('ACCESS_TOKEN', None)}",
     "Content-Type": "application/json"
 }
 
