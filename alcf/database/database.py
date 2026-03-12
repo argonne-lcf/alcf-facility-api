@@ -165,7 +165,8 @@ async def get_db_objects(
     site_id: str = None,
     resolution: str = None
     ):
-    offset = min(offset, 9000000000000000000)
+    if offset:
+        offset = min(offset, 9000000000000000000)
     async with get_db_session_context() as session:
         try:
             stmt = select(db_model_class)
@@ -207,8 +208,15 @@ async def get_db_objects(
             raise HTTPException(status_code=500, detail=f"Error retrieving database objects: {e}")
 
 # Function to extract a list of facility entries from a list of IDs (or all if no IDs provided)
-async def get_db_facilities(ids: List[str] = None) -> List[db_models.Facility]:
-    return await get_db_objects(db_models.Facility, ids)
+async def get_db_facilities(
+    ids: List[str] = None,
+    modified_since: datetime.datetime | None = None,
+    ) -> List[db_models.Facility]:
+    return await get_db_objects(
+        db_models.Facility, 
+        ids=ids,
+        modified_since=modified_since
+    )
 
 # Function to extract a list of resource entries from a list of IDs (or all if no IDs provided)
 async def get_db_resources(
@@ -322,7 +330,8 @@ async def get_db_tasks_by_user(
     limit: int = None,
     status: str = None
     ) -> List[db_models.Task]:
-    offset = min(offset, 9000000000000000000)
+    if offset:
+        offset = min(offset, 9000000000000000000)
     async with get_db_session_context() as session:
         try:
             stmt = select(db_models.Task).where(db_models.Task.user_id == user_id)
