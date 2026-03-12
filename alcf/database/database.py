@@ -108,6 +108,8 @@ async def add_user_to_db(data: dict):
 
 # Function to extract a single database entry from its id
 async def get_db_object_from_id(id, db_model_class):
+    if '\x00' in id:
+        raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"'{id}' not found.")
     async with get_db_session_context() as session:
         entry = await session.get(db_model_class, id)
         if entry is None:
