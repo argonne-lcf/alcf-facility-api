@@ -1,6 +1,6 @@
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy import select
+from sqlalchemy import select, or_
 from fastapi import HTTPException
 from starlette.status import HTTP_404_NOT_FOUND, HTTP_500_INTERNAL_SERVER_ERROR
 import datetime
@@ -165,7 +165,10 @@ async def get_db_objects(
     type: str = None,
     current_status: str = None,
     site_id: str = None,
-    resolution: str = None
+    resolution: str = None,
+    from_: datetime.datetime | None = None,
+    to: datetime.datetime | None = None,
+    time_: datetime.datetime | None = None,
     ):
     if offset:
         offset = min(offset, 9000000000000000000)
@@ -204,6 +207,16 @@ async def get_db_objects(
                 stmt = stmt.where(db_model_class.site_id == site_id)
             if resolution:
                 stmt = stmt.where(db_model_class.resolution == resolution)
+            if from_ is not None and hasattr(db_model_class, "start"):
+                ms = from_.astimezone(datetime.timezone.utc).replace(tzinfo=None) if from_.tzinfo else from_
+                stmt = stmt.where(db_model_class.start >= ms)
+            if to is not None and hasattr(db_model_class, "end"):
+                ms = to.astimezone(datetime.timezone.utc).replace(tzinfo=None) if to.tzinfo else to
+                stmt = stmt.where(db_model_class.end.isnot(None), db_model_class.end < ms)
+            if time_ is not None and hasattr(db_model_class, "start") and hasattr(db_model_class, "end"):
+                ms = time_.astimezone(datetime.timezone.utc).replace(tzinfo=None) if time_.tzinfo else time_
+                stmt = stmt.where(db_model_class.start <= ms)
+                stmt = stmt.where(or_(db_model_class.end.is_(None), db_model_class.end > ms))
             result = await session.execute(stmt)
             return result.scalars().all()
         except Exception as e:
@@ -276,7 +289,10 @@ async def get_db_incidents(
     status: str = None,
     type: str = None,
     resolution: str = None,
-    modified_since: datetime.datetime | None = None
+    modified_since: datetime.datetime | None = None,
+    from_: datetime.datetime | None = None,
+    to: datetime.datetime | None = None,
+    time_: datetime.datetime | None = None,
     ) -> List[db_models.Incident]:
     return await get_db_objects(
         db_models.Incident, 
@@ -289,6 +305,9 @@ async def get_db_incidents(
         type=type,
         resolution=resolution,
         modified_since=modified_since,
+        from_=from_,
+        to=to,
+        time_=time_,
     )
 
 # Function to extract a list of event entries from a list of IDs (or all if no IDs provided)
