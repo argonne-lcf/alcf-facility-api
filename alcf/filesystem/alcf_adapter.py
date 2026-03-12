@@ -117,6 +117,8 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
         # Disable options that are not ready yet
         if recursive:
             raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="'recursive' option not implemented yet.")
+        if dereference:
+            raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="'dereference' option not implemented yet.")
         
         # Build data for the command
         input_data = {
@@ -252,8 +254,7 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
         self: "AlcfAdapter",
         result
     ) -> filesystem_models.GetViewFileResponse:
-        content = result["output"]["content"]
-        return filesystem_models.GetViewFileResponse(output=content)
+        return filesystem_models.GetViewFileResponse(**result)
 
 
     # Checksum
