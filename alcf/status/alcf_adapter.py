@@ -44,10 +44,6 @@ class AlcfAdapter(StatusFacilityAdapter):
         ) -> list[status_models.Resource]:
         """Update and return all resources from the database."""
 
-        # Error for unsupported filters
-        if site_id:
-            raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="'site_id' not supported yet.")
-
         # Gather resources from database with filters
         resources = await get_db_resources(
             name=name,
@@ -57,7 +53,8 @@ class AlcfAdapter(StatusFacilityAdapter):
             offset=offset,
             limit=limit,
             resource_type=resource_type.value if resource_type else None,
-            current_status=current_status.value if current_status else None
+            current_status=current_status.value if current_status else None,
+            site_id=site_id
         )
 
         # Update resources if needed
