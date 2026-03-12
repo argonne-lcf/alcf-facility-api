@@ -9,3 +9,4 @@ iri_sandbox
 logs/
 .DS_Store
 venv/
+alcf_endpoints.json
