@@ -39,6 +39,16 @@ async def exists_in_db(id, db_model_class):
         result = await session.execute(stmt)
         return result.scalar_one_or_none() is not None
 
+# Function to reject null bytes in strings
+def _reject_null_bytes(*strings: str | None):
+    """Raise 404 if any string contains a null byte (rejected by PostgreSQL UTF-8)."""
+    for s in strings:
+        if s and '\x00' in s:
+            raise HTTPException(
+                status_code=HTTP_404_NOT_FOUND,
+                detail=f"'{s}' not found."
+            )
+
 
 # ==================================================
 # ===== Add and update single database objects =====
@@ -108,8 +118,7 @@ async def add_user_to_db(data: dict):
 
 # Function to extract a single database entry from its id
 async def get_db_object_from_id(id, db_model_class):
-    if '\x00' in id:
-        raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"'{id}' not found.")
+    _reject_null_bytes(id)
     async with get_db_session_context() as session:
         entry = await session.get(db_model_class, id)
         if entry is None:
@@ -170,6 +179,19 @@ async def get_db_objects(
     to: datetime.datetime | None = None,
     time_: datetime.datetime | None = None,
     ):
+    _reject_null_bytes(
+        *(ids or []),
+        name,
+        short_name,
+        description,
+        group,
+        resource_type,
+        status,
+        type,
+        current_status,
+        site_id,
+        resolution
+    )
     if offset:
         offset = min(offset, 9000000000000000000)
     async with get_db_session_context() as session:
@@ -187,7 +209,6 @@ async def get_db_objects(
                 stmt = stmt.where(db_model_class.group == group)
             if modified_since is not None and hasattr(db_model_class, "last_updated"):
                 ms = modified_since
-                # DB stores timestamps as "timestamp without time zone" (naive).
                 if isinstance(ms, datetime.datetime) and ms.tzinfo is not None:
                     ms = ms.astimezone(datetime.timezone.utc).replace(tzinfo=None)
                 stmt = stmt.where(db_model_class.last_updated >= ms)
