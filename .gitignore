@@ -10,3 +10,4 @@ local.env
 logs/
 .DS_Store
 venv/
+alcf_endpoints.json
