@@ -3,13 +3,14 @@ import json
 from json.decoder import JSONDecodeError
 from fastapi import HTTPException
 from app.routers.account import models as account_models
-from app.routers.compute import models as compute_models
 from alcf.compute.graphql import models as graphql_models
-from alcf.config import GRAPHQL_HTTPX_TRUST_ENV
+from alcf.endpoints import get_endpoint, EndpointType
+from alcf.config import GRAPHQL_HTTPX_TRUST_ENV, ALCF_COMPUTE_ENDPOINTS
 from starlette.status import (
     HTTP_400_BAD_REQUEST, 
     HTTP_408_REQUEST_TIMEOUT,
     HTTP_500_INTERNAL_SERVER_ERROR,
+    HTTP_501_NOT_IMPLEMENTED,
 )
 
 # Get indents
@@ -270,3 +271,26 @@ def validate_job_response(data: dict) -> graphql_models.JobResponse:
             status_code=HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Compute query response could not be validated: {e}"
         )
+
+
+# Get GraphQL URL
+def get_graphql_url(resource_name: str) -> str:
+
+    # Extract GraphQL endpoint for the targetted resource
+    graphql_endpoint_dict = ALCF_COMPUTE_ENDPOINTS.get(resource_name.lower(), {})
+    if not graphql_endpoint_dict:
+        raise HTTPException(
+            status_code=HTTP_501_NOT_IMPLEMENTED, 
+            detail=f"Job submission for {resource_name} not available yet."
+        )
+
+    # Get the endpoint object
+    graphql_endpoint = get_endpoint(graphql_endpoint_dict)
+    if graphql_endpoint.endpoint_type != EndpointType.PBS_GRAPHQL.value:
+        raise HTTPException(
+            status_code=HTTP_501_NOT_IMPLEMENTED, 
+            detail=f"Endpoint for {resource_name} is not a PBS GraphQL endpoint."
+        )
+
+    # Return GraphQL URL
+    return graphql_endpoint.url
