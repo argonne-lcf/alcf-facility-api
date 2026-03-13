@@ -1,9 +1,21 @@
 import os
 import json
+from pathlib import Path
 
 # Load environment variables from .env file
 from dotenv import load_dotenv
 load_dotenv()
+
+# Load ALCF endpoints data
+_BASE_DIR = Path(__file__).parent.parent
+_ENDPOINTS_FILE = _BASE_DIR / "alcf_endpoints.json"
+if not _ENDPOINTS_FILE.exists():
+    raise FileNotFoundError(f"Endpoints JSON file not found: {_ENDPOINTS_FILE}")
+ALCF_ENDPOINTS = json.loads(_ENDPOINTS_FILE.read_text())
+
+# Isolate various base endpoints
+ALCF_COMPUTE_ENDPOINTS = ALCF_ENDPOINTS.get("compute", {})
+ALCF_FILESYSTEM_ENDPOINTS = ALCF_ENDPOINTS.get("filesystem", {})
 
 # Database configuration
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql+asyncpg://facilityapi_user@localhost/facilityapi_db")
@@ -12,8 +24,7 @@ DATABASE_URL = os.getenv("DATABASE_URL", "postgresql+asyncpg://facilityapi_user@
 # TODO: Remove this once Auth is integrated
 SECRET_DEV_KEY = os.getenv("SECRET_DEV_KEY", None)
 
-# PBS GraphQL API URL
-GRAPHQL_URLS = json.loads(os.getenv("GRAPHQL_URLS", "{}"))
+# PBS GraphQL
 GRAPHQL_HTTPX_TRUST_ENV = os.getenv("GRAPHQL_HTTPX_TRUST_ENV", "True").lower() in ("true", "1", "t")
 
 # Keycloak integration
