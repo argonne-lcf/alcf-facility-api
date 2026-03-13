@@ -7,7 +7,6 @@ from app.routers.filesystem import models as filesystem_models
 from alcf.auth.alcf_adapter import AlcfAuthenticatedAdapter, AMSC_DEMO_FLAG
 from starlette.status import HTTP_501_NOT_IMPLEMENTED, HTTP_400_BAD_REQUEST 
 from typing import Any, Tuple
-from alcf.filesystem.utils import get_iri_file_from_ls_line
 from alcf.filesystem import validation
 
 class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
