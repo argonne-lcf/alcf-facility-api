@@ -2,7 +2,6 @@ from fastapi import HTTPException
 from app.routers.compute.facility_adapter import FacilityAdapter as ComputeFacilityAdapter
 from alcf.database.ingestion.ingest_activity_data import ALCF_RESOURCE_ID_LIST
 from alcf.auth.alcf_adapter import AlcfAuthenticatedAdapter, AMSC_DEMO_FLAG
-from alcf.config import GRAPHQL_URLS
 from alcf.compute.graphql.converters import (
     get_graphql_job_from_iri_jobspec,
     get_iri_job_from_graphql_job
@@ -29,7 +28,8 @@ from alcf.compute.graphql.utils import (
     build_get_job_query,
     build_cancel_job_query,
     build_update_job_query,
-    post_graphql
+    post_graphql,
+    get_graphql_url
 )
 
 class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
@@ -89,7 +89,7 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
             raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="'stderr_path' is mandatory.")
         
         # Recover GraphQL URL
-        graphql_url = self.__get_graphql_url(resource.name)
+        graphql_url = get_graphql_url(resource.name)
 
         # Convert IRI Job spec into GraphQL Job spec
         graphql_data = get_graphql_job_from_iri_jobspec(job_spec)
@@ -137,7 +137,7 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
             )
 
         # Recover GraphQL URL
-        graphql_url = self.__get_graphql_url(resource.name)
+        graphql_url = get_graphql_url(resource.name)
         
         # Convert IRI Job spec into GraphQL Job spec
         graphql_data = get_graphql_job_from_iri_jobspec(job_spec)
@@ -180,7 +180,7 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
             raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="'include_spec' not supported yet.")
         
         # Recover GraphQL URL
-        graphql_url = self.__get_graphql_url(resource.name)
+        graphql_url = get_graphql_url(resource.name)
         
         # Submit query to GraphQL API
         response = await post_graphql(
@@ -235,7 +235,7 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
             raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="'include_spec' not supported yet.")
         
         # Recover GraphQL URL
-        graphql_url = self.__get_graphql_url(resource.name)
+        graphql_url = get_graphql_url(resource.name)
 
         # Submit query to GraphQL API
         response = await post_graphql(
@@ -277,7 +277,7 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
             )
 
         # Recover GraphQL URL
-        graphql_url = self.__get_graphql_url(resource.name)
+        graphql_url = get_graphql_url(resource.name)
         
         # Submit query to GraphQL API
         response = await post_graphql(
@@ -326,18 +326,3 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
         # Return JobResponse object
         return response
     
-    # Get GraphQL URL
-    def __get_graphql_url(self, resource_name: str) -> str:
-
-        # Extract GraphQL for the targetted resource
-        graphql_url = GRAPHQL_URLS.get(resource_name.lower(), None)
-
-        # Error if resource does not have GraphQL
-        if graphql_url is None:
-            raise HTTPException(
-                status_code=HTTP_501_NOT_IMPLEMENTED, 
-                detail=f"Job submission for {resource_name} not available yet."
-            )
-        
-        # Return URL
-        return graphql_url
