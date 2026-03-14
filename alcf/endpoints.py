@@ -1,21 +1,37 @@
 from typing import Generic, TypeVar
 from pydantic import BaseModel, ValidationError
 from fastapi import HTTPException
+from enum import Enum
+from alcf.config import ALCF_ENDPOINTS
+from starlette.status import (
+    HTTP_501_NOT_IMPLEMENTED,
+    HTTP_404_NOT_FOUND,
+    HTTP_400_BAD_REQUEST,
+)
 
 # ====================
 # Reusable definitions
 # ====================
+
+# API component enumeration
+class APIComponent(str, Enum):
+    COMPUTE = "compute"
+    FILESYSTEM = "filesystem"
+    ACCOUNT = "account"
+
 
 # Endpoint type enumeration
 class EndpointType(str, Enum):
     PBS_GRAPHQL = "pbs_graphql"
     GLOBUS_MULTI_USER_ENDPOINT = "globus_multi_user_endpoint"
 
+
 # Common pydantic mode template for all types of endpoints
 ConfigT = TypeVar("ConfigT", bound=BaseModel)
 class _EndpointParams(BaseModel, Generic[ConfigT]):
     endpoint_type: str
     config: ConfigT
+
 
 # Common base class for all types of endpoints
 class _BaseEndpoint:
@@ -41,15 +57,16 @@ class _BaseEndpoint:
 # ================
 
 # GraphQL endpoint configuration
-class _GraphqlEndpointConfig(BaseModel):
+class _PBSGraphqlEndpointConfig(BaseModel):
     url: str
 
+
 # GraphQL endpoint implementation
-class GraphqlEndpoint(_BaseEndpoint):
+class PBSGraphqlEndpoint(_BaseEndpoint):
 
     # Data validation upon initialization
     def __init__(self, input_params: dict):
-        super().__init__(input_params, _EndpointParams[_GraphqlEndpointConfig])
+        super().__init__(input_params, _EndpointParams[_PBSGraphqlEndpointConfig])
 
     # URL property
     @property
@@ -66,6 +83,7 @@ class _GlobusMultiUserEndpointConfig(BaseModel):
     location: str
     endpoint_id: str
     function_id: str
+
 
 # Globus multi-user endpoint implementation
 class GlobusMultiUserEndpoint(_BaseEndpoint):
@@ -95,24 +113,59 @@ class GlobusMultiUserEndpoint(_BaseEndpoint):
 # ==================
 
 # Endpoint registry
-_ENDPOINTS: dict[str, type[_BaseEndpoint]] = {
-    "pbs_graphql": GraphqlEndpoint,
-    "globus_multi_user_endpoint": GlobusMultiUserEndpoint,
+_ENDPOINT_CLASSES: dict[str, type[_BaseEndpoint]] = {
+    EndpointType.PBS_GRAPHQL.value: PBSGraphqlEndpoint,
+    EndpointType.GLOBUS_MULTI_USER_ENDPOINT.value: GlobusMultiUserEndpoint,
 }
 
+
 # Function to retrieve an endpoint from its type
-def get_endpoint(input_params: dict) -> _BaseEndpoint:
+def get_endpoint(
+    resource_name: str = None,
+    operation: str = None,
+    api_component: APIComponent = None
+    ) -> _BaseEndpoint:
 
-    # Recover the class type from the endpoint type
-    endpoint_type = input_params.get("endpoint_type")
-    cls = _ENDPOINTS.get(endpoint_type, None)
-
-    # Error if the endpoint type is unknown
-    if cls is None:
+    # Error if the API component does not exist
+    if api_component is None or api_component not in APIComponent:    
         raise HTTPException(
-            status_code=500,
-            detail=f"Unknown endpoint type '{endpoint_type}'. Expected one of: {list(_ENDPOINTS)}"
+            status_code=HTTP_400_BAD_REQUEST, 
+            detail=f"Endpoints for API component {api_component} do not exist."
         )
 
+    # Error if the API component is not implemented yet
+    if api_component not in ALCF_ENDPOINTS:
+        raise HTTPException(
+            status_code=HTTP_501_NOT_IMPLEMENTED, 
+            detail=f"Endpoints for API component {api_component} not available yet."
+        )
+
+    # Extract resource dictionary from input alcf_endpoints.json
+    resource_dict = ALCF_ENDPOINTS[api_component.value].get(resource_name.lower(), {})
+    if not resource_dict:
+        raise HTTPException(
+            status_code=HTTP_400_BAD_REQUEST, 
+            detail=f"Endpoint resource {resource_name} does not exist for API component {api_component}."
+        )
+
+    # Extract the endpoint dictionary from the resource dictionary
+    endpoint_dict = resource_dict.get(operation.lower(), {})
+    if not endpoint_dict:
+        raise HTTPException(
+            status_code=HTTP_400_BAD_REQUEST, 
+            detail=f"Endpoint operation {operation} does not exist for resource {resource_name}."
+        )
+
+    # Error if endpoint type does not exist
+    endpoint_type = endpoint_dict.get("endpoint_type", "")
+    if endpoint_type not in _ENDPOINT_CLASSES:
+        raise HTTPException(
+            status_code=HTTP_400_BAD_REQUEST, 
+            detail=f"Endpoint type {endpoint_type} does not exist."
+        )
+
+    # Recover the endpoint class from the endpoint type
+    cls = _ENDPOINT_CLASSES.get(endpoint_type)
+
     # Initialize the endpoint and return the instance
-    return cls(input_params)
+    return cls(endpoint_dict)
