@@ -4,7 +4,7 @@ from json.decoder import JSONDecodeError
 from fastapi import HTTPException
 from app.routers.account import models as account_models
 from alcf.compute.graphql import models as graphql_models
-from alcf.endpoints import get_endpoint, EndpointType
+from alcf.endpoints import get_endpoint, EndpointType, APIComponent
 from alcf.config import GRAPHQL_HTTPX_TRUST_ENV, ALCF_COMPUTE_ENDPOINTS
 from starlette.status import (
     HTTP_400_BAD_REQUEST, 
@@ -277,20 +277,17 @@ def validate_job_response(data: dict) -> graphql_models.JobResponse:
 def get_graphql_url(resource_name: str) -> str:
 
     # Extract GraphQL endpoint for the targetted resource
-    graphql_endpoint_dict = ALCF_COMPUTE_ENDPOINTS.get(resource_name.lower(), {})
-    if not graphql_endpoint_dict:
-        raise HTTPException(
-            status_code=HTTP_501_NOT_IMPLEMENTED, 
-            detail=f"Job submission for {resource_name} not available yet."
-        )
-
-    # Get the endpoint object
-    graphql_endpoint = get_endpoint(graphql_endpoint_dict)
-    if graphql_endpoint.endpoint_type != EndpointType.PBS_GRAPHQL.value:
-        raise HTTPException(
-            status_code=HTTP_501_NOT_IMPLEMENTED, 
-            detail=f"Endpoint for {resource_name} is not a PBS GraphQL endpoint."
-        )
+    graphql_endpoint = get_endpoint(
+        api_component=APIComponent.COMPUTE.value,
+        resource_name=resource_name,
+        operation="all"
+    )
 
     # Return GraphQL URL
-    return graphql_endpoint.url
+    if graphql_endpoint.endpoint_type == EndpointType.PBS_GRAPHQL.value:    
+        return graphql_endpoint.url
+    else:
+        raise HTTPException(
+            status_code=HTTP_400_BAD_REQUEST, 
+            detail=f"Endpoint for {resource_name} is not a PBS GraphQL endpoint."
+        )
