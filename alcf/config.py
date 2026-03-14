@@ -13,10 +13,6 @@ if not _ENDPOINTS_FILE.exists():
     raise FileNotFoundError(f"Endpoints JSON file not found: {_ENDPOINTS_FILE}")
 ALCF_ENDPOINTS = json.loads(_ENDPOINTS_FILE.read_text())
 
-# Isolate various base endpoints
-ALCF_COMPUTE_ENDPOINTS = ALCF_ENDPOINTS.get("compute", {})
-ALCF_FILESYSTEM_ENDPOINTS = ALCF_ENDPOINTS.get("filesystem", {})
-
 # Database configuration
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql+asyncpg://facilityapi_user@localhost/facilityapi_db")
 
@@ -42,10 +38,6 @@ GLOBUS_HA_POLICY = os.getenv("GLOBUS_HA_POLICY", None)
 GLOBUS_GROUP = os.getenv("GLOBUS_GROUP", None)
 AUTHORIZED_IDP_DOMAIN = os.getenv("AUTHORIZED_IDP_DOMAIN", None)
 GLOBUS_AUTHORIZED_USERNAMES = json.loads(os.getenv("GLOBUS_AUTHORIZED_USERNAMES", "[]"))
-
-# Globus Compute
-GLOBUS_COMPUTE_FUNCTIONS = json.loads(os.getenv("GLOBUS_COMPUTE_FUNCTIONS", "{}"))
-GLOBUS_COMPUTE_ENDPOINTS = json.loads(os.getenv("GLOBUS_COMPUTE_ENDPOINTS", "{}"))
 
 # Redis configuration
 REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
