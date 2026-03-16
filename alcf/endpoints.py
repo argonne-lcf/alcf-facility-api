@@ -26,7 +26,7 @@ class EndpointType(str, Enum):
     GLOBUS_MULTI_USER_ENDPOINT = "globus_multi_user_endpoint"
 
 
-# Common pydantic mode template for all types of endpoints
+# Common pydantic model template for all types of endpoints
 ConfigT = TypeVar("ConfigT", bound=BaseModel)
 class _EndpointParams(BaseModel, Generic[ConfigT]):
     endpoint_type: str
