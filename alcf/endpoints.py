@@ -144,7 +144,7 @@ def get_endpoint(
     resource_dict = ALCF_ENDPOINTS[api_component].get(resource_name.lower(), {})
     if not resource_dict:
         raise HTTPException(
-            status_code=HTTP_400_BAD_REQUEST, 
+            status_code=HTTP_404_NOT_FOUND, 
             detail=f"Endpoint resource {resource_name} does not exist for API component {api_component}."
         )
 
@@ -152,7 +152,7 @@ def get_endpoint(
     endpoint_dict = resource_dict.get(operation.lower(), {})
     if not endpoint_dict:
         raise HTTPException(
-            status_code=HTTP_400_BAD_REQUEST, 
+            status_code=HTTP_404_NOT_FOUND, 
             detail=f"Endpoint operation {operation} does not exist for resource {resource_name}."
         )
 
@@ -160,7 +160,7 @@ def get_endpoint(
     endpoint_type = endpoint_dict.get("endpoint_type", "")
     if endpoint_type not in _ENDPOINT_CLASSES:
         raise HTTPException(
-            status_code=HTTP_400_BAD_REQUEST, 
+            status_code=HTTP_404_NOT_FOUND, 
             detail=f"Endpoint type {endpoint_type} does not exist."
         )
 
