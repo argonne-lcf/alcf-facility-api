@@ -154,22 +154,40 @@ IRI_API_PARAMS='{
 
 IRI_SHOW_MISSING_ROUTES=False
 
-GRAPHQL_URLS={"your-machine": "https:/.../your-machine/graphql", ...}
-
 # Token introspection
 KEYCLOAK_CLIENT_ID="<your-client-id>"
 KEYCLOAK_CLIENT_SECRET="your-keycloak-secret"
 KEYCLOAK_REALM_NAME="<your-realm>"
 KEYCLOAK_SERVER_URL="https://<your-domain>/realms/<your-realm>"
 
-# Compute functions -> function_name: function_UUID
-GLOBUS_COMPUTE_FUNCTIONS={"chmod": "...", "chown": "...", "ls": "...", "head": "...", "view": "..."}
-
-# Compute endpoints -> resource_name: endpoint_UUID
-GLOBUS_COMPUTE_ENDPOINTS={"your-resource": "your-globus-compute-endpoint-id", ...}
-
 # Manual authorization layer
 KEYCLOAK_AUTHORIZED_USERNAMES=["the-user", ...]
 GLOBUS_AUTHORIZED_USERNAMES=["the-user@the-domain", ...]
 GLOBUS_AMSC_AUTHORIZED_USERNAMES=["the-user@the-domain", ...]
+```
+
+Create a `alcf_endpoints.json` file with the following structure:
+```json
+{
+    "compute": {
+        "polaris": {
+            "endpoint_type": "pbs_graphql",
+            "config": {
+                "url": "https://.../polaris/graphql"
+            }
+        }
+    },
+    "filesystem": {
+        "eagle": {
+            "chmod": {
+                "endpoint_type": "globus_multi_user_endpoint",
+                "config": {
+                    "location": "sophia",
+                    "endpoint_id": "...",
+                    "function_id": "..."
+                }
+            }
+        }
+    }
+}
 ```

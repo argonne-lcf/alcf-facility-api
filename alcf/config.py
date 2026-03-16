@@ -1,9 +1,17 @@
 import os
 import json
+from pathlib import Path
 
 # Load environment variables from .env file
 from dotenv import load_dotenv
 load_dotenv()
+
+# Load ALCF endpoints data
+_BASE_DIR = Path(__file__).parent.parent
+_ENDPOINTS_FILE = _BASE_DIR / "alcf_endpoints.json"
+if not _ENDPOINTS_FILE.exists():
+    raise FileNotFoundError(f"Endpoints JSON file not found: {_ENDPOINTS_FILE}")
+ALCF_ENDPOINTS = json.loads(_ENDPOINTS_FILE.read_text())
 
 # Database configuration
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql+asyncpg://facilityapi_user@localhost/facilityapi_db")
@@ -12,8 +20,7 @@ DATABASE_URL = os.getenv("DATABASE_URL", "postgresql+asyncpg://facilityapi_user@
 # TODO: Remove this once Auth is integrated
 SECRET_DEV_KEY = os.getenv("SECRET_DEV_KEY", None)
 
-# PBS GraphQL API URL
-GRAPHQL_URLS = json.loads(os.getenv("GRAPHQL_URLS", "{}"))
+# PBS GraphQL
 GRAPHQL_HTTPX_TRUST_ENV = os.getenv("GRAPHQL_HTTPX_TRUST_ENV", "True").lower() in ("true", "1", "t")
 
 # Keycloak integration
@@ -31,10 +38,6 @@ GLOBUS_HA_POLICY = os.getenv("GLOBUS_HA_POLICY", None)
 GLOBUS_GROUP = os.getenv("GLOBUS_GROUP", None)
 AUTHORIZED_IDP_DOMAIN = os.getenv("AUTHORIZED_IDP_DOMAIN", None)
 GLOBUS_AUTHORIZED_USERNAMES = json.loads(os.getenv("GLOBUS_AUTHORIZED_USERNAMES", "[]"))
-
-# Globus Compute
-GLOBUS_COMPUTE_FUNCTIONS = json.loads(os.getenv("GLOBUS_COMPUTE_FUNCTIONS", "{}"))
-GLOBUS_COMPUTE_ENDPOINTS = json.loads(os.getenv("GLOBUS_COMPUTE_ENDPOINTS", "{}"))
 
 # Redis configuration
 REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
