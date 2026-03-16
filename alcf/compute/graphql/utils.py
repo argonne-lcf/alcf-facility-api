@@ -5,7 +5,7 @@ from fastapi import HTTPException
 from app.routers.account import models as account_models
 from alcf.compute.graphql import models as graphql_models
 from alcf.endpoints import get_endpoint, EndpointType, APIComponent
-from alcf.config import GRAPHQL_HTTPX_TRUST_ENV, ALCF_COMPUTE_ENDPOINTS
+from alcf.config import GRAPHQL_HTTPX_TRUST_ENV
 from starlette.status import (
     HTTP_400_BAD_REQUEST, 
     HTTP_408_REQUEST_TIMEOUT,
