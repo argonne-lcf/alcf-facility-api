@@ -38,7 +38,7 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
             raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=f"Input validation error: {str(e)}")
 
         # Submit task to Globus Compute and wait for the task ID
-        task_id = await globus_utils.submit_task("chmod", resource, input_data, user)
+        task_id = await globus_utils.submit_task("chmod", resource.name, input_data, user)
 
         # Return task ID to the user
         return task_id
@@ -79,7 +79,7 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
             raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=f"Input validation error: {str(e)}")
 
         # Submit task to Globus Compute and wait for the result
-        task_id = await globus_utils.submit_task("chown", resource, input_data, user)
+        task_id = await globus_utils.submit_task("chown", resource.name, input_data, user)
 
         # Return task ID to the user
         return task_id
@@ -135,7 +135,7 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
             raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=f"Input validation error: {str(e)}")
 
         # Submit task to Globus Compute and wait for the task ID
-        task_id = await globus_utils.submit_task("ls", resource, input_data, user)
+        task_id = await globus_utils.submit_task("ls", resource.name, input_data, user)
 
         # Return task ID to the user
         return task_id
@@ -183,7 +183,7 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
             raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=f"Input validation error: {str(e)}")
 
         # Submit task to Globus Compute and wait for the task ID
-        task_id = await globus_utils.submit_task("head", resource, input_data, user)
+        task_id = await globus_utils.submit_task("head", resource.name, input_data, user)
 
         # Return task ID to the user
         return task_id
@@ -242,7 +242,7 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
             raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=f"Input validation error: {str(e)}")
 
         # Submit task to Globus Compute and wait for the task ID
-        task_id = await globus_utils.submit_task("view", resource, input_data, user)
+        task_id = await globus_utils.submit_task("view", resource.name, input_data, user)
 
         # Return task ID to the user
         return task_id
