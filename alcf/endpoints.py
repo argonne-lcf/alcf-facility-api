@@ -141,7 +141,7 @@ def get_endpoint(
         )
 
     # Extract resource dictionary from input alcf_endpoints.json
-    resource_dict = ALCF_ENDPOINTS[api_component.value].get(resource_name.lower(), {})
+    resource_dict = ALCF_ENDPOINTS[api_component].get(resource_name.lower(), {})
     if not resource_dict:
         raise HTTPException(
             status_code=HTTP_400_BAD_REQUEST, 
