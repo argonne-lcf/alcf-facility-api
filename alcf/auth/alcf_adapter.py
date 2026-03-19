@@ -4,21 +4,18 @@ from app.routers.iri_router import AuthenticatedAdapter
 from app.routers.account.models import User
 from alcf.config import KEYCLOAK_CLIENT_ID, KEYCLOAK_CLIENT_SECRET, KEYCLOAK_REALM_NAME, KEYCLOAK_SERVER_URL
 from keycloak import KeycloakOpenID
-from alcf.auth.utils import validate_access_token, validate_amsc_demo_access_token, TokenValidationResponse
+from alcf.auth.utils import validate_access_token, TokenValidationResponse
 from alcf.database.database import exists_in_db, add_user_to_db, get_db_user_from_id
 from alcf.database import models as db_models
 from alcf.config import (
     KEYCLOAK_ENABLED,
     KEYCLOAK_AUTHORIZED_USERNAMES,
     GLOBUS_AUTHORIZED_USERNAMES,
-    GLOBUS_AMSC_AUTHORIZED_USERNAMES,
 )
 import logging
 
 log = logging.getLogger(__name__)
 
-# [TEMPORARY]
-AMSC_DEMO_FLAG = "-amsc-demo"
 
 # Configure Keycloak client
 if KEYCLOAK_ENABLED:
@@ -48,19 +45,6 @@ class AlcfAuthenticatedAdapter(AuthenticatedAdapter):
 
         # Clean API key
         api_key = api_key.replace("Bearer ", "")
-
-        # Auth for Globus AmSC demo token ...
-        # -----------------------------------
-
-        # AmSC demo token userinfo details
-        #amsc_demo_token_response = validate_amsc_demo_access_token(api_key)
-
-        # Try to extract the user ID (will only return the ID if authorized)
-        #if amsc_demo_token_response.is_valid:
-        #    user_id = await self.__get_authorized_globus_user_id(amsc_demo_token_response)
-        #    if user_id:
-        #        return user_id+AMSC_DEMO_FLAG
-
     
         # Auth for Facility Globus token
         # ------------------------------
@@ -148,11 +132,7 @@ class AlcfAuthenticatedAdapter(AuthenticatedAdapter):
 
         # Extract user from the database
         try:
-            if AMSC_DEMO_FLAG in user_id:
-                user_id_for_db = user_id.replace(AMSC_DEMO_FLAG, "")
-            else:
-                user_id_for_db = user_id
-            db_user = await get_db_user_from_id(user_id_for_db)
+            db_user = await get_db_user_from_id(user_id)
         except Exception:
             raise HTTPException(
                 status_code=HTTP_401_UNAUTHORIZED,
@@ -165,13 +145,6 @@ class AlcfAuthenticatedAdapter(AuthenticatedAdapter):
                 is_authorized = db_user.username in GLOBUS_AUTHORIZED_USERNAMES
             else:
                 is_authorized = True
-
-        # AmSC demo Globus token: only authorized if in list
-        elif "Globus AmSC Demo" in db_user.auth_service:
-            if GLOBUS_AMSC_AUTHORIZED_USERNAMES:
-                is_authorized = db_user.username in GLOBUS_AMSC_AUTHORIZED_USERNAMES
-            else:
-                is_authorized = False
         
         # Facility Keycloak token: authorized if in list or if list is none
         elif db_user.auth_service == "Keycloak":
