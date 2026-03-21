@@ -1,8 +1,6 @@
-import asyncio
-import time
-import json
 from cachetools import TTLCache, cached
 from alcf.endpoints import get_endpoint, EndpointType, APIComponent
+from alcf.auth.utils import introspect_token as globus_introspect_token
 from starlette.status import HTTP_500_INTERNAL_SERVER_ERROR, HTTP_400_BAD_REQUEST
 from fastapi import HTTPException
 from app.routers.account import models as account_models
@@ -154,6 +152,10 @@ async def submit_task(
             detail=f"Endpoint for {resource_name} is not a Globus multi-user endpoint."
         )
 
+    # Recover Globus Compute access token (from cache)
+    _, _, globus_compute_access_token, _ = globus_introspect_token(user.api_key)
+    user.api_key = globus_compute_access_token
+
     # Get Globus Compute client from user's token
     gcc = get_compute_client(user.name, user.api_key)
 
@@ -185,6 +187,10 @@ async def submit_task(
 # TODO: cache this
 def get_task_status(user: account_models.User, task_id: str):
     """Check the status of a task with Globus Compute and return result if completed."""
+
+    # Recover Globus Compute access token (from cache)
+    _, _, globus_compute_access_token, _ = globus_introspect_token(user.api_key)
+    user.api_key = globus_compute_access_token
 
     # Get Globus Compute client using user's credentials
     gcc = get_compute_client(user.name, user.api_key)
