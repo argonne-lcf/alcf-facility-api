@@ -1,11 +1,7 @@
 import os
 import requests
-from globus_access_token import get_access_token
 from dotenv import load_dotenv
 load_dotenv()
-
-# Get Globus access token
-ACCESS_TOKEN = get_access_token()
 
 # Targeted resource
 #resource_id = "7f7d0593-162e-43b9-8476-07d7d137d6ab" # Edith
@@ -19,7 +15,7 @@ data = {
 
 # Build headers
 headers = {
-    "Authorization": f"Bearer {ACCESS_TOKEN}",
+    "Authorization": f"Bearer {os.getenv('ACCESS_TOKEN', None)}",
     "Content-Type": "application/json"
 }
 
