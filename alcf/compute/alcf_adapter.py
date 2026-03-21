@@ -1,7 +1,8 @@
 from fastapi import HTTPException
 from app.routers.compute.facility_adapter import FacilityAdapter as ComputeFacilityAdapter
-from alcf.database.ingestion.ingest_activity_data import ALCF_RESOURCE_ID_LIST
 from alcf.auth.alcf_adapter import AlcfAuthenticatedAdapter
+from alcf.auth.utils import KEYCLOAK_FLAG
+from alcf.auth.keycloak_utils import generate_user_keycloak_token
 from alcf.compute.graphql.converters import (
     get_graphql_job_from_iri_jobspec,
     get_iri_job_from_graphql_job
@@ -86,9 +87,15 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
         # Convert IRI Job spec into GraphQL Job spec
         graphql_data = get_graphql_job_from_iri_jobspec(job_spec)
 
+        # Generate Keycloak access token for user if necessary
+        if KEYCLOAK_FLAG in user.api_key:
+            user_keycloak_access_token = user.api_key.replace(KEYCLOAK_FLAG, "")
+        else:
+            user_keycloak_access_token = generate_user_keycloak_token(user)
+
         # Submit query to GraphQL API
         response = await post_graphql(
-            user=user,
+            access_token=user_keycloak_access_token,
             query=build_submit_job_query(user, graphql_data),
             url=graphql_url
         )
@@ -125,10 +132,16 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
         
         # Convert IRI Job spec into GraphQL Job spec
         graphql_data = get_graphql_job_from_iri_jobspec(job_spec)
+
+        # Generate Keycloak access token for user if necessary
+        if KEYCLOAK_FLAG in user.api_key:
+            user_keycloak_access_token = user.api_key.replace(KEYCLOAK_FLAG, "")
+        else:
+            user_keycloak_access_token = generate_user_keycloak_token(user)
         
         # Submit query to GraphQL API
         response = await post_graphql(
-            user=user,
+            access_token=user_keycloak_access_token,
             query=build_update_job_query(user, graphql_data, job_id),
             url=graphql_url
         )
@@ -157,10 +170,16 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
         
         # Recover GraphQL URL
         graphql_url = get_graphql_url(resource.name)
+
+        # Generate Keycloak access token for user if necessary
+        if KEYCLOAK_FLAG in user.api_key:
+            user_keycloak_access_token = user.api_key.replace(KEYCLOAK_FLAG, "")
+        else:
+            user_keycloak_access_token = generate_user_keycloak_token(user)
         
         # Submit query to GraphQL API
         response = await post_graphql(
-            user=user,
+            access_token=user_keycloak_access_token,
             query=build_get_job_query(user, job_id=job_id, historical=historical),
             url=graphql_url
         )
@@ -205,9 +224,15 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
         # Recover GraphQL URL
         graphql_url = get_graphql_url(resource.name)
 
+        # Generate Keycloak access token for user if necessary
+        if KEYCLOAK_FLAG in user.api_key:
+            user_keycloak_access_token = user.api_key.replace(KEYCLOAK_FLAG, "")
+        else:
+            user_keycloak_access_token = generate_user_keycloak_token(user)
+
         # Submit query to GraphQL API
         response = await post_graphql(
-            user=user,
+            access_token=user_keycloak_access_token,
             query=build_get_job_query(user, historical=historical),
             url=graphql_url
         )
@@ -238,10 +263,16 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
 
         # Recover GraphQL URL
         graphql_url = get_graphql_url(resource.name)
+
+        # Generate Keycloak access token for user if necessary
+        if KEYCLOAK_FLAG in user.api_key:
+            user_keycloak_access_token = user.api_key.replace(KEYCLOAK_FLAG, "")
+        else:
+            user_keycloak_access_token = generate_user_keycloak_token(user)
         
         # Submit query to GraphQL API
         response = await post_graphql(
-            user=user,
+            access_token=user_keycloak_access_token,
             query=build_cancel_job_query(user, job_id),
             url=graphql_url
         )
