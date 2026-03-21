@@ -2,9 +2,8 @@ from fastapi import HTTPException
 from starlette.status import HTTP_401_UNAUTHORIZED
 from app.routers.iri_router import AuthenticatedAdapter
 from app.routers.account.models import User
-from alcf.config import KEYCLOAK_CLIENT_ID, KEYCLOAK_CLIENT_SECRET, KEYCLOAK_REALM_NAME, KEYCLOAK_SERVER_URL
-from keycloak import KeycloakOpenID
-from alcf.auth.utils import validate_access_token, TokenValidationResponse
+from alcf.auth.utils import validate_access_token, TokenValidationResponse, AuthServices, KEYCLOAK_FLAG
+from alcf.auth.keycloak_utils import introspect_token as keycloak_introspect_token
 from alcf.database.database import exists_in_db, add_user_to_db, get_db_user_from_id
 from alcf.database import models as db_models
 from alcf.config import (
@@ -15,18 +14,6 @@ from alcf.config import (
 import logging
 
 log = logging.getLogger(__name__)
-
-
-# Configure Keycloak client
-if KEYCLOAK_ENABLED:
-    keycloak_openid = KeycloakOpenID(
-        server_url=KEYCLOAK_SERVER_URL,
-        client_id=KEYCLOAK_CLIENT_ID,
-        realm_name=KEYCLOAK_REALM_NAME,
-        client_secret_key=KEYCLOAK_CLIENT_SECRET,
-        verify=True
-    )
-    config_well_known = keycloak_openid.well_known()
 
 
 class AlcfAuthenticatedAdapter(AuthenticatedAdapter):
@@ -65,9 +52,8 @@ class AlcfAuthenticatedAdapter(AuthenticatedAdapter):
         if KEYCLOAK_ENABLED:
 
             # Try to validate the API key with Keycloak
-            # TODO: Cache this
             try:
-                introspection = keycloak_openid.introspect(api_key)
+                introspection = keycloak_introspect_token(api_key)
             except Exception:
                 raise HTTPException(
                     status_code=HTTP_401_UNAUTHORIZED,
@@ -90,7 +76,7 @@ class AlcfAuthenticatedAdapter(AuthenticatedAdapter):
                             "username": introspection.get("username"),
                             "idp_id": introspection.get("client_id"),
                             "idp_name": introspection.get("iss", "iss-not found in Keycloak token"),
-                            "auth_service": "Keycloak"
+                            "auth_service": AuthServices.keycloak.value
                         })
                         log.info(f"Added new user to database: {user_id}")
                 except Exception as e:
@@ -123,13 +109,6 @@ class AlcfAuthenticatedAdapter(AuthenticatedAdapter):
         # Clean API key
         api_key = api_key.replace("Bearer ", "")
 
-        # Swap API key to use the Globus Compute dependent token if necessary
-        # Only relevant for Facility Globus token
-        token_response = validate_access_token(api_key)
-        if token_response.is_valid:
-            if token_response.is_authorized and token_response.user is not None:
-                api_key = token_response.user.access_token
-
         # Extract user from the database
         try:
             db_user = await get_db_user_from_id(user_id)
@@ -140,14 +119,14 @@ class AlcfAuthenticatedAdapter(AuthenticatedAdapter):
             )
         
         # Facility Globus token: authorized if in list or if list is none
-        if db_user.auth_service == "Globus":
+        if db_user.auth_service == AuthServices.globus.value:
             if GLOBUS_AUTHORIZED_USERNAMES:
                 is_authorized = db_user.username in GLOBUS_AUTHORIZED_USERNAMES
             else:
                 is_authorized = True
         
         # Facility Keycloak token: authorized if in list or if list is none
-        elif db_user.auth_service == "Keycloak":
+        elif db_user.auth_service == AuthServices.keycloak.value:
             if KEYCLOAK_AUTHORIZED_USERNAMES:
                 is_authorized = db_user.username in KEYCLOAK_AUTHORIZED_USERNAMES
             else:
@@ -156,6 +135,10 @@ class AlcfAuthenticatedAdapter(AuthenticatedAdapter):
         # Unsuported auth service
         else:
             is_authorized = False
+
+        # Add Keycloak flag to API key if needed
+        if db_user.auth_service == AuthServices.keycloak.value:
+            api_key = f"{KEYCLOAK_FLAG}{api_key}"
 
         # Return user object if authorized
         if is_authorized:
