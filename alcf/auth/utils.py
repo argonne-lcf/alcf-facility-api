@@ -1,6 +1,4 @@
-from fastapi import HTTPException
-import requests
-from starlette.status import HTTP_500_INTERNAL_SERVER_ERROR 
+from enum import Enum
 import globus_sdk
 from alcf.config import (
     GLOBUS_SERVICE_API_CLIENT_ID, 
@@ -21,6 +19,14 @@ from cachetools import TTLCache, cached
 # Tool to log access requests
 import logging
 log = logging.getLogger(__name__)
+
+# Auth services
+class AuthServices(Enum):
+    globus = "Globus"
+    keycloak = "Keycloak"
+
+# Keycloak input token flag
+KEYCLOAK_FLAG = "keycloak_flag_"
 
 # Maximum allowed length for a Globus access token
 MAX_GLOBUS_TOKEN_LENGTH = 130
@@ -80,10 +86,8 @@ def introspect_token(access_token: str):
     # Perform the token introspection if not taken from the cache
     result = _perform_token_introspection(access_token)
 
-    # If the introspection triggered an error ...
+    # Set short cache time if an error is triggered
     if result[0] is None:
-
-        # Set cache time (shorter for errors)
         ttl = 60
 
     # If the introspection was successful ...
@@ -222,7 +226,7 @@ def get_user_details(introspection, user_groups) -> UserPydantic:
                         user_group_uuids=user_groups,
                         idp_id=identity["identity_provider"],
                         idp_name=identity["identity_provider_display_name"],
-                        auth_service="Globus"
+                        auth_service=AuthServices.globus.value
                     )
                 except Exception as e:
                     return None
@@ -266,6 +270,16 @@ def validate_access_token(access_token):
             user=None
         )
     
+    # Gather the user details
+    user = get_user_details(introspection, user_groups)
+    if user is None or len(user.username) == 0:
+        return TokenValidationResponse(
+            is_valid=True,
+            is_authorized=False,
+            user=None,
+            error_message="User details could not be recovered from Globus token introspection."
+        )
+    
     # Make sure the Globus high-assurance policy is respected
     for policies in introspection["policy_evaluations"].values():
         if policies.get("evaluation", False) == False:
@@ -286,16 +300,6 @@ def validate_access_token(access_token):
                 error_message="User not in the authorized Globus Group."
             )
         
-    # Gather the user details
-    user = get_user_details(introspection, user_groups)
-    if user is None or len(user.username) == 0:
-        return TokenValidationResponse(
-            is_valid=True,
-            is_authorized=False,
-            user=None,
-            error_message="User details could not be recovered from Globus token introspection."
-        )
-    
     # Add Globus Compute access token to the user details
     user.access_token = globus_compute_access_token
     
