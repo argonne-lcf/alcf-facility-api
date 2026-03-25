@@ -161,6 +161,16 @@ TRUNCATE TABLE event, incident CASCADE;
 # DANGER ZONE
 ```
 
+Check access logs:
+```bash
+psql -U apiuser -d facilityapi_db -c "SELECT id, user_id, created_at, api_route FROM accesslog;"
+```
+
+Check compute logs:
+```bash
+psql -U apiuser -d facilityapi_db -c "SELECT id, access_log_id, alcf_username FROM computelog;"
+```
+
 ### Migrate database if fields are changed
 
 Example with task, which changed `command` to `task_command`. Check current columns:
