@@ -111,6 +111,14 @@ async def update_task_in_db(data: dict):
 async def add_user_to_db(data: dict):
     await add_to_db(data, db_models.User)
 
+# Function to add access log entry
+async def add_access_log_to_db(data: dict):
+    await add_to_db(data, db_models.AccessLog)
+
+# Function to add compute log entry
+async def add_compute_log_to_db(data: dict):
+    await add_to_db(data, db_models.ComputeLog)
+
 
 # =======================================
 # ===== Get single database objects =====
