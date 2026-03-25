@@ -212,30 +212,22 @@ def build_update_job_query(
 
 
 # Post GraphQL
-# TODO: Remove verify_ssl once PBS GraphQL is outside of the dev environment
 async def post_graphql(
     query: str = None,
-    user: account_models.User = None,
+    access_token: str = None,
     url: str = None,
-    verify_ssl: bool = False
     ):
     """Generic command to send post requests to GraphQL."""
 
     # Generate request headers
-    try:
-        headers = {
-            "Authorization": f"Bearer {user.api_key}",
-            "Content-Type": "application/json"
-        }
-    except Exception:
-        raise HTTPException(
-            status_code=HTTP_400_BAD_REQUEST, 
-            detail="Cannot extract user's API key."
-        )
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+        "Content-Type": "application/json"
+    }
 
     # Submit request to GraphQL API 
     try:
-        async with httpx.AsyncClient(verify=verify_ssl, trust_env=GRAPHQL_HTTPX_TRUST_ENV) as client:
+        async with httpx.AsyncClient(trust_env=GRAPHQL_HTTPX_TRUST_ENV) as client:
             response = await client.post(url, json={"query": query}, headers=headers, timeout=10)
             response = response.json()
     except httpx.TimeoutException:

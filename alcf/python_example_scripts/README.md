@@ -53,6 +53,8 @@ You can view your access token with:
 python globus_access_token.py get_access_token
 ```
 
+Copy the `access_token` field from the response and add it to your `.env` file as `ACCESS_TOKEN=...`.
+
 If you need to authenticate with another identity, logout from Globus by visiting [https://app.globus.org/logout](https://app.globus.org/logout), and start the process over.
 
 ## Filesystem Operations
