@@ -171,6 +171,11 @@ Check compute logs:
 psql -U apiuser -d facilityapi_db -c "SELECT id, access_log_id, alcf_username FROM computelog;"
 ```
 
+Check task logs:
+```bash
+psql -U apiuser -d facilityapi_db -c "SELECT id, globus_endpoint_id, globus_function_id FROM task;"
+```
+
 ### Migrate database if fields are changed
 
 Example with task, which changed `command` to `task_command`. Check current columns:
@@ -181,6 +186,12 @@ psql -U apiuser -d facilityapi_db -c "\d task"
 Apply the migration:
 ```bash
 psql -U apiuser -d facilityapi_db -c "ALTER TABLE task RENAME COLUMN command TO task_command;"
+```
+
+Add endpoint and function id to Task
+```bash
+psql -U apiuser -d facilityapi_db -c "ALTER TABLE task ADD COLUMN globus_endpoint_id TEXT;"
+psql -U apiuser -d facilityapi_db -c "ALTER TABLE task ADD COLUMN globus_function_id TEXT;"
 ```
 
 ## Redis cache
