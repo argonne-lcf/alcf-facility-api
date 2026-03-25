@@ -1,8 +1,13 @@
 from sqlmodel import SQLModel, Field, JSON
+from enum import Enum
 from sqlalchemy import Column, DateTime
 from typing import List, Optional
 from datetime import datetime, timezone
 
+# API component enumeration
+class FilesystemSubmitMethods(str, Enum):
+    GLOBUS_COMPUTE = "globus_compute"
+    GLOBUS_TRANSFER = "globus_transfer"
 
 class NamedObject(SQLModel):
     """Base class for all named objects with common fields."""
@@ -75,5 +80,30 @@ class Task(SQLModel, table=True):
     status: str = Field(default="pending")  # pending, active, completed, failed, canceled
     result: Optional[str] = None
     task_command: str = Field(sa_column=Column(JSON))  # Store TaskCommand as JSON string
+    globus_endpoint_id: Optional[str] = None
+    globus_function_id: Optional[str] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
+
+
+class AccessLog(SQLModel, table=True):
+    """Access log entry"""
+    id: str = Field(primary_key=True, index=True)
+    user_id: str = Field(index=True)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
+    responded_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
+    api_route: str
+    origin_ip: str
+    status_code: int
+    error: Optional[float] = None
+
+class ComputeLog(SQLModel, table=True):
+    """Compute submit log entry"""
+    id: str = Field(primary_key=True, index=True)
+    access_log_id: str = Field(index=True)
+    resource_id: str = Field(index=True)
+    input: str = Field(sa_column=Column(JSON))
+    result: Optional[str] = None
+    alcf_username: str
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
+    responded_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
