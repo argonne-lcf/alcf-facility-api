@@ -206,7 +206,7 @@ def introspect_token(token: str = None):
 # Generate user Keycloak token
 def generate_user_keycloak_token(
     user: account_models.User = None
-    ):
+    ) -> tuple[str, str]:
     """
     Take the already-vetted pydantic user object and attempt to generate a 
     Keycloak access token on their behalf.
