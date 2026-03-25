@@ -80,6 +80,8 @@ class Task(SQLModel, table=True):
     status: str = Field(default="pending")  # pending, active, completed, failed, canceled
     result: Optional[str] = None
     task_command: str = Field(sa_column=Column(JSON))  # Store TaskCommand as JSON string
+    globus_endpoint_id: Optional[str] = None
+    globus_function_id: Optional[str] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
 
@@ -94,6 +96,20 @@ class AccessLog(SQLModel, table=True):
     origin_ip: str
     status_code: int
     error: Optional[float] = None
+
+#class FilesystemTaskLog(SQLModel, table=True):
+#    """Filesystem log entry"""
+#    id: str = Field(primary_key=True, index=True)
+#    access_log_id: str = Field(index=True)
+#    resource_id: str = Field(index=True)
+#    input: str = Field(sa_column=Column(JSON))
+#    result: Optional[str] = None
+#    status: str = Field(default="pending")  # pending, active, completed, failed, canceled
+#    submit_method: str
+#    globus_endpoint_id: str
+#    globus_function_id: Optional[str] = None
+#    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
+#    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
 
 class ComputeLog(SQLModel, table=True):
     """Compute submit log entry"""
