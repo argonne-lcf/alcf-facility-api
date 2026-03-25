@@ -1,7 +1,12 @@
+import json
+from functools import wraps
+from datetime import datetime, timezone
+from uuid import uuid4
 from fastapi import HTTPException
 from app.routers.compute.facility_adapter import FacilityAdapter as ComputeFacilityAdapter
 from alcf.auth.alcf_adapter import AlcfAuthenticatedAdapter
 from alcf.auth.utils import KEYCLOAK_FLAG
+from alcf.database.database import add_access_log_to_db, add_compute_log_to_db
 from alcf.auth.keycloak_utils import generate_user_keycloak_token
 from alcf.compute.graphql.converters import (
     get_graphql_job_from_iri_jobspec,
@@ -33,15 +38,66 @@ from alcf.compute.graphql.utils import (
     get_graphql_url
 )
 
+# Function wrapper to create access log object
+def create_log_objects(func):
+    @wraps(func)
+    async def wrapper(*args, **kwargs):
+
+        # Extract function inputs
+        try:
+            user: account_models.User = kwargs["user"]
+            resource: status_models.Resource = kwargs["resource"]
+        except Exception:
+            raise HTTPException(
+                status_code=HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Could not acces user and or resource from kwargs."
+            )
+
+        # Create AccessLog data
+        try:
+            kwargs["db_access_log"] = {
+                "id": str(uuid4()),
+                "user_id": user.id,
+                "created_at": datetime.now(timezone.utc).replace(tzinfo=None),
+                "api_route": f"compute/{func.__name__}",
+                "origin_ip": user.client_ip,
+            }
+        except Exception:
+            raise HTTPException(
+                status_code=HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Could not create AccessLog initial data."
+            )
+        
+        # Create ComputeLog data
+        try:
+            kwargs["db_compute_log"] = {
+                "id": str(uuid4()),
+                "access_log_id": kwargs["db_access_log"]["id"],
+                "resource_id": resource.id,
+            }
+        except Exception:
+            raise HTTPException(
+                status_code=HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Could not create ComputeLog initial data."
+            )
+
+        # Execute the function
+        return await func(*args, **kwargs)
+    return wrapper
+
+
 class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
     """Compute facility adapter definition for the IRI Facility API."""
 
     # Submit job
+    @create_log_objects
     async def submit_job(
         self: "AlcfAdapter",
         resource: status_models.Resource, 
         user: account_models.User, 
         job_spec: compute_models.JobSpec,
+        db_access_log: dict = None,
+        db_compute_log: dict = None,
     ) -> compute_models.Job:
         
         # [TEMPORARY]
@@ -90,41 +146,64 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
         # Generate Keycloak access token for user if necessary
         if KEYCLOAK_FLAG in user.api_key:
             user_keycloak_access_token = user.api_key.replace(KEYCLOAK_FLAG, "")
+            alcf_username = user.user_id
         else:
-            user_keycloak_access_token = generate_user_keycloak_token(user)
+            user_keycloak_access_token, alcf_username = generate_user_keycloak_token(user)
 
         # Submit query to GraphQL API
+        db_compute_log["created_at"] = datetime.now(timezone.utc).replace(tzinfo=None)
         response = await post_graphql(
             access_token=user_keycloak_access_token,
             query=build_submit_job_query(user, graphql_data),
             url=graphql_url
         )
+        db_compute_log["responded_at"] = datetime.now(timezone.utc).replace(tzinfo=None)
 
         # Extract raw job response into GraphQL JobResponse pydantic object
         response = self.__extract_job_response(response, ["data", "createJob"])
         
-        # Return IRI-compliant job response
-        return get_iri_job_from_graphql_job(response.node)
+        # Create IRI-compliant job response
+        iri_response = get_iri_job_from_graphql_job(response.node)
+    
+        # Finalize database logging
+        db_compute_log["input"] = json.dumps({
+            "job_spec": job_spec.model_dump()
+        })
+        db_compute_log["result"] = json.dumps(iri_response.model_dump())
+        db_compute_log["alcf_username"] = alcf_username
+        db_access_log["responded_at"] = datetime.now(timezone.utc).replace(tzinfo=None)
+        db_access_log["status_code"] = 200
+        await add_compute_log_to_db(db_compute_log)
+        await add_access_log_to_db(db_access_log)
+    
+        # Return IRI-compliant response
+        return iri_response
     
 
     # Submit job script
+    @create_log_objects
     async def submit_job_script(
         self: "AlcfAdapter",
         resource: status_models.Resource, 
         user: account_models.User, 
         job_script_path: str,
         args: list[str] = [],
+        db_access_log: dict = None,
+        db_compute_log: dict = None,
     ) -> compute_models.Job:
         raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="Capability not implemented")
 
 
     # Update job
+    @create_log_objects
     async def update_job(
         self: "AlcfAdapter",
         resource: status_models.Resource, 
         user: account_models.User, 
         job_spec: compute_models.JobSpec,
         job_id: str,
+        db_access_log: dict = None,
+        db_compute_log: dict = None,
     ) -> compute_models.Job:
         
         # Recover GraphQL URL
@@ -136,24 +215,43 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
         # Generate Keycloak access token for user if necessary
         if KEYCLOAK_FLAG in user.api_key:
             user_keycloak_access_token = user.api_key.replace(KEYCLOAK_FLAG, "")
+            alcf_username = user.user_id
         else:
-            user_keycloak_access_token = generate_user_keycloak_token(user)
+            user_keycloak_access_token, alcf_username = generate_user_keycloak_token(user)
         
         # Submit query to GraphQL API
+        db_compute_log["created_at"] = datetime.now(timezone.utc).replace(tzinfo=None)
         response = await post_graphql(
             access_token=user_keycloak_access_token,
             query=build_update_job_query(user, graphql_data, job_id),
             url=graphql_url
         )
+        db_compute_log["responded_at"] = datetime.now(timezone.utc).replace(tzinfo=None)
 
         # Extract raw job response into GraphQL JobResponse pydantic object
         response = self.__extract_job_response(response, ["data", "updateJob"])
         
-        # Return IRI-compliant job response
-        return get_iri_job_from_graphql_job(response.node)
+        # Create IRI-compliant job response
+        iri_response = get_iri_job_from_graphql_job(response.node)
+    
+        # Finalize database logging
+        db_compute_log["input"] = json.dumps({
+            "job_spec": job_spec.model_dump(),
+            "job_id": job_id
+        })
+        db_compute_log["result"] = json.dumps(iri_response.model_dump())
+        db_compute_log["alcf_username"] = alcf_username
+        db_access_log["responded_at"] = datetime.now(timezone.utc).replace(tzinfo=None)
+        db_access_log["status_code"] = 200
+        await add_compute_log_to_db(db_compute_log)
+        await add_access_log_to_db(db_access_log)
 
+        # Return IRI-compliant response
+        return iri_response
+    
 
     # Get job
+    @create_log_objects
     async def get_job(
         self: "AlcfAdapter",
         resource: status_models.Resource, 
@@ -161,6 +259,8 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
         job_id: str,
         historical: bool = False,
         include_spec: bool = False,
+        db_access_log: dict = None,
+        db_compute_log: dict = None,
     ) -> compute_models.Job:
 
         # [TEMPORARY]
@@ -174,15 +274,18 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
         # Generate Keycloak access token for user if necessary
         if KEYCLOAK_FLAG in user.api_key:
             user_keycloak_access_token = user.api_key.replace(KEYCLOAK_FLAG, "")
+            alcf_username = user.user_id
         else:
-            user_keycloak_access_token = generate_user_keycloak_token(user)
+            user_keycloak_access_token, alcf_username = generate_user_keycloak_token(user)
         
         # Submit query to GraphQL API
+        db_compute_log["created_at"] = datetime.now(timezone.utc).replace(tzinfo=None)
         response = await post_graphql(
             access_token=user_keycloak_access_token,
             query=build_get_job_query(user, job_id=job_id, historical=historical),
             url=graphql_url
         )
+        db_compute_log["responded_at"] = datetime.now(timezone.utc).replace(tzinfo=None)
 
         # Extract raw job response into GraphQL JobResponse pydantic object
         response = self.__extract_job_response(response, ["data", "jobs", "edges", 0])
@@ -194,11 +297,28 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
                 detail=f"Job {job_id} not found."
             )
 
-        # Return IRI-compliant job response
-        return get_iri_job_from_graphql_job(response.node)
+        # Create IRI-compliant job response
+        iri_response = get_iri_job_from_graphql_job(response.node)
+    
+        # Finalize database logging
+        db_compute_log["input"] = json.dumps({
+            "job_id": job_id,
+            "historical": historical,
+            "include_spec": include_spec
+        })
+        db_compute_log["result"] = json.dumps(iri_response.model_dump())
+        db_compute_log["alcf_username"] = alcf_username
+        db_access_log["responded_at"] = datetime.now(timezone.utc).replace(tzinfo=None)
+        db_access_log["status_code"] = 200
+        await add_compute_log_to_db(db_compute_log)
+        await add_access_log_to_db(db_access_log)
+
+        # Return IRI-compliant response
+        return iri_response
 
     
     # Get jobs
+    @create_log_objects
     async def get_jobs(
         self: "AlcfAdapter",
         resource: status_models.Resource, 
@@ -208,6 +328,8 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
         filters: dict[str, object] | None = None,
         historical: bool = False,
         include_spec: bool = False,
+        db_access_log: dict = None,
+        db_compute_log: dict = None,
     ) -> list[compute_models.Job]:
         
         # [TEMPORARY]
@@ -227,15 +349,18 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
         # Generate Keycloak access token for user if necessary
         if KEYCLOAK_FLAG in user.api_key:
             user_keycloak_access_token = user.api_key.replace(KEYCLOAK_FLAG, "")
+            alcf_username = user.user_id
         else:
-            user_keycloak_access_token = generate_user_keycloak_token(user)
+            user_keycloak_access_token, alcf_username = generate_user_keycloak_token(user)
 
         # Submit query to GraphQL API
+        db_compute_log["created_at"] = datetime.now(timezone.utc).replace(tzinfo=None)
         response = await post_graphql(
             access_token=user_keycloak_access_token,
             query=build_get_job_query(user, historical=historical),
             url=graphql_url
         )
+        db_compute_log["responded_at"] = datetime.now(timezone.utc).replace(tzinfo=None)
         
         # Access relevant data from the response
         try:
@@ -249,16 +374,37 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
         # Convert raw GraphQL response into a JobResponse pydantic model
         responses = [validate_job_response(edge) for edge in response if edge["node"]]
 
-        # Return IRI-compliant job submission response
-        return [get_iri_job_from_graphql_job(r.node) for r in responses]
+        # Return IRI-compliant job response
+        iri_response = [get_iri_job_from_graphql_job(r.node) for r in responses]
+    
+        # Finalize database logging
+        db_compute_log["input"] = json.dumps({
+            "offset": offset,
+            "limit": limit,
+            "filters": filters,
+            "historical": historical,
+            "include_spec": include_spec
+        })
+        db_compute_log["result"] = json.dumps([r.model_dump() for r in iri_response])
+        db_compute_log["alcf_username"] = alcf_username
+        db_access_log["responded_at"] = datetime.now(timezone.utc).replace(tzinfo=None)
+        db_access_log["status_code"] = 200
+        await add_compute_log_to_db(db_compute_log)
+        await add_access_log_to_db(db_access_log)
+
+        # Return IRI-compliant response
+        return iri_response
 
     
     # Cancel job
+    @create_log_objects
     async def cancel_job(
         self: "AlcfAdapter",
         resource: status_models.Resource, 
         user: account_models.User, 
         job_id: str,
+        db_access_log: dict = None,
+        db_compute_log: dict = None,
     ) -> bool:
 
         # Recover GraphQL URL
@@ -267,18 +413,32 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
         # Generate Keycloak access token for user if necessary
         if KEYCLOAK_FLAG in user.api_key:
             user_keycloak_access_token = user.api_key.replace(KEYCLOAK_FLAG, "")
+            alcf_username = user.user_id
         else:
-            user_keycloak_access_token = generate_user_keycloak_token(user)
+            user_keycloak_access_token, alcf_username = generate_user_keycloak_token(user)
         
         # Submit query to GraphQL API
+        db_compute_log["created_at"] = datetime.now(timezone.utc).replace(tzinfo=None)
         response = await post_graphql(
             access_token=user_keycloak_access_token,
             query=build_cancel_job_query(user, job_id),
             url=graphql_url
         )
+        db_compute_log["responded_at"] = datetime.now(timezone.utc).replace(tzinfo=None)
 
         # Extract raw job response into GraphQL JobResponse pydantic object
         response = self.__extract_job_response(response, ["data", "deleteJob"])
+
+        # Finalize database logging
+        db_compute_log["input"] = json.dumps({
+            "job_id": job_id
+        })
+        db_compute_log["result"] = json.dumps(response.model_dump())
+        db_compute_log["alcf_username"] = alcf_username
+        db_access_log["responded_at"] = datetime.now(timezone.utc).replace(tzinfo=None)
+        db_access_log["status_code"] = 200
+        await add_compute_log_to_db(db_compute_log)
+        await add_access_log_to_db(db_access_log)
         
         # Return IRI-compliant job submission response
         return True
