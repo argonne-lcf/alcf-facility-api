@@ -7,6 +7,7 @@ from starlette.status import (
     HTTP_403_FORBIDDEN, 
     HTTP_500_INTERNAL_SERVER_ERROR
 )
+from alcf.endpoints import APIComponent, get_endpoint, EndpointType
 from app.routers.task.facility_adapter import FacilityAdapter as TaskFacilityAdapter
 from app.routers.status import models as status_models
 from app.routers.account import models as account_models
@@ -93,13 +94,28 @@ class AlcfAdapter(TaskFacilityAdapter, AlcfAuthenticatedAdapter):
                 # Execute the command and get the task ID
                 task_id = await filesystem_commands[task.command](**kwargs)
 
+                # Extract Globus multi-user endpoint for the targetted resource
+                globus_endpoint = get_endpoint(
+                    api_component=APIComponent.FILESYSTEM.value,
+                    resource_name=resource.name,
+                    operation=task.command,
+                )
+                if globus_endpoint.endpoint_type == EndpointType.GLOBUS_MULTI_USER_ENDPOINT.value:
+                    globus_endpoint_id = globus_endpoint.endpoint_id
+                    globus_function_id = globus_endpoint.function_id
+                else:
+                    globus_endpoint_id = None
+                    globus_function_id = None
+
                 # Create task entry in database
                 await add_task_to_db({
                     "id": task_id,
                     "user_id": user.id,
                     "status": task_models.TaskStatus.pending.value,
                     "task_command": json.dumps(task.model_dump()),
-                    "result": None
+                    "result": None,
+                    "globus_endpoint_id": globus_endpoint_id,
+                    "globus_function_id": globus_function_id
                 })
                 
                 # Return the task ID to the user
