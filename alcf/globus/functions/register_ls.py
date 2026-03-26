@@ -99,6 +99,10 @@ def ls(params):
     except Exception:
         return Response(error="Unexpected error occurred during pydantic validation.").model_dump()
 
+    # Reject symlinks before resolving
+    if input_data.path.is_symlink():
+        return Response(error=f"Target path is a symlink and cannot be listed.").model_dump()
+
     # Resolve path and check if it exists
     try:
         input_data.path = input_data.path.resolve(strict=True)
@@ -229,6 +233,10 @@ def ls(params):
 
                 # Skip hidden entry if necessary
                 if not input_data.show_hidden and entry.name.startswith("."):
+                    continue
+
+                # Skip symlinks
+                if entry.is_symlink():
                     continue
 
                 # rel_path: include parent folder when recursive
