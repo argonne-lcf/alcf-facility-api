@@ -218,6 +218,8 @@ class AlcfAdapter(TaskFacilityAdapter, AlcfAuthenticatedAdapter):
                                 result_for_db = json.dumps(result)
                             else:
                                 result_for_db = json.dumps(result.model_dump())
+                        elif status == task_models.TaskStatus.failed.value:
+                            result_for_db = json.dumps(result)
                     except Exception as e:
                         raise HTTPException(
                             status_code=HTTP_500_INTERNAL_SERVER_ERROR, 
