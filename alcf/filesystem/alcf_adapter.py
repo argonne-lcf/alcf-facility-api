@@ -25,7 +25,8 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
 
         # Validate data
         try:
-            _ = validation.ChmodInputData(**input_data)
+            validated = validation.ChmodInputData(**input_data)
+            _ = validation.validate_base_path(validated.path, resource.name)
         except Exception as e:
             raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=f"Input validation error: {str(e)}")
 
@@ -58,7 +59,8 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
 
         # Validate data
         try:
-            _ = validation.ChownInputData(**input_data)
+            validated = validation.ChownInputData(**input_data)
+            _ = validation.validate_base_path(validated.path, resource.name)
         except Exception as e:
             raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=f"Input validation error: {str(e)}")
 
@@ -106,7 +108,8 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
 
         # Validate data
         try:
-            _ = validation.LsInputData(**input_data)
+            validated = validation.LsInputData(**input_data)
+            _ = validation.validate_base_path(validated.path, resource.name)
         except Exception as e:
             raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=f"Input validation error: {str(e)}")
 
@@ -146,7 +149,8 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
 
         # Validate data
         try:
-            _ = validation.HeadInputData(**input_data)
+            validated = validation.HeadInputData(**input_data)
+            _ = validation.validate_base_path(validated.path, resource.name)
         except Exception as e:
             raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=f"Input validation error: {str(e)}")
 
@@ -197,7 +201,8 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
 
         # Validate data
         try:
-            _ = validation.ViewInputData(**input_data)
+            validated = validation.ViewInputData(**input_data)
+            _ = validation.validate_base_path(validated.path, resource.name)
         except Exception as e:
             raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=f"Input validation error: {str(e)}")
 
