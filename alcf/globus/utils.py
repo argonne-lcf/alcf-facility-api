@@ -218,7 +218,9 @@ def get_task_status(user: account_models.User, task_id: str):
         # Failed
         if result["error"]:
             status = task_models.TaskStatus.failed.value
-            result = result["error"]
+            result = {
+                "error": result["error"]
+            }
 
         # Completed
         else:
@@ -228,7 +230,9 @@ def get_task_status(user: account_models.User, task_id: str):
     # Failed if an error occured outside of the function execution
     else:
         status = task_models.TaskStatus.failed.value
-        result = "?????"
+        result = {
+            "error": "Unexpected error outside of the function execution."
+        }
 
     # Return the status and result (if any)
     return status, result
