@@ -2,22 +2,22 @@
 # These validations should be similar to the ones adopted in the Globus functions
 #
 
+from fastapi import HTTPException
+from starlette.status import HTTP_400_BAD_REQUEST, HTTP_501_NOT_IMPLEMENTED
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from typing import Optional
 from pathlib import Path
-import os
 import re
 
 
 # Define allowed paths
-ALLOWED_PATH_BASES = (
-    Path(f"/home/"),
-    Path("/eagle"),
-    Path("/lus/eagle"),
-)
+ALLOWED_PATH_BASES = {
+    "home": Path(f"/home"),
+    "eagle": Path("/eagle"),
+}
 ALLOWED_PATHS_TEXT = ", ".join(str(p) for p in ALLOWED_PATH_BASES)
 def is_allowed_path(path: Path) -> bool:
-    return any(path == base or str(path).startswith(f"{base}/") for base in ALLOWED_PATH_BASES)
+    return any(path == base or str(path).startswith(f"{base}/") for base in ALLOWED_PATH_BASES.values())
 
 # Maximum number of bytes to read
 MAX_BYTES = 9_958_272  # 9.5 MB
@@ -279,3 +279,18 @@ class ViewInputData(BaseModelWithForbiddenExtra):
         if not is_allowed_path(p):
             raise ValueError(f"Path must start with one of: {ALLOWED_PATHS_TEXT}.")
         return p
+    
+
+# Function to restrict path based on the target resource
+def validate_base_path(path: Path, resource_name: str):
+    allowed_base = ALLOWED_PATH_BASES.get(resource_name.lower(), None)
+    if allowed_base is None:
+        raise HTTPException(
+            status_code=HTTP_501_NOT_IMPLEMENTED,
+            detail=f"{resource_name} not supported yet."
+        )
+    if not str(path).startswith(str(allowed_base)):
+        raise HTTPException(
+            status_code=HTTP_400_BAD_REQUEST,
+            detail=f"Path for filesystem {resource_name} must start with {allowed_base}."
+        )
