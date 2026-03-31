@@ -79,6 +79,9 @@ def get_graphql_job_from_iri_jobspec(iri_jobspec: compute_models.JobSpec) -> gra
         'resourcesRequested.jobResources.wallClockTime': lambda js: js.attributes.duration if js.attributes and js.attributes.duration else None,
         'resourcesRequested.jobResources.physicalMemory': lambda js: js.resources.memory if js.resources else None,
         'resourcesRequested.jobResources.customResources': lambda js: format_custom_resources(js) if js.attributes else None,
+        'resourcesRequested.taskCount.min': lambda js: js.resources.node_count if js.resources else None,
+        'resourcesRequested.taskCount.max': lambda js: js.resources.node_count if js.resources else None,
+        'resourcesRequested.jobPlacement': lambda js: 4 if js.resources and js.resources.node_count else None,
         'queue.name': lambda js: js.attributes.queue_name if js.attributes else None,
         'accountingId': lambda js: js.attributes.account if js.attributes else None,
     }
