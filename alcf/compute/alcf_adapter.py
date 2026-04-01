@@ -115,8 +115,6 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
         if job_spec.launcher:
             raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="'launcher' not supported yet.")
         if job_spec.resources:
-            if job_spec.resources.node_count:
-                raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="'node_count' not supported yet.")
             if job_spec.resources.process_count:
                 raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="'process_count' not supported yet.")
             if job_spec.resources.processes_per_node:
@@ -141,7 +139,7 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
         graphql_url = get_graphql_url(resource.name)
 
         # Convert IRI Job spec into GraphQL Job spec
-        graphql_data = get_graphql_job_from_iri_jobspec(job_spec)
+        graphql_data = get_graphql_job_from_iri_jobspec(job_spec, resource.name)
 
         # Generate Keycloak access token for user if necessary
         if KEYCLOAK_FLAG in user.api_key:
@@ -210,7 +208,7 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
         graphql_url = get_graphql_url(resource.name)
         
         # Convert IRI Job spec into GraphQL Job spec
-        graphql_data = get_graphql_job_from_iri_jobspec(job_spec)
+        graphql_data = get_graphql_job_from_iri_jobspec(job_spec, resource.name)
 
         # Generate Keycloak access token for user if necessary
         if KEYCLOAK_FLAG in user.api_key:
