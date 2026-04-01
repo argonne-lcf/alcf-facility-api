@@ -139,7 +139,7 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
         graphql_url = get_graphql_url(resource.name)
 
         # Convert IRI Job spec into GraphQL Job spec
-        graphql_data = get_graphql_job_from_iri_jobspec(job_spec)
+        graphql_data = get_graphql_job_from_iri_jobspec(job_spec, resource.name)
 
         # Generate Keycloak access token for user if necessary
         if KEYCLOAK_FLAG in user.api_key:
@@ -208,7 +208,7 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
         graphql_url = get_graphql_url(resource.name)
         
         # Convert IRI Job spec into GraphQL Job spec
-        graphql_data = get_graphql_job_from_iri_jobspec(job_spec)
+        graphql_data = get_graphql_job_from_iri_jobspec(job_spec, resource.name)
 
         # Generate Keycloak access token for user if necessary
         if KEYCLOAK_FLAG in user.api_key:
