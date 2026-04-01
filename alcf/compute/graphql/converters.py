@@ -1,9 +1,17 @@
 from fastapi import HTTPException
 from starlette.status import (HTTP_500_INTERNAL_SERVER_ERROR)
-from app.routers.account import models as account_models
 from app.routers.compute import models as compute_models
 from alcf.compute.graphql import models as graphql_models
-from typing import Any
+from typing import Any, List
+
+
+# Job submission default values
+DEFAULT_TASK_RESOURCES_SLOTS = {
+    "polaris": 64,
+    "sirius": 64,
+    "crux": 256,
+    "edith": 1,
+}
 
 
 # Get nested value
@@ -52,21 +60,64 @@ def set_nested_value(data: dict, path: str, value: Any) -> dict:
     return data
 
 
-# Get GraphQL Job from IRI JobSpec
-def get_graphql_job_from_iri_jobspec(iri_jobspec: compute_models.JobSpec) -> graphql_models.Job:
-    """Convert an IRI JobSpec to a GraphQL Job model."""
+# Format custom resources
+def format_custom_resources(iri_jobspec: compute_models.JobSpec):
+    customResources = None
+    if iri_jobspec.attributes:
+        if iri_jobspec.attributes.custom_attributes:
+            customResources = ""
+            for name, value in iri_jobspec.attributes.custom_attributes.items():
+                customResources += '{name: "' + name + '", value: "' + value + '"}'
+    if customResources:
+        customResources = f"[{customResources}]"
+    return customResources
 
-    # Define custom resources
-    def format_custom_resources(iri_jobspec):
-        customResources = None
-        if iri_jobspec.attributes:
-            if iri_jobspec.attributes.custom_attributes:
-                customResources = ""
-                for name, value in iri_jobspec.attributes.custom_attributes.items():
-                    customResources += '{name: "' + name + '", value: "' + value + '"}'
-        if customResources:
-            customResources = f"[{customResources}]"
-        return customResources
+
+# Get node count
+def get_node_count(iri_jobspec: compute_models.JobSpec) -> int:
+    if iri_jobspec.resources and iri_jobspec.resources.node_count:
+        return iri_jobspec.resources.node_count
+    else:
+        return 1
+
+
+# Get default slots
+def get_default_slots(resource_name: str) -> int:
+    try:
+        return DEFAULT_TASK_RESOURCES_SLOTS[resource_name.lower()]
+    except Exception:
+        raise HTTPException(
+            status_code=HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Default GraphQL value for 'slots' not available for {resource_name}."
+        )
+
+
+# Format task count
+def format_task_count(iri_jobspec: compute_models.JobSpec) -> dict:
+    node_count = get_node_count(iri_jobspec)
+    return {
+        "min": node_count,
+        "max": node_count
+    }
+
+
+# Format tasks resources
+def format_tasks_resources(iri_jobspec: compute_models.JobSpec, resource_name: str) -> List[dict]:
+    node_count = get_node_count(iri_jobspec)
+    return [
+        {
+            "index": f"0-{node_count-1}" if node_count > 1 else "0",
+            "slots": get_default_slots(resource_name)
+        }
+    ]
+
+
+# Get GraphQL Job from IRI JobSpec
+def get_graphql_job_from_iri_jobspec(
+    iri_jobspec: compute_models.JobSpec,
+    resource_name: str
+) -> graphql_models.Job:
+    """Convert an IRI JobSpec to a GraphQL Job model."""
     
     # Define mapping ('graphql_job':'iri_job')
     field_mapping = {
@@ -79,9 +130,8 @@ def get_graphql_job_from_iri_jobspec(iri_jobspec: compute_models.JobSpec) -> gra
         'resourcesRequested.jobResources.wallClockTime': lambda js: js.attributes.duration if js.attributes and js.attributes.duration else None,
         'resourcesRequested.jobResources.physicalMemory': lambda js: js.resources.memory if js.resources else None,
         'resourcesRequested.jobResources.customResources': lambda js: format_custom_resources(js) if js.attributes else None,
-        'resourcesRequested.taskCount.min': lambda js: js.resources.node_count if js.resources else None,
-        'resourcesRequested.taskCount.max': lambda js: js.resources.node_count if js.resources else None,
-        'resourcesRequested.jobPlacement': lambda js: 4 if js.resources and js.resources.node_count else None,
+        'resourcesRequested.taskCount': lambda js: format_task_count(js),
+        'resourcesRequested.tasksResources': lambda js: format_tasks_resources(js, resource_name),
         'queue.name': lambda js: js.attributes.queue_name if js.attributes else None,
         'accountingId': lambda js: js.attributes.account if js.attributes else None,
     }
