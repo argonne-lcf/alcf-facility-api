@@ -68,5 +68,15 @@
         "type": "storage",
         "group": "storages",
         "site_id": "afb8a6d7-cd5b-4040-8be7-6e917b30af08"
+    },
+    {
+        "id": "6115bd2c-957a-4543-abff-5fae52992ff2",
+        "name": "Home",
+        "short_name": "home",
+        "description": "Home is a Lustre filesystem for small files.",
+        "last_updated": "2025-07-10T11:28:40.969Z",
+        "type": "storage",
+        "group": "storages",
+        "site_id": "afb8a6d7-cd5b-4040-8be7-6e917b30af08"
     }
 ]
