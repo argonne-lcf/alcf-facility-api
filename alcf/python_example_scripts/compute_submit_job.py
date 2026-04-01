@@ -32,7 +32,8 @@ data = {
     "stdout_path": "/home/bcote/qsub",
     "stderr_path": "/home/bcote/qsub",
     "resources": {
-        "memory": 2222
+        "memory": 2222,
+        "node_count": 1
     },
     "attributes": {
         "duration": 300,
