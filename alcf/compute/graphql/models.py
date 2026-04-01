@@ -7,6 +7,10 @@ class JobTasksResources(BaseModel):
     physicalMemory: Optional[int] = None
     customResources: Optional[str] = None
 
+class TasksResource(BaseModel):
+    index: Optional[str] = None
+    slots: Optional[int] = None
+
 class TaskCount(BaseModel):
     min: Optional[int] = None
     max: Optional[int] = None
@@ -15,7 +19,7 @@ class JobResources(BaseModel):
     peName: Optional[str] = None
     jobResources: Optional[JobTasksResources] = JobTasksResources()
     taskCount: Optional[TaskCount] = None
-    jobPlacement: Optional[int] = None
+    tasksResources: Optional[List[TasksResource]] = None
 
 class JobStatus(BaseModel):
     state: Optional[int] = None
