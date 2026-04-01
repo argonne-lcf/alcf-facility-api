@@ -12,12 +12,23 @@ import re
 
 # Define allowed paths
 ALLOWED_PATH_BASES = {
-    "home": Path(f"/home"),
-    "eagle": Path("/eagle"),
+    "home": [Path("/home")],
+    "eagle": [Path("/eagle"), Path("/lus/eagle")],
 }
-ALLOWED_PATHS_TEXT = ", ".join(str(p) for p in ALLOWED_PATH_BASES)
+
+# Define allowed paths (string version for error messages)
+ALLOWED_PATHS_TEXT = []
+for paths in ALLOWED_PATH_BASES.values():
+    ALLOWED_PATHS_TEXT.extend([str(path) for path in paths])
+ALLOWED_PATHS_TEXT = ", ".join(ALLOWED_PATHS_TEXT)
+
+# Function to check whether a path has the right base
 def is_allowed_path(path: Path) -> bool:
-    return any(path == base or str(path).startswith(f"{base}/") for base in ALLOWED_PATH_BASES.values())
+    return any(
+        path == base or path.is_relative_to(base)
+        for bases in ALLOWED_PATH_BASES.values()
+        for base in bases
+    )
 
 # Maximum number of bytes to read
 MAX_BYTES = 9_958_272  # 9.5 MB
@@ -283,14 +294,30 @@ class ViewInputData(BaseModelWithForbiddenExtra):
 
 # Function to restrict path based on the target resource
 def validate_base_path(path: Path, resource_name: str):
-    allowed_base = ALLOWED_PATH_BASES.get(resource_name.lower(), None)
-    if allowed_base is None:
+
+    # Recover the allowed path bases for the given resource
+    allowed_bases = ALLOWED_PATH_BASES.get(resource_name.lower(), None)
+    if allowed_bases is None:
         raise HTTPException(
             status_code=HTTP_501_NOT_IMPLEMENTED,
             detail=f"{resource_name} not supported yet."
         )
-    if not str(path).startswith(str(allowed_base)):
-        raise HTTPException(
-            status_code=HTTP_400_BAD_REQUEST,
-            detail=f"Path for filesystem {resource_name} must start with {allowed_base}."
-        )
+
+    # For each allowed path base for this resource ...
+    for base in allowed_bases:
+
+        # Return if this is the base path of the user's input path
+        try:
+            if path == base or path.is_relative_to(base):
+                return
+            
+        # Continue search if needed (go to next allowed base path)
+        except Exception:
+            continue
+
+    # Error if the user's path does not have a valid base path
+    allowed_text = ", ".join(str(b) for b in allowed_bases)
+    raise HTTPException(
+        status_code=HTTP_400_BAD_REQUEST,
+        detail=f"Allowed base paths for filesystem {resource_name} are: {allowed_text}."
+    )
