@@ -10,7 +10,7 @@ resource_id = "55c1c993-1124-47f9-b823-514ba3849a9a" # Polaris
 
 # Request data
 historical = False
-limit = 0
+limit = 10
 offset = 0
 
 # Build headers
