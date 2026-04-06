@@ -334,10 +334,6 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
         # Error if input variables are not supported yet
         if filters:
             raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="filters not implemented")
-        if limit > 0:
-            raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="limit not implemented")
-        if offset > 0:
-            raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="offset not implemented")
         if include_spec:
             raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="'include_spec' not supported yet.")
         
@@ -371,6 +367,9 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
         
         # Convert raw GraphQL response into a JobResponse pydantic model
         responses = [validate_job_response(edge) for edge in response if edge["node"]]
+
+        # Apply filters
+        responses = responses[offset:offset+limit]
 
         # Return IRI-compliant job response
         iri_response = [get_iri_job_from_graphql_job(r.node) for r in responses]
