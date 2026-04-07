@@ -132,13 +132,17 @@ class IriRouter(APIRouter):
         globus_introspect = None
         exc_msg = ""
         try:
-            if GLOBUS_RS_ID and GLOBUS_RS_SECRET and GLOBUS_RS_SCOPE_SUFFIX:
-                try:
-                    globus_introspect = await self.get_globus_info(token)
-                    user_id = await self.adapter.get_current_user_globus(token, ip_address, globus_introspect)
-                except Exception as globus_exc:
-                    logging.getLogger().exception("Globus error:", exc_info=globus_exc)
-                    exc_msg = f"Globus authentication failed: {str(globus_exc)}. || "
+            # [ALCF EDITS UPSTREAM]
+            # [CHANGES BEGIN]
+            # Do not use Globus functions since they will soon disapear from the IRI commond code base
+            #if GLOBUS_RS_ID and GLOBUS_RS_SECRET and GLOBUS_RS_SCOPE_SUFFIX:
+            #    try:
+            #        globus_introspect = await self.get_globus_info(token)
+            #        user_id = await self.adapter.get_current_user_globus(token, ip_address, globus_introspect)
+            #    except Exception as globus_exc:
+            #        logging.getLogger().exception("Globus error:", exc_info=globus_exc)
+            #        exc_msg = f"Globus authentication failed: {str(globus_exc)}. || "
+            # [CHANGES END]
             if not user_id:
                 user_id = await self.adapter.get_current_user(token, ip_address)
         except Exception as exc:
@@ -170,14 +174,18 @@ class AuthenticatedAdapter(ABC):
         """
         pass
 
-    @abstractmethod
-    async def get_current_user_globus(self: "AuthenticatedAdapter", api_key: str, client_ip: str | None, globus_introspect: dict | None) -> str:
-        """
-        Decode the api_key and return the authenticated user's id from information returned by introspecting a globus token.
-        This method is not called directly, rather authorized endpoints "depend" on it.
-        (https://fastapi.tiangolo.com/tutorial/dependencies/)
-        """
-        pass
+    # [ALCF EDITS UPSTREAM]
+    # [CHANGES BEGIN]
+    # Removing get_current_user_globus since this might be a temporary function in the IRI shared code base
+    #@abstractmethod
+    #async def get_current_user_globus(self: "AuthenticatedAdapter", api_key: str, client_ip: str | None, globus_introspect: dict | None) -> str:
+    #    """
+    #    Decode the api_key and return the authenticated user's id from information returned by introspecting a globus token.
+    #    This method is not called directly, rather authorized endpoints "depend" on it.
+    #    (https://fastapi.tiangolo.com/tutorial/dependencies/)
+    #    """
+    #    pass
+    # [CHANGES END]
 
     @abstractmethod
     async def get_user(self: "AuthenticatedAdapter", user_id: str, api_key: str, client_ip: str | None, globus_introspect: dict | None) -> User:
