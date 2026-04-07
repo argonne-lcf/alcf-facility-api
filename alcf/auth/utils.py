@@ -28,8 +28,14 @@ class AuthServices(Enum):
 # Keycloak input token flag
 KEYCLOAK_FLAG = "keycloak_flag_"
 
-# Maximum allowed length for a Globus access token
-MAX_GLOBUS_TOKEN_LENGTH = 130
+# Helper allowed domain error message
+ALLOWED_DOMAIN_STR = f"Make sure you authenticate with {AUTHORIZED_IDP_DOMAIN}."
+
+# Helper logout error message
+LOGOUT_MESSAGE_STR = ""
+LOGOUT_MESSAGE_STR += "Please logout by visiting https://app.globus.org/logout "
+LOGOUT_MESSAGE_STR += "and re-authenticate. Use an incognito browser or clear "
+LOGOUT_MESSAGE_STR += "browser cache to make sure you can enter your credentials."
  
 class UserPydantic(BaseModel):
     id: str
@@ -135,7 +141,7 @@ def _perform_token_introspection(access_token: str):
     try:
         client = get_globus_service_api_client()
     except Exception as e:
-        error_message = f"Could not create Globus confidential client. {e}"
+        error_message = f"Could not create Globus confidential client."
         log.warning(error_message)
         return None, [], None, error_message
 
@@ -151,13 +157,13 @@ def _perform_token_introspection(access_token: str):
         introspection = client.post("/v2/oauth2/token/introspect", data=introspect_body, encoding="form")
         introspection_data = dict(introspection.data) if hasattr(introspection, 'data') else dict(introspection)
     except Exception as e:
-        error_message = f"Could not introspect token with Globus /v2/oauth2/token/introspect. {e}"
+        error_message = f"Could not introspect token with Globus /v2/oauth2/token/introspect. {LOGOUT_MESSAGE_STR}"
         log.warning(error_message)
         return None, [], None, error_message
     
     # Make sure the token is valid/active
     if introspection.get("active", False) is False:
-        error_message = f"Globus token not active."
+        error_message = f"Globus token not active. {LOGOUT_MESSAGE_STR}"
         log.warning(error_message)
         return None, [], None, error_message
     
@@ -167,7 +173,7 @@ def _perform_token_introspection(access_token: str):
         access_token = dependent_tokens.by_resource_server["groups.api.globus.org"]["access_token"]
         globus_compute_access_token = dependent_tokens.by_resource_server["funcx_service"]["access_token"]
     except Exception as e:
-        error_message = f"Could not recover dependent access tokens. {e}"
+        error_message = f"Could not recover dependent access tokens."
         log.warning(error_message)
         return None, [], None, error_message
 
@@ -176,7 +182,7 @@ def _perform_token_introspection(access_token: str):
         authorizer = globus_sdk.AccessTokenAuthorizer(access_token)
         groups_client = globus_sdk.GroupsClient(authorizer=authorizer)
     except Exception as e:
-        error_message = f"Could not create GroupsClient. {e}"
+        error_message = f"Could not create GroupsClient."
         log.warning(error_message)
         return None, [], None, error_message
 
@@ -185,7 +191,7 @@ def _perform_token_introspection(access_token: str):
         user_groups_response = groups_client.get_my_groups()
         user_groups = [group["id"] for group in user_groups_response]
     except Exception as e:
-        error_message = f"Could not recover user group memberships. {e}"
+        error_message = f"Could not recover user group memberships."
         log.warning(error_message)
         return None, [], None, error_message
         
@@ -240,17 +246,8 @@ def get_user_details(introspection, user_groups) -> UserPydantic:
 
 
 # Validate access token sent by user
-def validate_access_token(access_token):
+def validate_access_token(access_token) -> TokenValidationResponse:
     """This function returns an instance of the TokenValidationResponse pydantic data structure."""
-
-    # Ignore tokens that are too long (likely Keycloak tokens)
-    if len(access_token) > MAX_GLOBUS_TOKEN_LENGTH:
-        log.warning(f"Access token ignored with Globus (token too long).")
-        return TokenValidationResponse(
-            is_valid=False, 
-            is_authorized=False,
-            user=None
-        )
 
     # Introspect the access token
     introspection, user_groups, globus_compute_access_token, error_message = introspect_token(access_token)
@@ -258,7 +255,8 @@ def validate_access_token(access_token):
         return TokenValidationResponse(
             is_valid=False, 
             is_authorized=False,
-            user=None
+            user=None,
+            error_message=error_message
         )
     
     # Make sure the token is not expired
@@ -267,7 +265,8 @@ def validate_access_token(access_token):
         return TokenValidationResponse(
             is_valid=False, 
             is_authorized=False,
-            user=None
+            user=None,
+            error_message=f"Globus token expired. {LOGOUT_MESSAGE_STR}"
         )
     
     # Gather the user details
@@ -287,7 +286,7 @@ def validate_access_token(access_token):
                 is_valid=True,
                 is_authorized=False,
                 user=None,
-                error_message="User authentication is not compliant with the adopted Globus policy."
+                error_message=f"Authentication not compliant with Globus policy. {ALLOWED_DOMAIN_STR} {LOGOUT_MESSAGE_STR}"
             )
         
     # Make sure the user is part of the Globus Group
@@ -297,7 +296,7 @@ def validate_access_token(access_token):
                 is_valid=True,
                 is_authorized=False,
                 user=None,
-                error_message="User not in the authorized Globus Group."
+                error_message="User not in the authorized Globus Group. Please contact adminstrators."
             )
         
     # Add Globus Compute access token to the user details
