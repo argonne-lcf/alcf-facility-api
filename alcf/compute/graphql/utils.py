@@ -2,7 +2,7 @@ import httpx
 import json
 from json.decoder import JSONDecodeError
 from fastapi import HTTPException
-from app.routers.account import models as account_models
+from app.types.user import User
 from alcf.compute.graphql import models as graphql_models
 from alcf.endpoints import get_endpoint, EndpointType, APIComponent
 from alcf.config import GRAPHQL_HTTPX_TRUST_ENV
@@ -96,7 +96,7 @@ def format_graphql_block(key, block, base_indent: int = 0, indent: int = 4) -> s
 
 # Build submit job query
 def build_submit_job_query(
-    user: account_models.User, 
+    user: User, 
     graphql_job: graphql_models.Job
 ) -> str:
 
@@ -125,7 +125,7 @@ def build_submit_job_query(
 
 # Build get job query
 def build_get_job_query(
-    user: account_models.User, 
+    user: User, 
     job_id: str = None,
     historical: bool = False,
 ) -> str:
@@ -159,7 +159,7 @@ def build_get_job_query(
 
 # Build candel job query
 def build_cancel_job_query(
-    user: account_models.User, 
+    user: User, 
     job_id: str,
 ) -> str:
     
@@ -182,7 +182,7 @@ def build_cancel_job_query(
 
 # Build update job query
 def build_update_job_query(
-    user: account_models.User, 
+    user: User, 
     graphql_job: graphql_models.Job,
     job_id: str,
 ) -> str:

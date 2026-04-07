@@ -1,7 +1,7 @@
 from fastapi import HTTPException
 from starlette.status import HTTP_401_UNAUTHORIZED
 from app.routers.iri_router import AuthenticatedAdapter
-from app.routers.account.models import User
+from app.types.user import User
 from alcf.auth.utils import validate_access_token, TokenValidationResponse, AuthServices, KEYCLOAK_FLAG
 from alcf.auth.keycloak_utils import introspect_token as keycloak_introspect_token
 from alcf.database.database import exists_in_db, add_user_to_db, get_db_user_from_id
@@ -100,11 +100,16 @@ class AlcfAuthenticatedAdapter(AuthenticatedAdapter):
         self : "AlcfAuthenticatedAdapter",
         user_id: str,
         api_key: str,
-        client_ip: str = None
+        client_ip: str = None,
+        globus_introspect: dict = None
         ) -> User:
         """
         Retrieve additional user information (name, email, etc.) for the given user_id.
         """
+
+        # [Temporary] only using the Globus functions vetted for this application
+        if globus_introspect:
+            raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, detail="Cannot use globus_introspection.")
 
         # Clean API key
         api_key = api_key.replace("Bearer ", "")

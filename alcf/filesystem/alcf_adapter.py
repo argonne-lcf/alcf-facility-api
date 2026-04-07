@@ -2,7 +2,7 @@ from fastapi import HTTPException
 from alcf.globus import utils as globus_utils
 from app.routers.filesystem.facility_adapter import FacilityAdapter as FilesystemFacilityAdapter
 from app.routers.status import models as status_models
-from app.routers.account import models as account_models
+from app.types.user import User
 from app.routers.filesystem import models as filesystem_models
 from alcf.auth.alcf_adapter import AlcfAuthenticatedAdapter
 from starlette.status import HTTP_501_NOT_IMPLEMENTED, HTTP_400_BAD_REQUEST 
@@ -16,7 +16,7 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
     async def chmod(
         self: "AlcfAdapter",
         resource: status_models.Resource, 
-        user: account_models.User, 
+        user: User, 
         request_model: filesystem_models.PutFileChmodRequest
     ) -> str:
         
@@ -49,7 +49,7 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
     async def chown(
         self: "AlcfAdapter",
         resource: status_models.Resource, 
-        user: account_models.User, 
+        user: User, 
         request_model: filesystem_models.PutFileChownRequest
     ) -> str:
 
@@ -83,7 +83,7 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
     async def ls(
         self: "AlcfAdapter",
         resource: status_models.Resource, 
-        user: account_models.User, 
+        user: User, 
         path: str, 
         show_hidden: bool, 
         numeric_uid: bool, 
@@ -132,7 +132,7 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
     async def head(
         self: "AlcfAdapter",
         resource: status_models.Resource, 
-        user: account_models.User, 
+        user: User, 
         path: str, 
         file_bytes: int, 
         lines: int, 
@@ -173,7 +173,7 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
     async def tail(
         self: "AlcfAdapter",
         resource: status_models.Resource, 
-        user: account_models.User, 
+        user: User, 
         path: str, 
         file_bytes: int | None, 
         lines: int | None, 
@@ -186,7 +186,7 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
     async def view(
         self: "AlcfAdapter",
         resource: status_models.Resource, 
-        user: account_models.User, 
+        user: User, 
         path: str, 
         size: int,
         offset: int,
@@ -225,7 +225,7 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
     async def checksum(
         self: "AlcfAdapter",
         resource: status_models.Resource, 
-        user: account_models.User, 
+        user: User, 
         path: str, 
     ) -> filesystem_models.GetFileChecksumResponse:
         raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="Not implemented yet.")
@@ -235,7 +235,7 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
     async def file(
         self: "AlcfAdapter",
         resource: status_models.Resource, 
-        user: account_models.User, 
+        user: User, 
         path: str, 
     ) -> filesystem_models.GetFileTypeResponse:
         raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="Not implemented yet.")
@@ -245,7 +245,7 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
     async def stat(
         self: "AlcfAdapter",
         resource: status_models.Resource, 
-        user: account_models.User, 
+        user: User, 
         path: str, 
         dereference: bool,
     ) -> filesystem_models.GetFileStatResponse:
@@ -256,7 +256,7 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
     async def rm(
         self: "AlcfAdapter",
         resource: status_models.Resource, 
-        user: account_models.User, 
+        user: User, 
         path: str, 
     ):
         raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="Not implemented yet.")
@@ -266,7 +266,7 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
     async def mkdir(
         self: "AlcfAdapter",
         resource: status_models.Resource, 
-        user: account_models.User, 
+        user: User, 
         request_model: filesystem_models.PostMakeDirRequest,
     ) -> filesystem_models.PostMkdirResponse:
         raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="Not implemented yet.")
@@ -276,7 +276,7 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
     async def symlink(
         self: "AlcfAdapter",
         resource: status_models.Resource, 
-        user: account_models.User, 
+        user: User, 
         request_model: filesystem_models.PostFileSymlinkRequest,
     ) -> filesystem_models.PostFileSymlinkResponse:
         raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="Not implemented yet.")
@@ -286,7 +286,7 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
     async def download(
         self: "AlcfAdapter",
         resource: status_models.Resource, 
-        user: account_models.User, 
+        user: User, 
         path: str,
     ) -> Any:
         raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="Not implemented yet.")
@@ -296,7 +296,7 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
     async def upload(
         self: "AlcfAdapter",
         resource: status_models.Resource, 
-        user: account_models.User, 
+        user: User, 
         path: str,
         content: str,
     ) -> None:
@@ -307,7 +307,7 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
     async def compress(
         self: "AlcfAdapter",
         resource: status_models.Resource, 
-        user: account_models.User, 
+        user: User, 
         request_model: filesystem_models.PostCompressRequest,
     ) -> filesystem_models.PostCompressResponse:
         raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="Not implemented yet.")
@@ -317,7 +317,7 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
     async def extract(
         self: "AlcfAdapter",
         resource: status_models.Resource, 
-        user: account_models.User, 
+        user: User, 
         request_model: filesystem_models.PostExtractRequest,
     ) -> filesystem_models.PostExtractResponse:
         raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="Not implemented yet.")
@@ -327,7 +327,7 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
     async def mv(
         self: "AlcfAdapter",
         resource: status_models.Resource, 
-        user: account_models.User, 
+        user: User, 
         request_model: filesystem_models.PostMoveRequest,
     ) -> filesystem_models.PostMoveResponse:
         raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="Not implemented yet.")
@@ -337,7 +337,7 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
     async def cp(
         self: "AlcfAdapter",
         resource: status_models.Resource, 
-        user: account_models.User, 
+        user: User, 
         request_model: filesystem_models.PostCopyRequest,
     ) -> filesystem_models.PostCopyResponse:
         raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="Not implemented yet.")
