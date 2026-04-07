@@ -3,8 +3,7 @@ from alcf.endpoints import get_endpoint, EndpointType, APIComponent
 from alcf.auth.utils import introspect_token as globus_introspect_token
 from starlette.status import HTTP_500_INTERNAL_SERVER_ERROR, HTTP_400_BAD_REQUEST
 from fastapi import HTTPException
-from app.routers.account import models as account_models
-from app.routers.status import models as status_models
+from app.types.user import User
 from app.routers.task import models as task_models
 from globus_compute_sdk import Client, Executor
 from globus_compute_sdk.sdk.login_manager import AuthorizerLoginManager
@@ -69,7 +68,7 @@ def submit_task_and_get_result(
         function_name: str, 
         resource_name: str, 
         input_data: dict, 
-        user: account_models.User
+        user: User
     ):
     """Extract endpoint and function IDs, submit task, and wait for result."""
         
@@ -134,7 +133,7 @@ async def submit_task(
         function_name: str, 
         resource_name: str, 
         input_data: dict, 
-        user: account_models.User
+        user: User
     ) -> str:
     """Extract endpoint and function IDs, submit task, and return task ID."""
         
@@ -185,7 +184,7 @@ async def submit_task(
 
 # Get task status
 # TODO: cache this
-def get_task_status(user: account_models.User, task_id: str):
+def get_task_status(user: User, task_id: str):
     """Check the status of a task with Globus Compute and return result if completed."""
 
     # Recover Globus Compute access token (from cache)

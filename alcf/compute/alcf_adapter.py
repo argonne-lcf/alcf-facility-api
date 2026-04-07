@@ -17,7 +17,7 @@ from alcf.compute.graphql.converters import (
 from typing import List
 from app.routers.compute import models as compute_models
 from app.routers.status import models as status_models
-from app.routers.account import models as account_models
+from app.types.user import User
 from alcf.compute.graphql import models as graphql_models
 
 # HTTP codes
@@ -45,7 +45,7 @@ def create_log_objects(func):
 
         # Extract function inputs
         try:
-            user: account_models.User = kwargs["user"]
+            user: User = kwargs["user"]
             resource: status_models.Resource = kwargs["resource"]
         except Exception:
             raise HTTPException(
@@ -94,7 +94,7 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
     async def submit_job(
         self: "AlcfAdapter",
         resource: status_models.Resource, 
-        user: account_models.User, 
+        user: User, 
         job_spec: compute_models.JobSpec,
         db_access_log: dict = None,
         db_compute_log: dict = None,
@@ -183,7 +183,7 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
     async def submit_job_script(
         self: "AlcfAdapter",
         resource: status_models.Resource, 
-        user: account_models.User, 
+        user: User, 
         job_script_path: str,
         args: list[str] = [],
         db_access_log: dict = None,
@@ -197,7 +197,7 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
     async def update_job(
         self: "AlcfAdapter",
         resource: status_models.Resource, 
-        user: account_models.User, 
+        user: User, 
         job_spec: compute_models.JobSpec,
         job_id: str,
         db_access_log: dict = None,
@@ -253,7 +253,7 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
     async def get_job(
         self: "AlcfAdapter",
         resource: status_models.Resource, 
-        user: account_models.User, 
+        user: User, 
         job_id: str,
         historical: bool = False,
         include_spec: bool = False,
@@ -320,7 +320,7 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
     async def get_jobs(
         self: "AlcfAdapter",
         resource: status_models.Resource, 
-        user: account_models.User, 
+        user: User, 
         offset : int,
         limit : int,
         filters: dict[str, object] | None = None,
@@ -398,7 +398,7 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
     async def cancel_job(
         self: "AlcfAdapter",
         resource: status_models.Resource, 
-        user: account_models.User, 
+        user: User, 
         job_id: str,
         db_access_log: dict = None,
         db_compute_log: dict = None,

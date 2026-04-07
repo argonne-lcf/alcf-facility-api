@@ -10,7 +10,7 @@ from starlette.status import (
 from alcf.endpoints import APIComponent, get_endpoint, EndpointType
 from app.routers.task.facility_adapter import FacilityAdapter as TaskFacilityAdapter
 from app.routers.status import models as status_models
-from app.routers.account import models as account_models
+from app.types.user import User
 from app.routers.task import models as task_models
 from alcf.task.utils import filesystem_commands, filesystem_format_functions, filesystem_model_responses
 from alcf.auth.alcf_adapter import AlcfAuthenticatedAdapter
@@ -28,7 +28,7 @@ class AlcfAdapter(TaskFacilityAdapter, AlcfAuthenticatedAdapter):
     # Get task
     async def get_task(
         self : "AlcfAdapter",
-        user: account_models.User,
+        user: User,
         task_id: str,
         ) -> task_models.Task | None:
 
@@ -53,7 +53,7 @@ class AlcfAdapter(TaskFacilityAdapter, AlcfAuthenticatedAdapter):
     # Get tasks
     async def get_tasks(
         self : "AlcfAdapter",
-        user: account_models.User,
+        user: User,
         ) -> list[task_models.Task]:
 
         # Retrieve all tasks for the user from database
@@ -77,7 +77,7 @@ class AlcfAdapter(TaskFacilityAdapter, AlcfAuthenticatedAdapter):
     # Put task
     async def put_task(
         self: "AlcfAdapter",
-        user: account_models.User,
+        user: User,
         resource: status_models.Resource | None,
         task: task_models.TaskCommand
     ) -> task_models.TaskSubmitResponse:
@@ -141,7 +141,7 @@ class AlcfAdapter(TaskFacilityAdapter, AlcfAuthenticatedAdapter):
     # Delete task
     async def delete_task(
         self: "AlcfAdapter", 
-        user: account_models.User, 
+        user: User, 
         task_id: str
     ) -> None:
         raise HTTPException(
@@ -197,7 +197,7 @@ class AlcfAdapter(TaskFacilityAdapter, AlcfAuthenticatedAdapter):
 
 
     # Update IRI task
-    async def _update_iri_task(self, user: account_models.User, iri_task: task_models.Task) -> task_models.Task:
+    async def _update_iri_task(self, user: User, iri_task: task_models.Task) -> task_models.Task:
             
         # If the task status should be checked and updated ...
         if iri_task.status in [task_models.TaskStatus.pending.value, task_models.TaskStatus.active.value]:
