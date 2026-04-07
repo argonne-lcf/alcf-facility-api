@@ -5,6 +5,7 @@ from alcf.auth.alcf_adapter import AlcfAuthenticatedAdapter
 # Typing
 from app.types import models as types_models
 from app.routers.account import models as account_models
+from app.types.user import User
 
 # HTTP codes
 from starlette.status import ( 
@@ -31,7 +32,7 @@ class AlcfAdapter(AccountFacilityAdapter, AlcfAuthenticatedAdapter):
     # Get projects
     async def get_projects(
         self: "AlcfAdapter", 
-        user: account_models.User
+        user: User
     ) -> list[account_models.Project]:
         raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="Not implemented yet.")
 
@@ -40,7 +41,7 @@ class AlcfAdapter(AccountFacilityAdapter, AlcfAuthenticatedAdapter):
     async def get_project_allocations(
         self: "AlcfAdapter", 
         project: account_models.Project, 
-        user: account_models.User
+        user: User
     ) -> list[account_models.ProjectAllocation]:
         raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="Not implemented yet.")
 
@@ -48,7 +49,7 @@ class AlcfAdapter(AccountFacilityAdapter, AlcfAuthenticatedAdapter):
     # Get user allocations
     async def get_user_allocations(
         self: "AlcfAdapter", 
-        user: account_models.User, 
+        user: User, 
         project_allocation: account_models.ProjectAllocation
     ) -> list[account_models.UserAllocation]:
         raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="Not implemented yet.")

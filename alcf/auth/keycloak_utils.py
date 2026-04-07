@@ -6,7 +6,7 @@ from cachetools import TTLCache, cached
 import hashlib
 import json
 from json.decoder import JSONDecodeError
-from app.routers.account import models as account_models
+from app.types.user import User
 from alcf.auth.utils import introspect_token as globus_introspect_token
 from app.config import logger
 from starlette.status import (
@@ -205,7 +205,7 @@ def introspect_token(token: str = None):
 
 # Generate user Keycloak token
 def generate_user_keycloak_token(
-    user: account_models.User = None
+    user: User = None
     ) -> tuple[str, str]:
     """
     Take the already-vetted pydantic user object and attempt to generate a 
