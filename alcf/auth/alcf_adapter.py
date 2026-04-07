@@ -100,11 +100,16 @@ class AlcfAuthenticatedAdapter(AuthenticatedAdapter):
         self : "AlcfAuthenticatedAdapter",
         user_id: str,
         api_key: str,
-        client_ip: str = None
+        client_ip: str = None,
+        globus_introspect: dict = None
         ) -> User:
         """
         Retrieve additional user information (name, email, etc.) for the given user_id.
         """
+
+        # [Temporary] only using the Globus functions vetted for this application
+        if globus_introspect:
+            raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, detail="Cannot use globus_introspection.")
 
         # Clean API key
         api_key = api_key.replace("Bearer ", "")
