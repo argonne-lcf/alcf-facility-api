@@ -15,6 +15,9 @@ import logging
 
 log = logging.getLogger(__name__)
 
+# Maximum allowed length for a Globus access token
+MAX_GLOBUS_TOKEN_LENGTH = 130
+
 
 class AlcfAuthenticatedAdapter(AuthenticatedAdapter):
 
@@ -36,14 +39,23 @@ class AlcfAuthenticatedAdapter(AuthenticatedAdapter):
         # Auth for Facility Globus token
         # ------------------------------
 
-        # Try to validate the API key with Globus Auth
-        token_response = validate_access_token(api_key)
+        # Only proceed to Globus validation if the token is not too long
+        # Longer tokens can be Keycloak tokens
+        if len(api_key) <= MAX_GLOBUS_TOKEN_LENGTH:
 
-        # Try to extract the user ID (will only return the ID if authorized)
-        if token_response.is_valid:
-            user_id = await self.__get_authorized_globus_user_id(token_response)
-            if user_id:
-                return user_id
+            # Try to validate the API key with Globus Auth
+            token_response = validate_access_token(api_key)
+            if token_response.error_message:
+                raise HTTPException(
+                    status_code=HTTP_401_UNAUTHORIZED,
+                    detail=token_response.error_message
+                )
+
+            # Try to extract the user ID (will only return the ID if authorized)
+            if token_response.is_valid:
+                user_id = await self.__get_authorized_globus_user_id(token_response)
+                if user_id:
+                    return user_id
         
         # If this is a Keyckoak token ...
         # -------------------------------
