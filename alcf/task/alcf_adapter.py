@@ -210,7 +210,7 @@ class AlcfAdapter(TaskFacilityAdapter, AlcfAuthenticatedAdapter):
 
                 # Format result if a raw successful result got generated
                 result_for_db = deepcopy(result)
-                if result:
+                if result or isinstance(result, list):
                     try:
                         if status == task_models.TaskStatus.completed.value:
                             result = filesystem_format_functions[iri_task.command.command](result)
