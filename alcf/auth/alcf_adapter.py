@@ -52,7 +52,7 @@ class AlcfAuthenticatedAdapter(AuthenticatedAdapter):
                 )
 
             # Try to extract the user ID (will only return the ID if authorized)
-            if token_response.is_valid:
+            if token_response.is_authorized:
                 user_id = await self.__get_authorized_globus_user_id(token_response)
                 if user_id:
                     return user_id
@@ -171,42 +171,34 @@ class AlcfAuthenticatedAdapter(AuthenticatedAdapter):
     async def __get_authorized_globus_user_id(self, token_response: TokenValidationResponse):
         """
         Return user ID if the token is valid and if the user is authorized.
-        If the token is valid, but user is not authorized, raise error.
-        If the token is not valid, return None.
         """
 
-        # If the token is a valid Globus Auth token ...
-        if token_response.is_valid:
+        # If the user is authorized ...
+        if token_response.is_authorized and token_response.user is not None:
 
-            # If the user is authorized ...
-            if token_response.is_authorized and token_response.user is not None:
-
-                # Store user in database if not already present
-                try:
-                    if not await exists_in_db(token_response.user.id, db_models.User):
-                        await add_user_to_db({
-                            "id": token_response.user.id,
-                            "name": token_response.user.name,
-                            "username": token_response.user.username,
-                            "idp_id": token_response.user.idp_id,
-                            "idp_name": token_response.user.idp_name,
-                            "auth_service": token_response.user.auth_service
-                        })
-                        log.info(f"Added new user to database: {token_response.user.id}")
-                except Exception as e:
-                    raise HTTPException(
-                        status_code=HTTP_401_UNAUTHORIZED,
-                        detail=f"Failed to store or verify user in database. {e}"
-                    )
-                # Give permission to continue through the API
-                return token_response.user.id
-            
-            # Revoke access if not authorized
-            else:
+            # Store user in database if not already present
+            try:
+                if not await exists_in_db(token_response.user.id, db_models.User):
+                    await add_user_to_db({
+                        "id": token_response.user.id,
+                        "name": token_response.user.name,
+                        "username": token_response.user.username,
+                        "idp_id": token_response.user.idp_id,
+                        "idp_name": token_response.user.idp_name,
+                        "auth_service": token_response.user.auth_service
+                    })
+                    log.info(f"Added new user to database: {token_response.user.id}")
+            except Exception as e:
                 raise HTTPException(
                     status_code=HTTP_401_UNAUTHORIZED,
-                    detail=token_response.error_message
+                    detail=f"Failed to store or verify user in database. {e}"
                 )
+            # Give permission to continue through the API
+            return token_response.user.id
             
-        # Return None if token is not valid
-        return None
+        # Revoke access if not authorized
+        else:
+            raise HTTPException(
+                status_code=HTTP_401_UNAUTHORIZED,
+                detail=token_response.error_message
+            )
