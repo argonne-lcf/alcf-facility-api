@@ -11,7 +11,7 @@ from alcf.cache.redis import get_redis_client
 import json
 import hashlib
 from pydantic import BaseModel, Field
-from typing import Optional, List
+from typing import Optional, List, Tuple
 import globus_sdk
 import time
 from cachetools import TTLCache, cached
@@ -48,7 +48,6 @@ class UserPydantic(BaseModel):
     access_token: str = None
 
 class TokenValidationResponse(BaseModel):
-    is_valid: bool = False
     is_authorized: bool = False
     user: Optional[UserPydantic] = None
     error_message: Optional[str] = None
@@ -199,26 +198,56 @@ def _perform_token_introspection(access_token: str):
     return introspection_data, user_groups, globus_compute_access_token, ""
 
 
-# Get user details
-def get_user_details(introspection, user_groups) -> UserPydantic:
+# Get session info identities
+def get_session_info_identities(introspection) -> Tuple[List[dict], str]:
     """
     Look into the session_info field of the token introspection
-    and check whether the authentication was made through one 
-    of the authorized identity providers. Collect and return the
-    User details if possible
+    and collect the identities that are present. 
+    Returns list of identities and error message if any.
     """
 
-    # Try to check if an authentication came from authorized provider
+    # Return nothing if no authentication is found
+    if "authentications" not in introspection["session_info"]:
+        return [], ""
+
+    # Initialize list of identities present in the session_info introspection field
+    session_info_identities = []
+
+    # Attempt to collect identities
     try:
 
         # For each active authentication session ...
-        session_info_identities = []
         for session_idp in [auth["idp"] for auth in introspection["session_info"]["authentications"].values()]:
 
-            # Recover the domain (e.g. anl.gov) tied to the active session
+            # Recover the identity data tied to the active session
             identity = next((i for i in introspection["identity_set_detail"] if i["identity_provider"] == session_idp))
-            session_domain = identity["username"].split("@")[1]
             session_info_identities.append(identity)
+            
+    # Error message if identities could not be recovered
+    except Exception:
+        return None, "Could not recover list of identities from session_info."
+    
+    # Return list of identities without any error
+    return session_info_identities, ""
+
+
+# Get user details
+def get_user_details(session_info_identities, user_groups) -> Tuple[UserPydantic, str]:
+    """
+    Look at session_info_identities and check whether the
+    authentication was made through one of the authorized identity providers.
+    Collect and return the User details if possible along with error message if any.
+    """
+
+    # Attempt to find an authorized identity
+    try:
+
+        # For each identity tied to the session info ...
+        for identity in session_info_identities:
+
+            # Collect identity domain (e.g, alcf.anl.gov)
+            session_username = identity["username"]
+            session_domain = session_username.split("@")[1]
 
             # If the domain is authorized by the service ...
             if session_domain == AUTHORIZED_IDP_DOMAIN:
@@ -233,16 +262,30 @@ def get_user_details(introspection, user_groups) -> UserPydantic:
                         idp_id=identity["identity_provider"],
                         idp_name=identity["identity_provider_display_name"],
                         auth_service=AuthServices.globus.value
-                    )
+                    ), ""
                 except Exception as e:
-                    return None
+                    return None, f"Could not create UserPydantic instance for {session_username}."
             
-    # No user if something went wrong
-    except Exception as e:
-        return None
+    # Error if something went wrong
+    except Exception:
+        return None, "Could not scan through list of identities tied to session_info."
     
-    # No user if no authorized session was found
-    return None
+    # Build list of session_info usernames that are not authorized (in string form)
+    try:
+        user_str = []
+        for identity in session_info_identities:
+            user_str.append(f"{identity['name']} ({identity['username']})")
+        user_str = ", ".join(user_str)
+        if len(user_str) == 0:
+            user_str = "Unknown (no active session found)"
+    except Exception:
+        return None, "Could not gather user_str for unauthorized identities."
+
+    # Error message if no authorized identity were found
+    error_message = ""
+    error_message += f"{ALLOWED_DOMAIN_STR} "
+    error_message += f"Currently authenticated as {user_str}."
+    return None, error_message
 
 
 # Validate access token sent by user
@@ -253,7 +296,6 @@ def validate_access_token(access_token) -> TokenValidationResponse:
     introspection, user_groups, globus_compute_access_token, error_message = introspect_token(access_token)
     if len(error_message) > 0:
         return TokenValidationResponse(
-            is_valid=False, 
             is_authorized=False,
             user=None,
             error_message=error_message
@@ -263,40 +305,54 @@ def validate_access_token(access_token) -> TokenValidationResponse:
     expires_in = introspection["exp"] - time.time()
     if expires_in <= 0:
         return TokenValidationResponse(
-            is_valid=False, 
             is_authorized=False,
             user=None,
             error_message=f"Globus token expired. {LOGOUT_MESSAGE_STR}"
         )
     
-    # Gather the user details
-    user = get_user_details(introspection, user_groups)
-    if user is None or len(user.username) == 0:
+    # Gather list of identities from session_info
+    session_info_identities, error_message = get_session_info_identities(introspection)
+    if len(session_info_identities) == 0:
         return TokenValidationResponse(
-            is_valid=True,
             is_authorized=False,
             user=None,
-            error_message="User details could not be recovered from Globus token introspection."
+            error_message=f"No identity found in the session info. {LOGOUT_MESSAGE_STR}"
+        )
+    if error_message:
+        return TokenValidationResponse(
+            is_authorized=False,
+            user=None,
+            error_message=error_message
+        )
+
+    # Gather the user details
+    user, error_message = get_user_details(session_info_identities, user_groups)
+    if error_message:
+        return TokenValidationResponse(
+            is_authorized=False,
+            user=None,
+            error_message=f"{error_message} {LOGOUT_MESSAGE_STR}"
         )
     
     # Make sure the Globus high-assurance policy is respected
     for policies in introspection["policy_evaluations"].values():
         if policies.get("evaluation", False) == False:
+            error_message = ""
+            error_message += "Authentication not compliant with Globus policy, "
+            error_message += f"likely due to a high-assurance timeout. {LOGOUT_MESSAGE_STR} {ALLOWED_DOMAIN_STR}"
             return TokenValidationResponse(
-                is_valid=True,
                 is_authorized=False,
                 user=None,
-                error_message=f"Authentication not compliant with Globus policy. {ALLOWED_DOMAIN_STR} {LOGOUT_MESSAGE_STR}"
+                error_message=error_message
             )
         
     # Make sure the user is part of the Globus Group
     if GLOBUS_GROUP:
         if GLOBUS_GROUP not in user_groups:
             return TokenValidationResponse(
-                is_valid=True,
                 is_authorized=False,
                 user=None,
-                error_message="User not in the authorized Globus Group. Please contact adminstrators."
+                error_message=f"User {user.username} not in the authorized Globus Group. Please contact adminstrators."
             )
         
     # Add Globus Compute access token to the user details
@@ -304,7 +360,6 @@ def validate_access_token(access_token) -> TokenValidationResponse:
     
     # Return the user details
     return TokenValidationResponse(
-        is_valid=True,
         is_authorized=True,
         user=user
     )
