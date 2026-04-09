@@ -24,6 +24,7 @@ class APIComponent(str, Enum):
 class EndpointType(str, Enum):
     PBS_GRAPHQL = "pbs_graphql"
     GLOBUS_MULTI_USER_ENDPOINT = "globus_multi_user_endpoint"
+    GLOBUS_TRANSFER_ENDPOINT = "globus_transfer_endpoint"
 
 
 # Common pydantic model template for all types of endpoints
@@ -106,6 +107,28 @@ class GlobusMultiUserEndpoint(_BaseEndpoint):
     @property
     def function_id(self) -> str:
         return self._validated.config.function_id
+    
+
+# ========================
+# Globus transfer endpoint
+# ========================
+
+# Globus transfer endpoint configuration
+class _GlobusTransferEndpointConfig(BaseModel):
+    collection_id: str
+
+
+# Globus transfer endpoint implementation
+class GlobusTransferEndpoint(_BaseEndpoint):
+
+    # Data validation upon initialization
+    def __init__(self, input_params: dict):
+        super().__init__(input_params, _EndpointParams[_GlobusTransferEndpointConfig])
+
+    # Collection ID property
+    @property
+    def collection_id(self) -> str:
+        return self._validated.config.collection_id
 
 
 # ==================
@@ -116,6 +139,7 @@ class GlobusMultiUserEndpoint(_BaseEndpoint):
 _ENDPOINT_CLASSES: dict[str, type[_BaseEndpoint]] = {
     EndpointType.PBS_GRAPHQL.value: PBSGraphqlEndpoint,
     EndpointType.GLOBUS_MULTI_USER_ENDPOINT.value: GlobusMultiUserEndpoint,
+    EndpointType.GLOBUS_TRANSFER_ENDPOINT.value: GlobusTransferEndpoint,
 }
 
 
