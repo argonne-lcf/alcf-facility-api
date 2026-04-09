@@ -36,7 +36,12 @@ LOGOUT_MESSAGE_STR = ""
 LOGOUT_MESSAGE_STR += "Please logout by visiting https://app.globus.org/logout "
 LOGOUT_MESSAGE_STR += "and re-authenticate. Use an incognito browser or clear "
 LOGOUT_MESSAGE_STR += "browser cache to make sure you can enter your credentials."
- 
+
+class GlobusDependentTokens(BaseModel):
+    group: str = None
+    compute: str = None
+    transfer: str = None
+
 class UserPydantic(BaseModel):
     id: str
     name: str
@@ -45,7 +50,6 @@ class UserPydantic(BaseModel):
     idp_id: str
     idp_name: str
     auth_service: str
-    access_token: str = None
 
 class TokenValidationResponse(BaseModel):
     is_authorized: bool = False
@@ -166,19 +170,44 @@ def _perform_token_introspection(access_token: str):
         log.warning(error_message)
         return None, [], None, error_message
     
-    # Get dependent access token to view group membership and use Globus Compute
+    # Get dependent access tokens
     try:
-        dependent_tokens = client.oauth2_get_dependent_tokens(access_token)
-        access_token = dependent_tokens.by_resource_server["groups.api.globus.org"]["access_token"]
-        globus_compute_access_token = dependent_tokens.by_resource_server["funcx_service"]["access_token"]
-    except Exception as e:
+        dependent_tokens_response = client.oauth2_get_dependent_tokens(access_token)
+        dependent_tokens = GlobusDependentTokens()
+    except Exception:
         error_message = f"Could not recover dependent access tokens."
         log.warning(error_message)
         return None, [], None, error_message
+    
+    # Exract Globus Group token
+    try:
+        dependent_tokens.group = dependent_tokens_response["groups.api.globus.org"]["access_token"]
+    except Exception:
+        error_message = f"Could not recover Globus Group access token from dependent tokens."
+        log.warning(error_message)
+        return None, [], None, error_message
+    
+    # Exract Globus Compute token
+    try:
+        dependent_tokens.compute = dependent_tokens_response["funcx_service"]["access_token"]
+    except Exception:
+        error_message = f"Could not recover Globus Compute access token from dependent tokens."
+        log.warning(error_message)
+        return None, [], None, error_message
+    
+    # Extract Globus Transfer token (with no fail to allow not break existing user workflow)
+    try:
+        dependent_tokens.transfer = dependent_tokens_response["transfer.api.globus.org"]["access_token"]
+    except Exception:
+        error_message = f"Could not recover Globus Compute access token from dependent tokens."
+        log.warning(error_message)
+        # [TEMPORARY] No fail to allow not break existing user workflow
+        # return None, [], None, error_message
+        dependent_tokens.transfer = None
 
     # Create a Globus Group Client using the access token sent by the user
     try:
-        authorizer = globus_sdk.AccessTokenAuthorizer(access_token)
+        authorizer = globus_sdk.AccessTokenAuthorizer(dependent_tokens.group)
         groups_client = globus_sdk.GroupsClient(authorizer=authorizer)
     except Exception as e:
         error_message = f"Could not create GroupsClient."
@@ -195,7 +224,7 @@ def _perform_token_introspection(access_token: str):
         return None, [], None, error_message
         
     # Return the introspection data along with the group and compute token (with empty error message)
-    return introspection_data, user_groups, globus_compute_access_token, ""
+    return introspection_data, user_groups, dependent_tokens, ""
 
 
 # Get session info identities
@@ -293,7 +322,7 @@ def validate_access_token(access_token) -> TokenValidationResponse:
     """This function returns an instance of the TokenValidationResponse pydantic data structure."""
 
     # Introspect the access token
-    introspection, user_groups, globus_compute_access_token, error_message = introspect_token(access_token)
+    introspection, user_groups, dependent_tokens, error_message = introspect_token(access_token)
     if len(error_message) > 0:
         return TokenValidationResponse(
             is_authorized=False,
@@ -354,9 +383,6 @@ def validate_access_token(access_token) -> TokenValidationResponse:
                 user=None,
                 error_message=f"User {user.username} not in the authorized Globus Group. Please contact adminstrators."
             )
-        
-    # Add Globus Compute access token to the user details
-    user.access_token = globus_compute_access_token
     
     # Return the user details
     return TokenValidationResponse(
