@@ -7,12 +7,12 @@ import datetime
 from typing import List
 from contextlib import asynccontextmanager
 from . import models as db_models
-from alcf.config import DATABASE_URL
+from alcf.config import DATABASE_URL, SQL_ECHO
 
 
 engine = create_async_engine(
-    DATABASE_URL, 
-    echo=True,
+    DATABASE_URL,
+    echo=SQL_ECHO,
     future=True,  # Ensures SQLAlchemy 2.0+ behavior
     pool_pre_ping=True,  # Verify connections before using them
     pool_size=5,  # Connection pool size (adjust based on your needs)
