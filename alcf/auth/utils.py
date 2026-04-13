@@ -1,4 +1,5 @@
 from enum import Enum
+from uuid import uuid4
 import globus_sdk
 from alcf.config import (
     GLOBUS_SERVICE_API_CLIENT_ID, 
@@ -51,6 +52,14 @@ class TokenValidationResponse(BaseModel):
     is_authorized: bool = False
     user: Optional[UserPydantic] = None
     error_message: Optional[str] = None
+
+
+# Generate error messages
+def generate_error_message(error_message: str, e: Exception) -> str:
+    """Generate error ID, log more complete error message, and return user error message with error ID."""
+    error_id = str(uuid4())
+    log.error(f"Error ID: {error_id} - {error_message}: {e.__class__.__name__} {e}")
+    return f"{error_message} (Error ID: {error_id})"
 
 
 # Get Globus SDK confidential client
@@ -140,8 +149,7 @@ def _perform_token_introspection(access_token: str):
     try:
         client = get_globus_service_api_client()
     except Exception as e:
-        error_message = f"Could not create Globus confidential client."
-        log.warning(error_message)
+        error_message = generate_error_message("Could not create Globus confidential client.", e)
         return None, [], None, error_message
 
     # Prepare the introspection data
@@ -156,8 +164,7 @@ def _perform_token_introspection(access_token: str):
         introspection = client.post("/v2/oauth2/token/introspect", data=introspect_body, encoding="form")
         introspection_data = dict(introspection.data) if hasattr(introspection, 'data') else dict(introspection)
     except Exception as e:
-        error_message = f"Could not introspect token with Globus /v2/oauth2/token/introspect. {LOGOUT_MESSAGE_STR}"
-        log.warning(error_message)
+        error_message = generate_error_message("Could not introspect token with Globus /v2/oauth2/token/introspect.", e)
         return None, [], None, error_message
     
     # Make sure the token is valid/active
@@ -172,8 +179,7 @@ def _perform_token_introspection(access_token: str):
         access_token = dependent_tokens.by_resource_server["groups.api.globus.org"]["access_token"]
         globus_compute_access_token = dependent_tokens.by_resource_server["funcx_service"]["access_token"]
     except Exception as e:
-        error_message = f"Could not recover dependent access tokens."
-        log.warning(error_message)
+        error_message = generate_error_message("Could not recover dependent access tokens.", e)
         return None, [], None, error_message
 
     # Create a Globus Group Client using the access token sent by the user
@@ -181,8 +187,7 @@ def _perform_token_introspection(access_token: str):
         authorizer = globus_sdk.AccessTokenAuthorizer(access_token)
         groups_client = globus_sdk.GroupsClient(authorizer=authorizer)
     except Exception as e:
-        error_message = f"Could not create GroupsClient."
-        log.warning(error_message)
+        error_message = generate_error_message("Could not create GroupsClient.", e)
         return None, [], None, error_message
 
     # Get the list of user's group memberships
@@ -190,8 +195,7 @@ def _perform_token_introspection(access_token: str):
         user_groups_response = groups_client.get_my_groups()
         user_groups = [group["id"] for group in user_groups_response]
     except Exception as e:
-        error_message = f"Could not recover user group memberships."
-        log.warning(error_message)
+        error_message = generate_error_message("Could not recover user group memberships.", e)
         return None, [], None, error_message
         
     # Return the introspection data along with the group and compute token (with empty error message)
@@ -224,8 +228,9 @@ def get_session_info_identities(introspection) -> Tuple[List[dict], str]:
             session_info_identities.append(identity)
             
     # Error message if identities could not be recovered
-    except Exception:
-        return None, "Could not recover list of identities from session_info."
+    except Exception as e:
+        error_message = generate_error_message("Could not recover list of identities from session_info.", e)
+        return [], error_message
     
     # Return list of identities without any error
     return session_info_identities, ""
@@ -264,11 +269,13 @@ def get_user_details(session_info_identities, user_groups) -> Tuple[UserPydantic
                         auth_service=AuthServices.globus.value
                     ), ""
                 except Exception as e:
-                    return None, f"Could not create UserPydantic instance for {session_username}."
+                    error_message = generate_error_message(f"Could not create UserPydantic instance for {session_username}.", e)
+                    return None, error_message
             
     # Error if something went wrong
-    except Exception:
-        return None, "Could not scan through list of identities tied to session_info."
+    except Exception as e:
+        error_message = generate_error_message("Could not scan through list of identities tied to session_info.", e)
+        return None, error_message
     
     # Build list of session_info usernames that are not authorized (in string form)
     try:
@@ -278,8 +285,9 @@ def get_user_details(session_info_identities, user_groups) -> Tuple[UserPydantic
         user_str = ", ".join(user_str)
         if len(user_str) == 0:
             user_str = "Unknown (no active session found)"
-    except Exception:
-        return None, "Could not gather user_str for unauthorized identities."
+    except Exception as e:
+        error_message = generate_error_message("Could not gather user_str for unauthorized identities.", e)
+        return None, error_message
 
     # Error message if no authorized identity were found
     error_message = ""
@@ -312,17 +320,17 @@ def validate_access_token(access_token) -> TokenValidationResponse:
     
     # Gather list of identities from session_info
     session_info_identities, error_message = get_session_info_identities(introspection)
-    if len(session_info_identities) == 0:
-        return TokenValidationResponse(
-            is_authorized=False,
-            user=None,
-            error_message=f"No identity found in the session info. {LOGOUT_MESSAGE_STR}"
-        )
     if error_message:
         return TokenValidationResponse(
             is_authorized=False,
             user=None,
             error_message=error_message
+        )
+    if len(session_info_identities) == 0:
+        return TokenValidationResponse(
+            is_authorized=False,
+            user=None,
+            error_message=f"No identity found in the session info. {LOGOUT_MESSAGE_STR}"
         )
 
     # Gather the user details
@@ -331,7 +339,7 @@ def validate_access_token(access_token) -> TokenValidationResponse:
         return TokenValidationResponse(
             is_authorized=False,
             user=None,
-            error_message=f"{error_message} {LOGOUT_MESSAGE_STR}"
+            error_message=f"{error_message}"
         )
     
     # Make sure the Globus high-assurance policy is respected
