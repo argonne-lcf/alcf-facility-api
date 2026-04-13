@@ -268,8 +268,31 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
         resource: status_models.Resource, 
         user: User, 
         request_model: filesystem_models.PostMakeDirRequest,
+    ) -> str:
+        
+        # Build data for the command
+        input_data = request_model.model_dump()
+
+        # Validate data
+        try:
+            validated = validation.MkdirInputData(**input_data)
+            _ = validation.validate_base_path(validated.path, resource.name)
+        except Exception as e:
+            raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=f"Input validation error: {str(e)}")
+
+        # Submit task to Globus Compute and wait for the task ID
+        task_id = await globus_utils.submit_task("mkdir", resource.name, input_data, user)
+
+        # Return task ID to the user
+        return task_id
+    
+
+    # Format mkdir response
+    def format_mkdir_response(
+        self: "AlcfAdapter",
+        result
     ) -> filesystem_models.PostMkdirResponse:
-        raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="Not implemented yet.")
+        return filesystem_models.PostMkdirResponse(**result)
 
 
     # Sumlink
