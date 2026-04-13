@@ -15,6 +15,7 @@ ALCF_ENDPOINTS = json.loads(_ENDPOINTS_FILE.read_text())
 
 # Database configuration
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql+asyncpg://facilityapi_user@localhost/facilityapi_db")
+SQL_ECHO = os.getenv("SQL_ECHO", "false").lower() == "true"
 
 # Dev only
 # TODO: Remove this once Auth is integrated
