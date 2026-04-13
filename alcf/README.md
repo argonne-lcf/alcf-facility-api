@@ -134,8 +134,15 @@ Create an environment variable file (`.env`) with the following:
 API_URL_ROOT="http://localhost:8000"
 API_URL="api/current"
 
+# Gunicorn og levels
+LOG_LEVEL=DEBUG
+
+# SQLAlchemy echo (False reduces what goes in the error log)
+SQL_ECHO=False
+
 DATABASE_URL="sqlite+aiosqlite:///alcf/facilityapi.db"
 
+# Adaptors
 IRI_API_ADAPTER_facility=alcf.facility.alcf_adapter.AlcfAdapter
 IRI_API_ADAPTER_status="alcf.status.alcf_adapter.AlcfAdapter"
 IRI_API_ADAPTER_compute="alcf.compute.alcf_adapter.AlcfAdapter"
