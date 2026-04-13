@@ -8,6 +8,7 @@ import json
 from json.decoder import JSONDecodeError
 from app.types.user import User
 from alcf.auth.utils import introspect_token as globus_introspect_token
+from alcf.auth.utils import LOGOUT_MESSAGE_STR
 from app.config import logger
 from starlette.status import (
     HTTP_401_UNAUTHORIZED,
@@ -241,7 +242,7 @@ def generate_user_keycloak_token(
     if id_token_introspection.get("active", False) == False:
         raise HTTPException(
             status_code=HTTP_401_UNAUTHORIZED,
-            detail=f"Keycloak ID token not valid or expired. Try to re-authenticate."
+            detail=f"Keycloak ID token not valid or expired. {LOGOUT_MESSAGE_STR}."
         )
     
     # Verify origin of the Keycloak ID token
