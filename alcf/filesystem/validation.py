@@ -290,6 +290,36 @@ class ViewInputData(BaseModelWithForbiddenExtra):
         if not is_allowed_path(p):
             raise ValueError(f"Path must start with one of: {ALLOWED_PATHS_TEXT}.")
         return p
+
+
+# Input data for mkdir command
+class MkdirInputData(BaseModelWithForbiddenExtra):
+    path: Path
+    parent: Optional[bool] = Field(default=False)
+
+    # Path validation: forbidden chars, absolute required
+    @field_validator("path", mode="before")
+    @classmethod
+    def validate_path_format(cls, v) -> Path:
+        s = str(v) if not isinstance(v, Path) else str(v)
+        if "\0" in s:
+            raise ValueError("Null byte not allowed in path.")
+        if not re.compile(r"^[\w\-./\\]+$").fullmatch(s):
+            raise ValueError("Path contains forbidden characters.")
+        p = Path(s)
+        if not p.is_absolute():
+            raise ValueError("Path must be absolute.")
+        if any(part in (".", "..") for part in p.parts):
+            raise ValueError("Path cannot contain '.' or '..' segments.")
+        return p
+
+    # Path allowlist validation: /home/<username>, /eagle, /lus/eagle
+    @field_validator("path")
+    @classmethod
+    def validate_path_prefix(cls, p: Path) -> Path:
+        if not is_allowed_path(p):
+            raise ValueError(f"Path must start with one of: {ALLOWED_PATHS_TEXT}.")
+        return p
     
 
 # Function to restrict path based on the target resource
