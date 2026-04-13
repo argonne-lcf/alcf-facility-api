@@ -1,4 +1,10 @@
 import logging
+import os
+from dotenv import load_dotenv
+load_dotenv()
+
+# Determine if we are in production or development
+environment = os.getenv("ENV", "production")
 
 # Localhost port to communicate between Nginx and Gunicorn
 bind = '127.0.0.1:8000'
@@ -21,8 +27,12 @@ workers = 2
 threads = 1
 
 # Log directory
-errorlog = "./logs/fastapi.error.log"
-accesslog = "./logs/fastapi.access.log"
+if environment == "development":
+    errorlog = "./logs/fastapi.error.log"
+    accesslog = "./logs/fastapi.access.log"
+else:
+    errorlog = "/var/log/alcf-facility-api/fastapi.error.log"
+    accesslog = "/var/log/alcf-facility-api/fastapi.access.log"
 
 # Whether to send output to the error log
 capture_output = True
