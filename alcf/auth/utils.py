@@ -164,7 +164,12 @@ def _perform_token_introspection(access_token: str):
         introspection = client.post("/v2/oauth2/token/introspect", data=introspect_body, encoding="form")
         introspection_data = dict(introspection.data) if hasattr(introspection, 'data') else dict(introspection)
     except Exception as e:
-        error_message = generate_error_message("Could not introspect token with Globus /v2/oauth2/token/introspect.", e)
+        error_message = ""
+        error_message += "Could not introspect Globus token. "
+        error_message += "This could be due to a client ID mismatch during the authentication flow. "
+        error_message += "Make sure to authenticate using the client ID 8b84fc2d-49e9-49ea-b54d-b3a29a70cf31, "
+        error_message += "or follow the instruction at https://github.com/argonne-lcf/alcf-facility-api-token."
+        error_message = generate_error_message(error_message, e)
         return None, [], None, error_message
     
     # Make sure the token is valid/active
