@@ -8,8 +8,13 @@ import json
 from json.decoder import JSONDecodeError
 from app.types.user import User
 from alcf.auth.utils import introspect_token as globus_introspect_token
-from alcf.auth.utils import LOGOUT_MESSAGE_STR
+from alcf.auth.utils import (
+    get_session_info_identities, 
+    get_user_details,
+    generate_error_message
+)
 from app.config import logger
+from alcf.config import AUTHORIZED_IDP_DOMAIN
 from starlette.status import (
     HTTP_401_UNAUTHORIZED,
 )
@@ -19,7 +24,6 @@ from alcf.config import (
     KEYCLOAK_REALM_NAME,
     KEYCLOAK_PBS_GRAPHQL_AUDIENCE,
     KEYCLOAK_SERVER_URL,
-    KEYCLOAK_ID_TOKEN_CLIENT_ID
 )
 
 # Keycloak URL to generate and exchange tokens
@@ -119,12 +123,10 @@ def _perform_post_keycloak(payload: dict = None, url: str = None):
         logger.exception(error_message)
         return None, error_message
     except JSONDecodeError as e:
-        error_message = "Keycloak query response could not be parsed."
-        logger.exception(error_message)
+        error_message = generate_error_message("Keycloak query response could not be parsed.", e)
         return None, error_message
     except Exception as e:
-        error_message = "Keycloak query failed."
-        logger.exception(error_message)
+        error_message = generate_error_message("Keycloak query failed.", e)
         return None, error_message
 
 
@@ -214,7 +216,7 @@ def generate_user_keycloak_token(
     """
 
     # Recover the Globus token introspection from cache
-    globus_introspection, _, _, error_message = globus_introspect_token(user.api_key)
+    globus_introspection, user_groups, _, error_message = globus_introspect_token(user.api_key)
     if len(error_message) > 0:
         logger.error(f"generate_user_keycloak_token: {error_message}")
         raise HTTPException(
@@ -222,42 +224,23 @@ def generate_user_keycloak_token(
             detail=f"Could not recover Globus token introspection in the context of GraphQL submission."
         )
     
-    # Try to extract the original Keycloak ID token from Globus introspection
-    id_token = globus_introspection["session_info"].get("id_token", None)
-    if id_token is None:
-        raise HTTPException(
-            status_code=HTTP_401_UNAUTHORIZED,
-            detail=f"Could not extract original ID token from Globus introspection."
-        )
+    # Recover Globus username (username@idp_domain) tied to the IdP used during authentication
+    session_info_identities, _ = get_session_info_identities(globus_introspection)
+    globus_user, _ = get_user_details(session_info_identities, user_groups)
     
-    # Try to introspect the ID token
-    id_token_introspection = introspect_token(id_token)
-    if id_token_introspection is None:
-        raise HTTPException(
+    # Recover the ALCF username from the Globus introspection
+    try:
+        alcf_username, idp_domain = globus_user.username.split("@")
+        if idp_domain != AUTHORIZED_IDP_DOMAIN:
+            raise HTTPException(
             status_code=HTTP_401_UNAUTHORIZED,
-            detail="Could not introspect ID token with Keycloak."
+            detail=f"Globus username does not have the authorized {AUTHORIZED_IDP_DOMAIN} domain."
         )
-    
-    # Error if Keycloak ID token is not valid
-    if id_token_introspection.get("active", False) == False:
+    except Exception as e:
+        error_message = generate_error_message("Could not recover ALCF username from Globus introspection.", e)
         raise HTTPException(
             status_code=HTTP_401_UNAUTHORIZED,
-            detail=f"Keycloak ID token not valid or expired. {LOGOUT_MESSAGE_STR}."
-        )
-    
-    # Verify origin of the Keycloak ID token
-    if id_token_introspection.get("client_id", "unknown_client_id") != KEYCLOAK_ID_TOKEN_CLIENT_ID:
-        raise HTTPException(
-            status_code=HTTP_401_UNAUTHORIZED,
-            detail=f"Unrecognized source client for Keycloak ID token generation."
-        )
-
-    # Extract the ALCF username from the Keycloak ID token
-    alcf_username = id_token_introspection.get("username", None)
-    if alcf_username == "" or alcf_username is None:
-        raise HTTPException(
-            status_code=HTTP_401_UNAUTHORIZED,
-            detail=f"Could not recover ALCF username from Keycloak ID token."
+            detail=error_message
         )
     
     # Get Keycloak impersonation client token from credentials
