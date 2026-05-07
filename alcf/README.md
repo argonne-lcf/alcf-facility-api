@@ -138,7 +138,7 @@ API_URL="api/current"
 LOG_LEVEL=DEBUG
 
 # SQLAlchemy echo (False reduces what goes in the error log)
-SQL_ECHO=False
+DATABASE_SQL_ECHO=False
 
 DATABASE_URL="sqlite+aiosqlite:///alcf/facilityapi.db"
 

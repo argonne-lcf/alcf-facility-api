@@ -1,47 +1,135 @@
-import os
 import json
 from pathlib import Path
-
-# Load environment variables from .env file
+from typing import Optional, List
 from dotenv import load_dotenv
+from pydantic import Field, field_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
 load_dotenv()
 
-# Load ALCF endpoints data
-_BASE_DIR = Path(__file__).parent.parent
-_ENDPOINTS_FILE = _BASE_DIR / "alcf_endpoints.json"
-if not _ENDPOINTS_FILE.exists():
-    raise FileNotFoundError(f"Endpoints JSON file not found: {_ENDPOINTS_FILE}")
-ALCF_ENDPOINTS = json.loads(_ENDPOINTS_FILE.read_text())
 
-# Database configuration
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql+asyncpg://facilityapi_user@localhost/facilityapi_db")
-SQL_ECHO = os.getenv("SQL_ECHO", "false").lower() == "true"
+# Database
+class DatabaseSettings(BaseSettings):
+    """Database configuration."""
 
-# Dev only
-# TODO: Remove this once Auth is integrated
-SECRET_DEV_KEY = os.getenv("SECRET_DEV_KEY", None)
+    # Optional
+    url: Optional[str] = Field(default="sqlite+aiosqlite:///alcf/facilityapi.db")
+    sql_echo: Optional[bool] = Field(default=False)
 
-# PBS GraphQL
-GRAPHQL_HTTPX_TRUST_ENV = os.getenv("GRAPHQL_HTTPX_TRUST_ENV", "True").lower() in ("true", "1", "t")
+    # Prefix of environment variables
+    class Config(SettingsConfigDict):
+        env_prefix = "DATABASE_"
 
-# Keycloak integration
-KEYCLOAK_REALM_NAME = os.getenv("KEYCLOAK_REALM_NAME", None)
-KEYCLOAK_SERVER_URL = os.getenv("KEYCLOAK_SERVER_URL", None)
-KEYCLOAK_ENABLED = True
-KEYCLOAK_AUTHORIZED_USERNAMES = json.loads(os.getenv("KEYCLOAK_AUTHORIZED_USERNAMES", "[]"))
-KEYCLOAK_IMPERSONATION_SERVICE_CLIENT_ID = os.getenv("KEYCLOAK_IMPERSONATION_SERVICE_CLIENT_ID", None)
-KEYCLOAK_IMPERSONATION_SERVICE_CLIENT_SECRET = os.getenv("KEYCLOAK_IMPERSONATION_SERVICE_CLIENT_SECRET", None)
-KEYCLOAK_PBS_GRAPHQL_AUDIENCE = os.getenv("KEYCLOAK_PBS_GRAPHQL_AUDIENCE", None)
-KEYCLOAK_ID_TOKEN_CLIENT_ID = os.getenv("KEYCLOAK_ID_TOKEN_CLIENT_ID", None)
 
-# Globus authorization
-GLOBUS_SERVICE_API_CLIENT_ID = os.getenv("GLOBUS_SERVICE_API_CLIENT_ID", None)
-GLOBUS_SERVICE_API_CLIENT_SECRET = os.getenv("GLOBUS_SERVICE_API_CLIENT_SECRET", None)
-GLOBUS_HA_POLICY = os.getenv("GLOBUS_HA_POLICY", None)
-GLOBUS_GROUP = os.getenv("GLOBUS_GROUP", None)
-AUTHORIZED_IDP_DOMAIN = os.getenv("AUTHORIZED_IDP_DOMAIN", None)
-GLOBUS_AUTHORIZED_USERNAMES = json.loads(os.getenv("GLOBUS_AUTHORIZED_USERNAMES", "[]"))
+# Keycloak
+class KeycloakSettings(BaseSettings):
+    """Keycloak integration configuration."""
 
-# Redis configuration
-REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
-REDIS_PORT = int(os.getenv("REDIS_PORT", "6379"))
+    # Mandatory
+    realm_name: str
+    server_url: str
+    impersonation_service_client_id: str
+    impersonation_service_client_secret: str
+    pbs_graphql_audience: str
+
+    # Optional
+    enabled: Optional[bool] = Field(default=True)
+    authorized_usernames: Optional[List[str]] = Field(default_factory=list)
+    
+    @field_validator("server_url", mode="before")
+    @classmethod
+    def normalize_server_url(cls, v: str) -> str:
+        """Remove trailing slash from server URL to avoid double slashes."""
+        if isinstance(v, str):
+            return v.rstrip("/")
+        return v
+    
+    # Prefix of environment variables
+    class Config(SettingsConfigDict):
+        env_prefix = "KEYCLOAK_"
+
+
+# Globus
+class GlobusSettings(BaseSettings):
+    """Globus authorization configuration."""
+
+    # Mandatory
+    service_api_client_id: str
+    service_api_client_secret: str
+    ha_policy: str
+
+    # Optional
+    group: Optional[str] = Field(default=None)
+    authorized_usernames: Optional[List[str]] = Field(default_factory=list)
+
+    # Prefix of environment variables
+    class Config(SettingsConfigDict):
+        env_prefix = "GLOBUS_"
+
+
+# Redis
+class RedisSettings(BaseSettings):
+    """Redis cache configuration."""
+
+    # Optional
+    host: Optional[str] = Field(default="localhost")
+    port: Optional[int] = Field(default=6379, ge=1, le=9999)
+
+    # Prefix of environment variables
+    class Config(SettingsConfigDict):
+        env_prefix = "REDIS_"
+
+
+class AlcfSettings(BaseSettings):
+    """Main ALCF application settings."""
+
+    # Grouped variables with a prefix
+    database: DatabaseSettings = Field(default_factory=DatabaseSettings)
+    keycloak: KeycloakSettings = Field(default_factory=KeycloakSettings)
+    globus: GlobusSettings = Field(default_factory=GlobusSettings)
+    redis: RedisSettings = Field(default_factory=RedisSettings)
+
+    # Other variables without a prefix
+    graphql_httpx_trust_env: bool = Field(default=True)
+    authorized_idp_domain: str
+
+    # Load from .env file
+    class Config(SettingsConfigDict):
+        env_file = ".env"
+        env_file_encoding = "utf-8"
+        case_sensitive = False
+        extra = "ignore"
+
+
+# ALCF endpoints Json configuration
+def _load_endpoints() -> dict:
+    """Load ALCF endpoints from JSON file."""
+    base_dir = Path(__file__).parent.parent
+    endpoints_file = base_dir / "alcf_endpoints.json"
+    if not endpoints_file.exists():
+        raise FileNotFoundError(f"Endpoints JSON file not found: {endpoints_file}")
+    return json.loads(endpoints_file.read_text())
+ALCF_ENDPOINTS = _load_endpoints()
+
+# Load and validate environment variables
+settings = AlcfSettings()
+
+# Assign variables
+DATABASE_URL = settings.database.url
+DATABASE_SQL_ECHO = settings.database.sql_echo
+KEYCLOAK_REALM_NAME = settings.keycloak.realm_name
+KEYCLOAK_SERVER_URL = settings.keycloak.server_url
+KEYCLOAK_ENABLED = settings.keycloak.enabled
+KEYCLOAK_AUTHORIZED_USERNAMES = settings.keycloak.authorized_usernames
+KEYCLOAK_IMPERSONATION_SERVICE_CLIENT_ID = settings.keycloak.impersonation_service_client_id
+KEYCLOAK_IMPERSONATION_SERVICE_CLIENT_SECRET = settings.keycloak.impersonation_service_client_secret
+KEYCLOAK_PBS_GRAPHQL_AUDIENCE = settings.keycloak.pbs_graphql_audience
+GLOBUS_SERVICE_API_CLIENT_ID = settings.globus.service_api_client_id
+GLOBUS_SERVICE_API_CLIENT_SECRET = settings.globus.service_api_client_secret
+GLOBUS_HA_POLICY = settings.globus.ha_policy
+GLOBUS_GROUP = settings.globus.group
+GLOBUS_AUTHORIZED_USERNAMES = settings.globus.authorized_usernames
+REDIS_HOST = settings.redis.host
+REDIS_PORT = settings.redis.port
+GRAPHQL_HTTPX_TRUST_ENV = settings.graphql_httpx_trust_env
+AUTHORIZED_IDP_DOMAIN = settings.authorized_idp_domain
