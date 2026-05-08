@@ -7,6 +7,18 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 load_dotenv()
 
+# Maintenance
+class ComponentMaintenance(BaseSettings):
+    """Maintenance configuration."""
+
+    # Mandatory
+    component: str
+    message: str
+
+    # Prefix of environment variables
+    class Config(SettingsConfigDict):
+        env_prefix = ""
+
 
 # Database
 class DatabaseSettings(BaseSettings):
@@ -84,6 +96,7 @@ class AlcfSettings(BaseSettings):
     """Main ALCF application settings."""
 
     # Grouped variables with a prefix
+    maintenance: List[ComponentMaintenance] = Field(default_factory=[])
     database: DatabaseSettings = Field(default_factory=DatabaseSettings)
     keycloak: KeycloakSettings = Field(default_factory=KeycloakSettings)
     globus: GlobusSettings = Field(default_factory=GlobusSettings)
@@ -115,6 +128,7 @@ ALCF_ENDPOINTS = _load_endpoints()
 settings = AlcfSettings()
 
 # Assign variables
+COMPONENT_MAINTENANCE_NOTICES = settings.maintenance
 DATABASE_URL = settings.database.url
 DATABASE_SQL_ECHO = settings.database.sql_echo
 KEYCLOAK_REALM_NAME = settings.keycloak.realm_name
