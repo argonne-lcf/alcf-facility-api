@@ -230,27 +230,32 @@ def ls(params):
         results = []
         try:
             for entry in dir_path.iterdir():
+                try:
 
-                # Skip hidden entry if necessary
-                if not input_data.show_hidden and entry.name.startswith("."):
-                    continue
+                    # Skip hidden entry if necessary
+                    if not input_data.show_hidden and entry.name.startswith("."):
+                        continue
 
-                # Skip symlinks
-                if entry.is_symlink():
-                    continue
+                    # Skip symlinks
+                    if entry.is_symlink():
+                        continue
 
-                # rel_path: include parent folder when recursive
-                rel_path = os.path.join(base_path, entry.name) if base_path else entry.name
+                    # rel_path: include parent folder when recursive
+                    rel_path = os.path.join(base_path, entry.name) if base_path else entry.name
 
-                # TOCTOU-safe: open with O_NOFOLLOW, fstat, validate inode
-                entry_info = get_entry_info_safe(entry, rel_path)
-                results.append(entry_info)
+                    # TOCTOU-safe: open with O_NOFOLLOW, fstat, validate inode
+                    entry_info = get_entry_info_safe(entry, rel_path)
+                    results.append(entry_info)
 
-                # Traverse subdirectory if necessary
-                if input_data.recursive and entry_info.type == "directory":
-                    results.extend(process_directory(entry, rel_path))
+                    # Traverse subdirectory if necessary
+                    if input_data.recursive and entry_info.type == "directory":
+                        results.extend(process_directory(entry, rel_path))
 
-        # Skip directories we can't read
+                # Skip entries we can't read
+                except PermissionError:
+                    pass
+
+        # Skip entries we can't read
         except PermissionError:
             pass
 
