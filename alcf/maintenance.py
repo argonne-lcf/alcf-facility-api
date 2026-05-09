@@ -13,11 +13,11 @@ def require_component_operational(component: APIComponent):
     def decorator(func):
         @wraps(func)
         async def wrapper(*args, **kwargs):            
-            for maintenance_notice in COMPONENT_MAINTENANCE_NOTICES:
-                if maintenance_notice.component == component:
+            if COMPONENT_MAINTENANCE_NOTICES:
+                if component in COMPONENT_MAINTENANCE_NOTICES:
                     raise HTTPException(
                         status_code=HTTP_503_SERVICE_UNAVAILABLE,
-                        detail=maintenance_notice.message
+                        detail=COMPONENT_MAINTENANCE_NOTICES[component]
                     )
             return await func(*args, **kwargs)
         return wrapper
