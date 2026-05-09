@@ -7,7 +7,8 @@ from starlette.status import (
     HTTP_403_FORBIDDEN, 
     HTTP_500_INTERNAL_SERVER_ERROR
 )
-from alcf.endpoints import APIComponent, get_endpoint, EndpointType
+from alcf.endpoints import get_endpoint
+from alcf.enums import APIComponent, EndpointType
 from app.routers.task.facility_adapter import FacilityAdapter as TaskFacilityAdapter
 from app.routers.status import models as status_models
 from app.types.user import User
