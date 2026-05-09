@@ -93,7 +93,7 @@ class AlcfSettings(BaseSettings):
     # Other variables without a prefix
     graphql_httpx_trust_env: bool = Field(default=True)
     authorized_idp_domain: str
-    component_maintenance_notices: Dict[APIComponent, str]
+    component_maintenance_notices: Optional[Dict[APIComponent, str]] = None
 
     # Load from .env file
     class Config(SettingsConfigDict):
