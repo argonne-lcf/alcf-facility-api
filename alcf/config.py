@@ -1,23 +1,12 @@
 import json
 from pathlib import Path
-from typing import Optional, List
+from typing import Optional, List, Dict
 from dotenv import load_dotenv
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from alcf.enums import APIComponent
 
 load_dotenv()
-
-# Maintenance
-class ComponentMaintenance(BaseSettings):
-    """Maintenance configuration."""
-
-    # Mandatory
-    component: str
-    message: str
-
-    # Prefix of environment variables
-    class Config(SettingsConfigDict):
-        env_prefix = ""
 
 
 # Database
@@ -96,7 +85,6 @@ class AlcfSettings(BaseSettings):
     """Main ALCF application settings."""
 
     # Grouped variables with a prefix
-    maintenance: List[ComponentMaintenance] = Field(default_factory=[])
     database: DatabaseSettings = Field(default_factory=DatabaseSettings)
     keycloak: KeycloakSettings = Field(default_factory=KeycloakSettings)
     globus: GlobusSettings = Field(default_factory=GlobusSettings)
@@ -105,6 +93,7 @@ class AlcfSettings(BaseSettings):
     # Other variables without a prefix
     graphql_httpx_trust_env: bool = Field(default=True)
     authorized_idp_domain: str
+    component_maintenance_notices: Dict[APIComponent, str]
 
     # Load from .env file
     class Config(SettingsConfigDict):
@@ -128,7 +117,7 @@ ALCF_ENDPOINTS = _load_endpoints()
 settings = AlcfSettings()
 
 # Assign variables
-COMPONENT_MAINTENANCE_NOTICES = settings.maintenance
+COMPONENT_MAINTENANCE_NOTICES = settings.component_maintenance_notices
 DATABASE_URL = settings.database.url
 DATABASE_SQL_ECHO = settings.database.sql_echo
 KEYCLOAK_REALM_NAME = settings.keycloak.realm_name
@@ -147,3 +136,6 @@ REDIS_HOST = settings.redis.host
 REDIS_PORT = settings.redis.port
 GRAPHQL_HTTPX_TRUST_ENV = settings.graphql_httpx_trust_env
 AUTHORIZED_IDP_DOMAIN = settings.authorized_idp_domain
+
+print("!!!")
+print(COMPONENT_MAINTENANCE_NOTICES)
