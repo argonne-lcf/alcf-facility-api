@@ -140,23 +140,23 @@ def get_graphql_job_from_iri_jobspec(
     graphql_data = generate_dictionary_from_mapping(iri_jobspec, field_mapping)
 
     # Validate data
-    graphql_data = graphql_models.Job(**graphql_data)
+    graphql_job = graphql_models.Job(**graphql_data)
 
     # Format command arguments
-    graphql_data.commandArgs = format_commandArgs(graphql_data.commandArgs)
+    graphql_job = format_commandArgs(graphql_job)
     
     # Return the GraphQL Job object
-    return graphql_data
+    return graphql_job
 
 
 def format_commandArgs(
-    commandArgs: List[str] = None
-) -> List[str] | None:
+    job: graphql_models.Job
+) -> graphql_models.Job:
     """Format executable arguments commandArgs to work with GraphQL if needed."""
     
     # For each argument in the list ...
-    if commandArgs:
-        for i_arg, argument in enumerate(commandArgs):
+    if job.commandArgs and job.remoteCommand == "/bin/bash":
+        for i_arg, argument in enumerate(job.commandArgs):
 
             # Escape quotes for GraphQL
             argument = argument.replace('"', '\\"')
@@ -179,10 +179,10 @@ def format_commandArgs(
                 formatted_lines[-1] = formatted_lines[-1].rstrip(";")
 
             # Join into single line
-            commandArgs[i_arg] = " ".join(formatted_lines)
+            job.commandArgs[i_arg] = " ".join(formatted_lines)
     
     # Return formatted commandArgs
-    return commandArgs
+    return job
 
 
 # Get IRI Job from GraphQL Job
