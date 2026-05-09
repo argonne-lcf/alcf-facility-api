@@ -4,7 +4,8 @@ from json.decoder import JSONDecodeError
 from fastapi import HTTPException
 from app.types.user import User
 from alcf.compute.graphql import models as graphql_models
-from alcf.endpoints import get_endpoint, EndpointType, APIComponent
+from alcf.endpoints import get_endpoint
+from alcf.enums import EndpointType, APIComponent
 from alcf.config import GRAPHQL_HTTPX_TRUST_ENV
 from starlette.status import (
     HTTP_400_BAD_REQUEST, 
