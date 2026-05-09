@@ -1,29 +1,13 @@
 from typing import Generic, TypeVar
 from pydantic import BaseModel, ValidationError
 from fastapi import HTTPException
-from enum import Enum
+from alcf.enums import APIComponent, EndpointType
 from alcf.config import ALCF_ENDPOINTS
 from starlette.status import (
     HTTP_501_NOT_IMPLEMENTED,
     HTTP_404_NOT_FOUND,
     HTTP_400_BAD_REQUEST,
 )
-
-# ====================
-# Reusable definitions
-# ====================
-
-# API component enumeration
-class APIComponent(str, Enum):
-    COMPUTE = "compute"
-    FILESYSTEM = "filesystem"
-    ACCOUNT = "account"
-
-
-# Endpoint type enumeration
-class EndpointType(str, Enum):
-    PBS_GRAPHQL = "pbs_graphql"
-    GLOBUS_MULTI_USER_ENDPOINT = "globus_multi_user_endpoint"
 
 
 # Common pydantic model template for all types of endpoints
