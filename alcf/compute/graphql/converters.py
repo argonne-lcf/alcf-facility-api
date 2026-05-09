@@ -138,9 +138,51 @@ def get_graphql_job_from_iri_jobspec(
     
     # Apply mapping
     graphql_data = generate_dictionary_from_mapping(iri_jobspec, field_mapping)
+
+    # Validate data
+    graphql_data = graphql_models.Job(**graphql_data)
+
+    # Format command arguments
+    graphql_data.commandArgs = format_commandArgs(graphql_data.commandArgs)
     
-    # Create and return the GraphQL Job object
-    return graphql_models.Job(**graphql_data)
+    # Return the GraphQL Job object
+    return graphql_data
+
+
+def format_commandArgs(
+    commandArgs: List[str] = None
+) -> List[str] | None:
+    """Format executable arguments commandArgs to work with GraphQL if needed."""
+    
+    # For each argument in the list ...
+    if commandArgs:
+        for i_arg, argument in enumerate(commandArgs):
+
+            # Escape quotes for GraphQL
+            argument = argument.replace('"', '\\"')
+
+            # Remove empty lines and strip whitespace
+            lines = [
+                line.strip()
+                for line in argument.splitlines()
+                if line.strip()
+            ]
+
+            # Add semicolons unless line ends with {
+            formatted_lines = [
+                line if line.endswith("{") else f"{line};"
+                for line in lines
+            ]
+
+            # Remove trailing semicolon from final line
+            if formatted_lines:
+                formatted_lines[-1] = formatted_lines[-1].rstrip(";")
+
+            # Join into single line
+            commandArgs[i_arg] = " ".join(formatted_lines)
+    
+    # Return formatted commandArgs
+    return commandArgs
 
 
 # Get IRI Job from GraphQL Job
