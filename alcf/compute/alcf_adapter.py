@@ -12,6 +12,8 @@ from alcf.compute.graphql.converters import (
     get_graphql_job_from_iri_jobspec,
     get_iri_job_from_graphql_job
 )
+from alcf.maintenance import require_component_operational
+from alcf.enums import APIComponent
 
 # Typing
 from typing import List
@@ -90,6 +92,7 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
     """Compute facility adapter definition for the IRI Facility API."""
 
     # Submit job
+    @require_component_operational(APIComponent.COMPUTE)
     @create_log_objects
     async def submit_job(
         self: "AlcfAdapter",
@@ -179,6 +182,7 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
     
 
     # Submit job script
+    @require_component_operational(APIComponent.COMPUTE)
     @create_log_objects
     async def submit_job_script(
         self: "AlcfAdapter",
@@ -193,6 +197,7 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
 
 
     # Update job
+    @require_component_operational(APIComponent.COMPUTE)
     @create_log_objects
     async def update_job(
         self: "AlcfAdapter",
@@ -249,6 +254,7 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
     
 
     # Get job
+    @require_component_operational(APIComponent.COMPUTE)
     @create_log_objects
     async def get_job(
         self: "AlcfAdapter",
@@ -316,6 +322,7 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
 
     
     # Get jobs
+    @require_component_operational(APIComponent.COMPUTE)
     @create_log_objects
     async def get_jobs(
         self: "AlcfAdapter",
@@ -394,6 +401,7 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
 
     
     # Cancel job
+    @require_component_operational(APIComponent.COMPUTE)
     @create_log_objects
     async def cancel_job(
         self: "AlcfAdapter",

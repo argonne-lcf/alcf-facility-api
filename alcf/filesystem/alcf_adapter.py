@@ -8,11 +8,14 @@ from alcf.auth.alcf_adapter import AlcfAuthenticatedAdapter
 from starlette.status import HTTP_501_NOT_IMPLEMENTED, HTTP_400_BAD_REQUEST 
 from typing import Any, Tuple
 from alcf.filesystem import validation
+from alcf.maintenance import require_component_operational
+from alcf.enums import APIComponent
 
 class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
     """Filesystem facility adapter definition for the IRI Facility API."""
 
     # Chmod
+    @require_component_operational(APIComponent.FILESYSTEM)
     async def chmod(
         self: "AlcfAdapter",
         resource: status_models.Resource, 
@@ -46,6 +49,7 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
 
 
     # Chown
+    @require_component_operational(APIComponent.FILESYSTEM)
     async def chown(
         self: "AlcfAdapter",
         resource: status_models.Resource, 
@@ -80,6 +84,7 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
     
 
     # Ls
+    @require_component_operational(APIComponent.FILESYSTEM)
     async def ls(
         self: "AlcfAdapter",
         resource: status_models.Resource, 
@@ -129,6 +134,7 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
           
 
     # Head
+    @require_component_operational(APIComponent.FILESYSTEM)
     async def head(
         self: "AlcfAdapter",
         resource: status_models.Resource, 
@@ -170,6 +176,7 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
     
 
     # Tail
+    @require_component_operational(APIComponent.FILESYSTEM)
     async def tail(
         self: "AlcfAdapter",
         resource: status_models.Resource, 
@@ -183,6 +190,7 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
 
 
     # View
+    @require_component_operational(APIComponent.FILESYSTEM)
     async def view(
         self: "AlcfAdapter",
         resource: status_models.Resource, 
@@ -222,6 +230,7 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
 
 
     # Checksum
+    @require_component_operational(APIComponent.FILESYSTEM)
     async def checksum(
         self: "AlcfAdapter",
         resource: status_models.Resource, 
@@ -232,6 +241,7 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
 
 
     # File
+    @require_component_operational(APIComponent.FILESYSTEM)
     async def file(
         self: "AlcfAdapter",
         resource: status_models.Resource, 
@@ -242,6 +252,7 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
 
 
     # Stat
+    @require_component_operational(APIComponent.FILESYSTEM)
     async def stat(
         self: "AlcfAdapter",
         resource: status_models.Resource, 
@@ -253,6 +264,7 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
 
 
     # Rm
+    @require_component_operational(APIComponent.FILESYSTEM)
     async def rm(
         self: "AlcfAdapter",
         resource: status_models.Resource, 
@@ -263,6 +275,7 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
 
 
     # Mkdir
+    @require_component_operational(APIComponent.FILESYSTEM)
     async def mkdir(
         self: "AlcfAdapter",
         resource: status_models.Resource, 
@@ -296,6 +309,7 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
 
 
     # Sumlink
+    @require_component_operational(APIComponent.FILESYSTEM)
     async def symlink(
         self: "AlcfAdapter",
         resource: status_models.Resource, 
@@ -306,6 +320,7 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
 
 
     # Download
+    @require_component_operational(APIComponent.FILESYSTEM)
     async def download(
         self: "AlcfAdapter",
         resource: status_models.Resource, 
@@ -316,6 +331,7 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
 
 
     # Upload
+    @require_component_operational(APIComponent.FILESYSTEM)
     async def upload(
         self: "AlcfAdapter",
         resource: status_models.Resource, 
@@ -327,6 +343,7 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
 
 
     # Compress
+    @require_component_operational(APIComponent.FILESYSTEM)
     async def compress(
         self: "AlcfAdapter",
         resource: status_models.Resource, 
@@ -337,6 +354,7 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
 
 
     # Extract
+    @require_component_operational(APIComponent.FILESYSTEM)
     async def extract(
         self: "AlcfAdapter",
         resource: status_models.Resource, 
@@ -347,6 +365,7 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
 
 
     # Mv
+    @require_component_operational(APIComponent.FILESYSTEM)
     async def mv(
         self: "AlcfAdapter",
         resource: status_models.Resource, 
@@ -357,6 +376,7 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
 
 
     # Cp
+    @require_component_operational(APIComponent.FILESYSTEM)
     async def cp(
         self: "AlcfAdapter",
         resource: status_models.Resource, 

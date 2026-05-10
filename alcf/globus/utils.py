@@ -1,5 +1,6 @@
 from cachetools import TTLCache, cached
-from alcf.endpoints import get_endpoint, EndpointType, APIComponent
+from alcf.endpoints import get_endpoint
+from alcf.enums import EndpointType, APIComponent
 from alcf.auth.utils import introspect_token as globus_introspect_token
 from starlette.status import HTTP_500_INTERNAL_SERVER_ERROR, HTTP_400_BAD_REQUEST
 from fastapi import HTTPException

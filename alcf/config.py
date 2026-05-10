@@ -1,9 +1,10 @@
 import json
 from pathlib import Path
-from typing import Optional, List
+from typing import Optional, List, Dict
 from dotenv import load_dotenv
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from alcf.enums import APIComponent
 
 load_dotenv()
 
@@ -92,6 +93,7 @@ class AlcfSettings(BaseSettings):
     # Other variables without a prefix
     graphql_httpx_trust_env: bool = Field(default=True)
     authorized_idp_domain: str
+    component_maintenance_notices: Optional[Dict[APIComponent, str]] = None
 
     # Load from .env file
     class Config(SettingsConfigDict):
@@ -115,6 +117,7 @@ ALCF_ENDPOINTS = _load_endpoints()
 settings = AlcfSettings()
 
 # Assign variables
+COMPONENT_MAINTENANCE_NOTICES = settings.component_maintenance_notices
 DATABASE_URL = settings.database.url
 DATABASE_SQL_ECHO = settings.database.sql_echo
 KEYCLOAK_REALM_NAME = settings.keycloak.realm_name
