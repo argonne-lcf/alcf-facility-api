@@ -13,21 +13,15 @@ commands = """
 echo Start
 sleep 10
 echo "slept for 10 secs"
-sleep 60
 echo "using following python executable"
 which python
 echo End
 """
 
-# Convert commands into a single-line string separated with ";" and escaped quotes
-commands = commands.strip()
-commands = "; ".join(line.strip() for line in commands.splitlines() if line.strip())
-commands = commands.replace('"', '\\"')
-
 # Build input data
 data = {
     "executable": "/bin/bash",
-    "arguments": ["-c", commands],
+    "arguments": ["-lc", commands],
     "name": "TEST",
     "stdout_path": "/home/bcote/qsub",
     "stderr_path": "/home/bcote/qsub",
