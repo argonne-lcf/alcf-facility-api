@@ -136,3 +136,9 @@ REDIS_HOST = settings.redis.host
 REDIS_PORT = settings.redis.port
 GRAPHQL_HTTPX_TRUST_ENV = settings.graphql_httpx_trust_env
 AUTHORIZED_IDP_DOMAIN = settings.authorized_idp_domain
+
+# Log base path
+if os.getenv("ENV") == "development":
+    LOG_BASE_PATH = Path("logs/")
+else:
+    LOG_BASE_PATH = Path("/var/log/alcf-facility-api/")
