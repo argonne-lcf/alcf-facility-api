@@ -1,6 +1,5 @@
 import asyncio
 import datetime
-from fastapi import HTTPException, Query
 from starlette.status import HTTP_304_NOT_MODIFIED, HTTP_400_BAD_REQUEST
 from app.routers.status.facility_adapter import FacilityAdapter as StatusFacilityAdapter
 
@@ -24,11 +23,14 @@ from alcf.database.database import (
     get_db_event_from_id
 )
 
+from alcf.status.logs import track_status_operation
+
 
 class AlcfAdapter(StatusFacilityAdapter):
     """Facility adapter definition for the Status component of the IRI Facility API."""
 
     # Get resources
+    @track_status_operation
     async def get_resources(
         self : "AlcfAdapter",
         offset: int,
@@ -65,6 +67,7 @@ class AlcfAdapter(StatusFacilityAdapter):
 
 
     # Get resource
+    @track_status_operation
     async def get_resource(
         self : "AlcfAdapter",
         id : str
@@ -76,6 +79,7 @@ class AlcfAdapter(StatusFacilityAdapter):
 
 
     # Get events
+    @track_status_operation
     async def get_events(
         self : "AlcfAdapter",
         offset: int,
@@ -122,6 +126,7 @@ class AlcfAdapter(StatusFacilityAdapter):
 
     
     # Get event
+    @track_status_operation
     async def get_event(
         self : "AlcfAdapter",
         id : str
@@ -136,6 +141,7 @@ class AlcfAdapter(StatusFacilityAdapter):
 
 
     # Get incidents
+    @track_status_operation
     async def get_incidents(
         self : "AlcfAdapter",
         offset: int,
@@ -177,6 +183,7 @@ class AlcfAdapter(StatusFacilityAdapter):
 
     
     # Get incident
+    @track_status_operation
     async def get_incident(
         self : "AlcfAdapter",
         id : str
