@@ -16,7 +16,7 @@ from app.routers.compute import models as compute_models
 from app.routers.status import models as status_models
 from app.types.user import User
 from alcf.compute.graphql import models as graphql_models
-from alcf.compute.logs import log_compute_operation
+from alcf.logging.decorators import log_compute_operation
 
 # HTTP codes
 from starlette.status import (

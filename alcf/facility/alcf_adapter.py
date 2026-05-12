@@ -2,7 +2,7 @@ from app.routers.facility import models as facility_models
 from app.routers.facility.facility_adapter import FacilityAdapter as FacilityFacilityAdapter
 from alcf.database.database import get_db_facilities, get_db_sites
 from alcf.database import models as db_models
-from alcf.facility.logs import log_facility_operation
+from alcf.logging.decorators import log_facility_operation
 
 class AlcfAdapter(FacilityFacilityAdapter):
     """Facility adapter definition for the Facility component of the IRI Facility API."""
