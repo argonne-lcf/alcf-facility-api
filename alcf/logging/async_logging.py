@@ -6,7 +6,8 @@ from pathlib import Path
 from logging import getLogger
 from pydantic import BaseModel, Field
 from datetime import datetime, timezone
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, TypeVar
+from functools import cache
 from starlette.status import HTTP_200_OK
 from fastapi import HTTPException
 
@@ -82,9 +83,13 @@ def get_input_from_func(func, *args, **kwargs) -> Dict:
     return input_data
 
 
+LogType = TypeVar('LogType', bound=BaseLog)
+LoggerType = TypeVar('LoggerType', bound=AsyncBaseLogger)
+
+
 async def run_and_log(
-    log: BaseLog,
-    logger: AsyncBaseLogger, 
+    log: LogType,
+    logger: LoggerType, 
     func, *args, **kwargs
 ) -> Any:
     """Run function and log the outcome."""
@@ -96,9 +101,30 @@ async def run_and_log(
             log.response = result
         logger.log_async(log)
         return result
-            
+             
     except HTTPException as e:
         log.status_code = e.status_code
         log.error = str(e.detail)
         logger.log_async(log)
         raise
+
+
+def create_generic_logger_factory(
+    logger_name: str,
+    log_file: Path,
+    logger_class: type[LoggerType],
+):
+    """Initialize async-safe logger for generic use."""
+    
+    slog = setup_structured_logger(logger_name, log_file)
+    
+    @cache
+    def _create_logger() -> LoggerType:
+        return logger_class()
+    
+    lock = asyncio.Lock()
+    async def get_logger() -> LoggerType:
+        async with lock:
+            return _create_logger()
+    
+    return slog, get_logger
