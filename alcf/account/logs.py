@@ -46,7 +46,7 @@ def log_account_operation(func):
         if user:
             account_log = AuthenticatedAccountLog(
                 id=str(uuid4()),
-                api_route=f"status_{func.__name__}",
+                api_route=f"account_{func.__name__}",
                 input=input_data,
                 user_id=user.id,
                 user_name=user.name
@@ -54,7 +54,7 @@ def log_account_operation(func):
         else:
             account_log = AccountLog(
                 id=str(uuid4()),
-                api_route=f"status_{func.__name__}",
+                api_route=f"account_{func.__name__}",
                 input=input_data
             )
 
