@@ -25,6 +25,11 @@ class BaseLog(BaseModel):
     @classmethod
     def has_field(cls, field_name: str) -> bool:
         return field_name in cls.model_fields
+    
+
+class AuthenticatedBaseLog(BaseLog):
+    user_id: str
+    user_name: str
 
 
 def setup_structured_logger(logger_name: str, log_file: Path) -> logging.Logger:
@@ -80,9 +85,7 @@ def get_input_from_func(func, *args, **kwargs) -> Dict:
 async def run_and_log(
     log: BaseLog,
     logger: AsyncBaseLogger, 
-    func, 
-    *args, 
-    **kwargs
+    func, *args, **kwargs
 ) -> Any:
     """Run function and log the outcome."""
     
