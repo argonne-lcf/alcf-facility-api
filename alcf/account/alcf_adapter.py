@@ -3,6 +3,7 @@ from app.routers.account.facility_adapter import FacilityAdapter as AccountFacil
 from alcf.auth.alcf_adapter import AlcfAuthenticatedAdapter
 from alcf.maintenance import require_component_operational
 from alcf.enums import APIComponent
+from alcf.account.logs import log_account_operation
 
 # Typing
 from app.types import models as types_models
@@ -22,6 +23,7 @@ class AlcfAdapter(AccountFacilityAdapter, AlcfAuthenticatedAdapter):
 
     # Get capabilities
     @require_component_operational(APIComponent.ACCOUNT)
+    @log_account_operation
     async def get_capabilities(
         self: "AlcfAdapter", 
         name: str | None = None, 
@@ -34,6 +36,7 @@ class AlcfAdapter(AccountFacilityAdapter, AlcfAuthenticatedAdapter):
     
     # Get projects
     @require_component_operational(APIComponent.ACCOUNT)
+    @log_account_operation
     async def get_projects(
         self: "AlcfAdapter", 
         user: User
@@ -43,6 +46,7 @@ class AlcfAdapter(AccountFacilityAdapter, AlcfAuthenticatedAdapter):
     
     # Get project allocations
     @require_component_operational(APIComponent.ACCOUNT)
+    @log_account_operation
     async def get_project_allocations(
         self: "AlcfAdapter", 
         project: account_models.Project, 
@@ -53,6 +57,7 @@ class AlcfAdapter(AccountFacilityAdapter, AlcfAuthenticatedAdapter):
     
     # Get user allocations
     @require_component_operational(APIComponent.ACCOUNT)
+    @log_account_operation
     async def get_user_allocations(
         self: "AlcfAdapter", 
         user: User, 
