@@ -1,11 +1,12 @@
 import asyncio
 import json
+import logging
+import sys
 from pythonjsonlogger.json import JsonFormatter
 from pydantic import BaseModel
-from app.apilogger import get_stream_logger
 
 
-class JsonFormatter(JsonFormatter):
+class StructuredJsonFormatter(JsonFormatter):
     def format(self, record):
         message = record.getMessage()
         log_data = json.loads(message)
@@ -13,9 +14,14 @@ class JsonFormatter(JsonFormatter):
         return json.dumps(log_data)
 
 
-logger = get_stream_logger(__name__)
-for handler in logger.handlers:
-    handler.setFormatter(JsonFormatter())
+logger = logging.getLogger("alcf.structured_logs")
+logger.setLevel(logging.INFO)
+logger.propagate = False
+
+stdout_handler = logging.StreamHandler(sys.stdout)
+stdout_handler.setFormatter(StructuredJsonFormatter())
+stdout_handler.setLevel(logging.INFO)
+logger.addHandler(stdout_handler)
 
 
 async def write_logs(log_obj: BaseModel) -> None:
