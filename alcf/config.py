@@ -95,6 +95,7 @@ class AlcfSettings(BaseSettings):
     authorized_idp_domain: str
     component_maintenance_notices: Optional[Dict[APIComponent, str]] = None
     task_timeout_sec: Optional[int] = 600
+    env: Optional[str] = Field(default="development")
 
     # Load from .env file
     class Config(SettingsConfigDict):
@@ -138,9 +139,10 @@ REDIS_PORT = settings.redis.port
 GRAPHQL_HTTPX_TRUST_ENV = settings.graphql_httpx_trust_env
 AUTHORIZED_IDP_DOMAIN = settings.authorized_idp_domain
 TASK_TIMEOUT_SEC = settings.task_timeout_sec
+ENV = settings.env
 
 # Log base path
-if os.getenv("ENV") == "development":
+if ENV == "development":
     LOG_BASE_PATH = Path("logs/")
 else:
     LOG_BASE_PATH = Path("/var/log/alcf-facility-api/")
