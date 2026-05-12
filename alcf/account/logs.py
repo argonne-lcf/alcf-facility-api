@@ -1,7 +1,7 @@
 import asyncio
 import json
 from uuid import uuid4
-from functools import cache, wraps
+from functools import wraps
 from pydantic import Field
 from typing import Optional, Dict, Any
 
@@ -13,7 +13,7 @@ from alcf.logging.async_logging import (
     AsyncBaseLogger,
     BaseLog,
     get_input_from_func,
-    setup_structured_logger,
+    create_generic_logger_factory,
     run_and_log
 )
 
@@ -67,13 +67,6 @@ def log_account_operation(func):
 # Logger definition and execution
 # ===============================
 
-_account_lock = asyncio.Lock()
-
-_account_slog = setup_structured_logger(
-    "alcf.structured.account_log",
-    LOG_BASE_PATH.joinpath("account_logs.jsonl")
-)
-
 class AsyncAccountLogger(AsyncBaseLogger):
     """Class to write account logs to jsonl file."""
 
@@ -85,9 +78,8 @@ class AsyncAccountLogger(AsyncBaseLogger):
 async def write_account_log(account_log: AccountLog) -> None:
     _account_slog.info(json.dumps(account_log.model_dump(mode="json")))
 
-@cache
-def _create_account_logger() -> AsyncAccountLogger:
-    return AsyncAccountLogger()
-async def get_account_logger() -> AsyncAccountLogger:
-    async with _account_lock:
-        return _create_account_logger()
+_account_slog, get_account_logger = create_generic_logger_factory(
+    "alcf.structured.account_log",
+    LOG_BASE_PATH.joinpath("account_logs.jsonl"),
+    AsyncAccountLogger
+)
