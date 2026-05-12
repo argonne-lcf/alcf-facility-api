@@ -16,7 +16,7 @@ from app.routers.compute import models as compute_models
 from app.routers.status import models as status_models
 from app.types.user import User
 from alcf.compute.graphql import models as graphql_models
-from alcf.compute.logs import track_compute_operation
+from alcf.compute.logs import log_compute_operation
 
 # HTTP codes
 from starlette.status import (
@@ -42,7 +42,7 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
 
     # Submit job
     @require_component_operational(APIComponent.COMPUTE)
-    @track_compute_operation
+    @log_compute_operation
     async def submit_job(
         self: "AlcfAdapter",
         resource: status_models.Resource, 
@@ -112,7 +112,7 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
 
     # Submit job script
     @require_component_operational(APIComponent.COMPUTE)
-    @track_compute_operation
+    @log_compute_operation
     async def submit_job_script(
         self: "AlcfAdapter",
         resource: status_models.Resource, 
@@ -125,7 +125,7 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
 
     # Update job
     @require_component_operational(APIComponent.COMPUTE)
-    @track_compute_operation
+    @log_compute_operation
     async def update_job(
         self: "AlcfAdapter",
         resource: status_models.Resource, 
@@ -161,7 +161,7 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
 
     # Get job
     @require_component_operational(APIComponent.COMPUTE)
-    @track_compute_operation
+    @log_compute_operation
     async def get_job(
         self: "AlcfAdapter",
         resource: status_models.Resource, 
@@ -207,7 +207,7 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
     
     # Get jobs
     @require_component_operational(APIComponent.COMPUTE)
-    @track_compute_operation
+    @log_compute_operation
     async def get_jobs(
         self: "AlcfAdapter",
         resource: status_models.Resource, 
@@ -259,7 +259,7 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
     
     # Cancel job
     @require_component_operational(APIComponent.COMPUTE)
-    @track_compute_operation
+    @log_compute_operation
     async def cancel_job(
         self: "AlcfAdapter",
         resource: status_models.Resource, 
