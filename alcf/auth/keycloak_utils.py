@@ -34,7 +34,7 @@ HEADERS = {
 
 
 # Post request to Keycloak (using Redis cache)
-def post_keycloak(payload: dict = None, url: str = None):
+def post_keycloak(payload: dict = None, url: str = None, ttl=60):
     """
     Post request to Keycloak server.
     Uses Redis cache for multi-worker support with fallback to in-memory cache.
@@ -62,22 +62,6 @@ def post_keycloak(payload: dict = None, url: str = None):
 
     # Perform the token introspection if not taken from the cache
     result = _perform_post_keycloak(payload=payload, url=url)
-
-    # Set short cache time if an error is triggered
-    if result[0] is None:
-        ttl = 60
-
-    # If the post request was successful ...
-    else:
-
-        # Calculate time until token expiration (Unix timestamp difference)
-        if "exp" in result[0]:
-            seconds_until_expiration = result[0]["exp"] - int(time.time())
-        else:
-            seconds_until_expiration = 600
-
-        # Set cache time and make sure it is not shorter than the time until token expiration
-        ttl = min(600, seconds_until_expiration)
     
     # Cache the result (successful or error)
     try:
@@ -92,7 +76,7 @@ def post_keycloak(payload: dict = None, url: str = None):
 
 
 # Post request to Keycloak (using fallback in-memory cache)
-@cached(cache=TTLCache(maxsize=1024, ttl=60*10))
+@cached(cache=TTLCache(maxsize=1024, ttl=10))
 def _post_keycloak_memory_cache(payload: dict = None, url: str = None):
     return _perform_post_keycloak(payload=payload, url=url)
 
@@ -138,7 +122,8 @@ def get_keycloak_impersonation_client_token():
             "client_id": KEYCLOAK_IMPERSONATION_SERVICE_CLIENT_ID,
             "client_secret": KEYCLOAK_IMPERSONATION_SERVICE_CLIENT_SECRET,
         },
-        url=KEYCLOAK_TOKEN_ENDPOINT_URL
+        url=KEYCLOAK_TOKEN_ENDPOINT_URL,
+        ttl=3600
     )
 
     # Error message
@@ -166,7 +151,8 @@ def get_impersonated_user_token(subject_token: str = None, requested_subject: st
             "requested_subject": requested_subject,
             "audience": KEYCLOAK_PBS_GRAPHQL_AUDIENCE,
         },
-        url=KEYCLOAK_TOKEN_ENDPOINT_URL
+        url=KEYCLOAK_TOKEN_ENDPOINT_URL,
+        ttl=600
     )
 
     # Error message
@@ -190,7 +176,8 @@ def introspect_token(token: str = None):
             "client_secret": KEYCLOAK_IMPERSONATION_SERVICE_CLIENT_SECRET,
             "token": token
         },
-        url=f"{KEYCLOAK_TOKEN_ENDPOINT_URL}/introspect"
+        url=f"{KEYCLOAK_TOKEN_ENDPOINT_URL}/introspect",
+        ttl=600
     )
 
     # Error message
