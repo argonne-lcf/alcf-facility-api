@@ -48,7 +48,7 @@ def log_compute_operation(func):
         # Initialize log
         compute_log = ComputeLog(
             id=str(uuid4()),
-            api_route=f"status_{func.__name__}",
+            api_route=f"compute_{func.__name__}",
             resource_id=resource.id,
             alcf_username=alcf_username,
             input=input_data,
