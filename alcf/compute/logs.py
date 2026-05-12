@@ -1,33 +1,29 @@
 import asyncio
 import json
-import inspect
 from uuid import uuid4
 from functools import cache, wraps
-from pydantic import BaseModel, Field
+from pydantic import Field
 from typing import Optional, Dict, Any
-from datetime import datetime, timezone
-from starlette.status import HTTP_200_OK
-from fastapi import HTTPException
 
 from app.routers.status import models as status_models
 from app.types.user import User
 
 from alcf.config import LOG_BASE_PATH
-from alcf.logging.async_logging import setup_structured_logger, AsyncBaseLogger
 from alcf.auth.utils import get_alcf_username_from_token
+from alcf.logging.async_logging import (
+    BaseLog,
+    AsyncBaseLogger,
+    get_input_from_func,
+    setup_structured_logger,
+    run_and_log
+)
 
 
 # Data format for the log
-class ComputeLog(BaseModel):
-    id: str
-    api_route: str
+class ComputeLog(BaseLog):
     resource_id: str
     alcf_username: str
-    status_code: Optional[int] = Field(default=None)
-    input: Dict[Any, Any]
     response: Optional[Dict[Any, Any]] = Field(default=None)
-    error: Optional[str] = Field(default=None)
-    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
     
 
 # Decorator to be added to every compute function
@@ -39,11 +35,7 @@ def track_compute_operation(func):
         logger = await get_compute_logger()
 
         # Gather input data
-        sig = inspect.signature(func)
-        bound_args = sig.bind(*args, **kwargs)
-        bound_args.apply_defaults()
-        input_data = dict(bound_args.arguments)
-        input_data.pop('self', None)
+        input_data = get_input_from_func(func, *args, **kwargs)
 
         # Extract and remove user and resource objects from the input payload
         user: User = input_data.pop("user")
@@ -62,19 +54,7 @@ def track_compute_operation(func):
         )
 
         # Run operation and log after
-        try:
-            result = await func(*args, **kwargs)
-            compute_log.status_code = HTTP_200_OK
-            compute_log.response = result
-            logger.log_async(compute_log)
-            return result
-        
-        # Propagate error in the log (if any)
-        except HTTPException as e:
-            compute_log.status_code = e.status_code
-            compute_log.error = str(e.detail)
-            logger.log_async(compute_log)
-            raise
+        return await run_and_log(compute_log, logger, func, *args, **kwargs)
 
     return wrapper
 
