@@ -16,7 +16,7 @@ from alcf.logging.async_logging import (
 # Decorator to log operations
 # ===========================
 
-def track_status_operation(func):
+def log_status_operation(func):
     @wraps(func)
     async def wrapper(*args, **kwargs):
 
