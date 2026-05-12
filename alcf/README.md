@@ -50,6 +50,11 @@ Test FastAPI with Gunicorn with Uvicorn workers with configuration file:
 gunicorn -c gunicorn.config.production.py app.main:APP
 ```
 
+To properly split logs:
+```bash
+gunicorn -c gunicorn.config.production.py app.main:APP >> logs/log.out 2>> logs/log.err
+```
+
 ## Run application in a container
 
 Define variable names:
