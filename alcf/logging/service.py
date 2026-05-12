@@ -1,11 +1,11 @@
 import asyncio
 import json
-import logging
+from pythonjsonlogger.json import JsonFormatter
 from pydantic import BaseModel
 from app.apilogger import get_stream_logger
 
 
-class JsonFormatter(logging.Formatter):
+class JsonFormatter(JsonFormatter):
     def format(self, record):
         message = record.getMessage()
         log_data = json.loads(message)
