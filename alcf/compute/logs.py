@@ -1,7 +1,7 @@
 import asyncio
 import json
 from uuid import uuid4
-from functools import cache, wraps
+from functools import wraps
 from pydantic import Field
 from typing import Optional, Dict, Any
 
@@ -14,7 +14,7 @@ from alcf.logging.async_logging import (
     AuthenticatedBaseLog,
     AsyncBaseLogger,
     get_input_from_func,
-    setup_structured_logger,
+    create_generic_logger_factory,
     run_and_log
 )
 
@@ -65,13 +65,6 @@ def log_compute_operation(func):
 # Logger definition and execution
 # ===============================
 
-_compute_lock = asyncio.Lock()
-
-_compute_slog = setup_structured_logger(
-    "alcf.structured.compute_log",
-    LOG_BASE_PATH.joinpath("compute_logs.jsonl")
-)
-
 class AsyncComputeLogger(AsyncBaseLogger):
     """Class to write compute logs to jsonl file."""
 
@@ -83,9 +76,8 @@ class AsyncComputeLogger(AsyncBaseLogger):
 async def write_compute_log(compute_log: ComputeLog) -> None:
     _compute_slog.info(json.dumps(compute_log.model_dump(mode="json")))
 
-@cache
-def _create_compute_logger() -> AsyncComputeLogger:
-    return AsyncComputeLogger()
-async def get_compute_logger() -> AsyncComputeLogger:
-    async with _compute_lock:
-        return _create_compute_logger()
+_compute_slog, get_compute_logger = create_generic_logger_factory(
+    "alcf.structured.compute_log",
+    LOG_BASE_PATH.joinpath("compute_logs.jsonl"),
+    AsyncComputeLogger
+)
