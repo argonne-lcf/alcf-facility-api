@@ -22,3 +22,4 @@ gunicorn>=23.0.0
 python-keycloak>=5.8.1
 globus_compute_sdk==4.6.0
 globus_sdk==3.65.0
+python-json-logger==4.1.0
