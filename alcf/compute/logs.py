@@ -11,7 +11,7 @@ from app.types.user import User
 from alcf.config import LOG_BASE_PATH
 from alcf.auth.utils import get_alcf_username_from_token
 from alcf.logging.async_logging import (
-    BaseLog,
+    AuthenticatedBaseLog,
     AsyncBaseLogger,
     get_input_from_func,
     setup_structured_logger,
@@ -19,15 +19,16 @@ from alcf.logging.async_logging import (
 )
 
 
-# Data format for the log
-class ComputeLog(BaseLog):
+class ComputeLog(AuthenticatedBaseLog):
     resource_id: str
     alcf_username: str
     response: Optional[Dict[Any, Any]] = Field(default=None)
     
 
-# Decorator to be added to every compute function
-def track_compute_operation(func):
+# Decorator to log operations
+# ===========================
+
+def log_compute_operation(func):
     @wraps(func)
     async def wrapper(*args, **kwargs):
 
@@ -50,7 +51,9 @@ def track_compute_operation(func):
             api_route=f"status_{func.__name__}",
             resource_id=resource.id,
             alcf_username=alcf_username,
-            input=input_data
+            input=input_data,
+            user_id=user.id,
+            user_name=user.name
         )
 
         # Run operation and log after
