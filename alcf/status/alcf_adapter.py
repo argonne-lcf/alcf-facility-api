@@ -24,7 +24,7 @@ from alcf.database.database import (
     get_db_event_from_id
 )
 
-from alcf.status.logs import log_status_operation
+from alcf.logging.decorators import log_status_operation
 
 
 class AlcfAdapter(StatusFacilityAdapter):

@@ -3,7 +3,7 @@ from app.routers.account.facility_adapter import FacilityAdapter as AccountFacil
 from alcf.auth.alcf_adapter import AlcfAuthenticatedAdapter
 from alcf.maintenance import require_component_operational
 from alcf.enums import APIComponent
-from alcf.account.logs import log_account_operation
+from alcf.logging.decorators import log_account_operation
 
 # Typing
 from app.types import models as types_models
