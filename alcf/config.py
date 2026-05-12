@@ -140,9 +140,3 @@ GRAPHQL_HTTPX_TRUST_ENV = settings.graphql_httpx_trust_env
 AUTHORIZED_IDP_DOMAIN = settings.authorized_idp_domain
 TASK_TIMEOUT_SEC = settings.task_timeout_sec
 ENV = settings.env
-
-# Log base path
-if ENV == "development":
-    LOG_BASE_PATH = Path("logs/")
-else:
-    LOG_BASE_PATH = Path("/var/log/alcf-facility-api/")
