@@ -5,6 +5,7 @@ from typing import Dict, Any, Optional
 
 class BaseLog(BaseModel):
     id: str
+    stream: str
     api_route: str
     status_code: Optional[int] = Field(default=None)
     input: Dict[Any, Any]
