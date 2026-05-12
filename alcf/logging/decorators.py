@@ -22,6 +22,7 @@ def log_facility_operation(func):
         # Initialize log
         facility_log = BaseLog(
             id=str(uuid4()),
+            stream="facility",
             api_route=f"facility_{func.__name__}",
             input=input_data,
         )
@@ -42,6 +43,7 @@ def log_status_operation(func):
         # Initialize log
         status_log = BaseLog(
             id=str(uuid4()),
+            stream="status",
             api_route=f"status_{func.__name__}",
             input=input_data,
         )
@@ -66,6 +68,7 @@ def log_account_operation(func):
         if user:
             account_log = AuthenticatedAccountLog(
                 id=str(uuid4()),
+                stream="account",
                 api_route=f"account_{func.__name__}",
                 input=input_data,
                 user_id=user.id,
@@ -75,6 +78,7 @@ def log_account_operation(func):
         else:
             account_log = AccountLog(
                 id=str(uuid4()),
+                stream="account",
                 api_route=f"account_{func.__name__}",
                 input=input_data
             )
@@ -102,6 +106,7 @@ def log_compute_operation(func):
         # Initialize log
         compute_log = AuthenticateComputeLog(
             id=str(uuid4()),
+            stream="compute",
             api_route=f"compute_{func.__name__}",
             resource_id=resource.id,
             alcf_username=alcf_username,
