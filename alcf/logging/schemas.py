@@ -27,13 +27,13 @@ class BaseLogWithResponse(BaseLog):
 # Authenticated base models
 # =========================
 
-class AutheBaseLog(BaseLog):
+class AuthBaseLog(BaseLog):
     user_id: str
     user_name: str
     ip: str
 
 
-class AuthBaseLogWithResponse(AutheBaseLog):
+class AuthBaseLogWithResponse(AuthBaseLog):
     response: Optional[Dict[Any, Any]] = Field(default=None)
 
 
@@ -65,4 +65,8 @@ class AccountLog(BaseLogWithResponse):
 
 class AuthAccountLog(AuthBaseLogWithResponse):
     stream: Optional[str] = Field(default="account")
+
+
+class AuthTaskLog(AuthBaseLog): # No response field since tasks are saved in database
+    stream: Optional[str] = Field(default="task")
 

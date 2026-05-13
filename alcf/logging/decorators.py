@@ -9,8 +9,8 @@ from alcf.logging.schemas import (
     AuthComputeLog,
     AccountLog,
     AuthAccountLog,
-    AuthFilesystemLog
-
+    AuthFilesystemLog,
+    AuthTaskLog
 )
 
 
@@ -129,6 +129,31 @@ def log_filesystem_operation(func):
         log = AuthFilesystemLog(
             api_function=func.__name__,
             resource_id=resource.id,
+            input=input_data,
+            user_id=user.id,
+            user_name=user.name,
+            ip=user.client_ip
+        )
+
+        # Run operation and log after
+        return await run_and_log(log, func, *args, **kwargs)
+
+    return wrapper
+
+
+def log_task_operation(func):
+    @wraps(func)
+    async def wrapper(*args, **kwargs):
+
+        # Gather input data
+        input_data = get_input_from_func(func, *args, **kwargs)
+
+        # Extract and remove user and resource objects from the input payload
+        user: User = input_data.pop("user")
+
+        # Initialize log
+        log = AuthTaskLog(
+            api_function=func.__name__,
             input=input_data,
             user_id=user.id,
             user_name=user.name,
