@@ -8,7 +8,7 @@ Group=apiuser
 WorkingDirectory=/home/apiuser/alcf-facility-api
 Environment=PATH=/home/apiuser/alcf-facility-api/.venv/bin/
 Enivonment="PYTHONUNBUFFERED=1"
-ExecStart=/home/apiuser/alcf-facility-api/.venv/bin/gunicorn -c gunicorn.config.production.py app.main:APP
+ExecStart=/home/apiuser/alcf-facility-api/.venv/bin/gunicorn -c gunicorn.config.production.py app.main:APP >> /var/log/alcf-facility-api/log.out 2>> /var/log/alcf-facility-api/log.err
 ExecReload=/bin/kill -s HUP $MAINPID
 KillMode=mixed
 TimeoutStopSec=5
