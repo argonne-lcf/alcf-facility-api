@@ -78,5 +78,15 @@
         "type": "storage",
         "group": "storages",
         "site_id": "afb8a6d7-cd5b-4040-8be7-6e917b30af08"
+    },
+    {
+        "id": "72bbd8c7-b511-4dc3-84b5-c4fddc297504",
+        "name": "Inference Service",
+        "short_name": "inference_service",
+        "description": "The ALCF Inference Service provides API access to a variety of state-of-the-art open-source models running on dedicated ALCF hardware. Documentation: https://docs.alcf.anl.gov/services/inference-endpoints/",
+        "last_updated": "2026-05-13T11:30:00.000Z",
+        "type": "service",
+        "group": "services",
+        "site_id": "afb8a6d7-cd5b-4040-8be7-6e917b30af08"
     }
 ]
