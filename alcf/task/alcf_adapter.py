@@ -20,6 +20,7 @@ from alcf.database.database import add_task_to_db, update_task_in_db, get_db_tas
 from alcf.database import models as db_models
 from alcf.globus.utils import get_task_status
 from alcf.config import TASK_TIMEOUT_SEC
+from alcf.logging.decorators import log_task_operation
 import json
 import logging
 log = logging.getLogger(__name__)
@@ -30,6 +31,7 @@ class AlcfAdapter(TaskFacilityAdapter, AlcfAuthenticatedAdapter):
     """Task facility adapter definition for the IRI Facility API."""
 
     # Get task
+    @log_task_operation
     async def get_task(
         self : "AlcfAdapter",
         user: User,
@@ -54,6 +56,7 @@ class AlcfAdapter(TaskFacilityAdapter, AlcfAuthenticatedAdapter):
 
 
     # Get tasks
+    @log_task_operation
     async def get_tasks(
         self : "AlcfAdapter",
         user: User,
@@ -77,6 +80,7 @@ class AlcfAdapter(TaskFacilityAdapter, AlcfAuthenticatedAdapter):
 
 
     # Put task
+    # No decorator here since adaptors (e.g. Filesystem) have log decorators already
     async def put_task(
         self: "AlcfAdapter",
         user: User,
@@ -141,6 +145,7 @@ class AlcfAdapter(TaskFacilityAdapter, AlcfAuthenticatedAdapter):
 
 
     # Delete task
+    @log_task_operation
     async def delete_task(
         self: "AlcfAdapter", 
         user: User, 

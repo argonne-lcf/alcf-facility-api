@@ -35,7 +35,7 @@ else:
     accesslog = "/var/log/alcf-facility-api/fastapi.access.log"
 
 # Whether to send output to the error log
-capture_output = True
+capture_output = False
 
 # How verbose the Gunicorn error logs should be
 loglevel = "info"

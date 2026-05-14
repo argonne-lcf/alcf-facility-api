@@ -376,3 +376,86 @@ def validate_access_token(access_token) -> TokenValidationResponse:
         is_authorized=True,
         user=user
     )
+
+
+# TODO: Build re-usable cache functions (issue already created on Github)
+def get_alcf_username_from_token(access_token: str, ttl: int = 600):
+    """
+    Use a token introspection response (which should be cached at this state)
+    to recover the alcf usernamne of the authenticated user.
+    Uses Redis cache for multi-worker support with fallback to in-memory cache.
+    """
+    
+    # Create cache key from token hash
+    # Store the entire hash to avoid collisions where different users would have the same last hash digits
+    token_hash = hashlib.sha256(access_token.encode()).hexdigest()
+    cache_key = f"alcf_username_:{token_hash}"
+    
+    # Try to get username from cache first
+    try:
+        redis_client = get_redis_client()
+        if redis_client:
+            cached_data = redis_client.get(cache_key)
+            if cached_data:
+                return json.loads(cached_data)
+        
+    # Fall back to in-memory cache if needed
+    except Exception as e:
+        log.warning(f"Redis cache error for alcf_username: {e}")
+        return _get_alcf_username_memory_cache(access_token)
+
+    # Perform the token introspection if not taken from the cache
+    result = _perform_get_alcf_username(access_token)
+    
+    # Cache the result
+    try:
+        redis_client = get_redis_client()
+        if redis_client:
+            redis_client.setex(cache_key, ttl, json.dumps(result))
+    except Exception as e:
+        log.warning(f"Failed to cache alcf_username: {e}")
+        # Still return the result even if caching fails
+    
+    return result
+
+
+@cached(cache=TTLCache(maxsize=1024, ttl=60*10))
+def _get_alcf_username_memory_cache(access_token: str):
+    """
+    Fallback in-memory cache for getting ALCF username from token
+    """
+    return _perform_get_alcf_username(access_token)
+
+
+def _perform_get_alcf_username(access_token: str) -> Tuple[str, str]:
+    """
+    Use a token introspection response (which should be cached at this state)
+    to recover the alcf usernamne of the authenticated user.
+    Returns alcf_username | None, error_message | None
+    """
+
+    # Recover the Globus token introspection from cache
+    globus_introspection, user_groups, _, error_message = introspect_token(access_token)
+    if len(error_message) > 0:
+        return None, error_message
+
+    # Recover Globus username (username@idp_domain) tied to the IdP used during authentication
+    session_info_identities, _ = get_session_info_identities(globus_introspection)
+    globus_user, _ = get_user_details(session_info_identities, user_groups)
+
+    # TODO: In the future, this is where we could recover the ALCF username
+    #.      from the identities without using the get_user_details function.
+    #.      If we open to other labs, it would allow users to authenticate with
+    #.      non-ALCF credentials while still ensuring that jobs run as their ALCF username.
+    
+    # Recover the ALCF username from the Globus introspection
+    try:
+        alcf_username, idp_domain = globus_user.username.split("@")
+        if idp_domain != AUTHORIZED_IDP_DOMAIN:
+            return None, f"Globus username does not have the authorized {AUTHORIZED_IDP_DOMAIN}  domain."
+    except Exception as e:
+        error_message = generate_error_message("Could not recover ALCF username from Globus introspection.", e)
+        return None, error_message
+
+    # Return ALCF username without error if nothing went wrong
+    return alcf_username, None
