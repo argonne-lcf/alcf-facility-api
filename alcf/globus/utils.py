@@ -36,7 +36,7 @@ def get_compute_executor(user_name: str, user_api_key: str) -> Executor:
 
 
 # Get Globus Compute Client
-@cached(cache=TTLCache(maxsize=1024, ttl=60 * 60))
+@cached(cache=TTLCache(maxsize=1024, ttl=60))
 def get_compute_client(user_name: str, user_api_key: str) -> Client:
     """Create a Globus Compute SDK client from user's access token"""
     try:
