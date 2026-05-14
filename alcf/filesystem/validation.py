@@ -22,52 +22,62 @@ for paths in ALLOWED_PATH_BASES.values():
     ALLOWED_PATHS_TEXT.extend([str(path) for path in paths])
 ALLOWED_PATHS_TEXT = ", ".join(ALLOWED_PATHS_TEXT)
 
-# Function to check whether a path has the right base
-def is_allowed_path(path: Path) -> bool:
-    return any(
-        path == base or path.is_relative_to(base)
-        for bases in ALLOWED_PATH_BASES.values()
-        for base in bases
-    )
 
 # Maximum number of bytes to read
 MAX_BYTES = 9_958_272  # 9.5 MB
 
-# Base class that excludes extra fields
+
+def _validate_path_format(v) -> Path:
+    """Re-usable path validation function."""
+    s = str(v) if not isinstance(v, Path) else str(v)
+    if "\0" in s:
+        raise ValueError("Null byte not allowed in path.")
+    if not re.compile(r"^[\w\-./\\]+$").fullmatch(s):
+        raise ValueError("Path contains forbidden characters.")
+    p = Path(s)
+    if not p.is_absolute():
+        raise ValueError("Path must be absolute.")
+    if any(part in (".", "..") for part in p.parts):
+        raise ValueError("Path cannot contain '.' or '..' segments.")
+    return p
+
+
+def _validate_path_prefix(p: Path) -> Path:
+    """Re-usable path prefix validation function."""
+    is_allowed_path = any(
+        p == base or p.is_relative_to(base)
+        for bases in ALLOWED_PATH_BASES.values()
+        for base in bases
+    )
+    if not is_allowed_path:
+        raise ValueError(f"Path must start with one of: {ALLOWED_PATHS_TEXT}.")
+    return p
+
+
 class BaseModelWithForbiddenExtra(BaseModel):
+    """Base class that excludes extra fields."""
     model_config = ConfigDict(extra="forbid")
 
 
-# Input data for chmod command
-class ChmodInputData(BaseModelWithForbiddenExtra):
+class BaseModelWithPath(BaseModelWithForbiddenExtra):
+    """Base class with input path."""
     path: Path
-    mode: int
 
-    # Path validation: forbidden chars, absolute required
     @field_validator("path", mode="before")
     @classmethod
     def validate_path_format(cls, v) -> Path:
-        s = str(v) if not isinstance(v, Path) else str(v)
-        if "\0" in s:
-            raise ValueError("Null byte not allowed in path.")
-        if not re.compile(r"^[\w\-./\\]+$").fullmatch(s):
-            raise ValueError("Path contains forbidden characters.")
-        p = Path(s)
-        if not p.is_absolute():
-            raise ValueError("Path must be absolute.")
-        if any(part in (".", "..") for part in p.parts):
-            raise ValueError("Path cannot contain '.' or '..' segments.")
-        return p
+        return _validate_path_format(v)
 
-    # Path allowlist validation: /home/<username>, /eagle, /lus/eagle
     @field_validator("path")
     @classmethod
     def validate_path_prefix(cls, p: Path) -> Path:
-        if not is_allowed_path(p):
-            raise ValueError(f"Path must start with one of: {ALLOWED_PATHS_TEXT}.")
-        return p
+        return _validate_path_prefix(p)
+
+
+class ChmodInputData(BaseModelWithPath):
+    """Input data for chmod command."""
+    mode: int
     
-    # Path validation: convert string to int
     @field_validator("mode", mode="before")
     @classmethod
     def convert_mode_type(cls, v) -> int:
@@ -76,7 +86,6 @@ class ChmodInputData(BaseModelWithForbiddenExtra):
             raise ValueError("'mode' must be digits only.")
         return int_v
         
-    # Mode validation: 3 digits, only digits 0-7
     @field_validator("mode")
     @classmethod
     def validate_mode(cls, v):
@@ -88,17 +97,15 @@ class ChmodInputData(BaseModelWithForbiddenExtra):
         return v
     
 
-# # Input data for chown command
-class ChownInputData(BaseModelWithForbiddenExtra):
-    path: Path
+class ChownInputData(BaseModelWithPath):
+    """Input data for chown command."""
     user: str
     group: str
 
-    # User validation: ^[a-z][a-z0-9_-]*$, max 32 chars
-    # Empty string = don't change.
     @field_validator("user", mode="before")
     @classmethod
     def validate_user_format(cls, v):
+        """User validation: ^[a-z][a-z0-9_-]*$, max 32 chars."""
         s = str(v)
         if s == "":
             return s
@@ -110,11 +117,10 @@ class ChownInputData(BaseModelWithForbiddenExtra):
             raise ValueError("User must match ^[a-z][a-z0-9_-]* pattern.")
         return s
 
-    # Group validation: ^[A-Za-z0-9_-]+$, max 64 chars
-    # Empty string = don't change.
     @field_validator("group", mode="before")
     @classmethod
     def validate_group_format(cls, v):
+        """Group validation: ^[A-Za-z0-9_-]+$, max 64 chars."""
         s = str(v)
         if s == "":
             return s
@@ -126,72 +132,23 @@ class ChownInputData(BaseModelWithForbiddenExtra):
             raise ValueError("Group must match [A-Za-z0-9_-]+ pattern.")
         return s
 
-    # At least one of user or group must be non-empty (otherwise nothing to change)
     @model_validator(mode="after")
     def validate_at_least_one(self):
+        """At least one of user or group must be non-empty (otherwise nothing to change)."""
         if self.user == "" and self.group == "":
             raise ValueError("At least one of user or group must be non-empty.")
         return self
-
-    # Path validation: forbidden chars, absolute required
-    @field_validator("path", mode="before")
-    @classmethod
-    def validate_path_format(cls, v) -> Path:
-        s = str(v) if not isinstance(v, Path) else str(v)
-        if "\0" in s:
-            raise ValueError("Null byte not allowed in path.")
-        if not re.compile(r"^[\w\-./\\]+$").fullmatch(s):
-            raise ValueError("Path contains forbidden characters.")
-        p = Path(s)
-        if not p.is_absolute():
-            raise ValueError("Path must be absolute.")
-        if any(part in (".", "..") for part in p.parts):
-            raise ValueError("Path cannot contain '.' or '..' segments.")
-        return p
-
-    # Path allowlist validation: /home/<username>, /eagle, /lus/eagle
-    @field_validator("path")
-    @classmethod
-    def validate_path_prefix(cls, p: Path) -> Path:
-        if not is_allowed_path(p):
-            raise ValueError(f"Path must start with one of: {ALLOWED_PATHS_TEXT}.")
-        return p
     
 
-# Input data for head command
-class HeadInputData(BaseModelWithForbiddenExtra):
-    path: Path
+class HeadInputData(BaseModelWithPath):
+    """Input data for head command."""
     file_bytes: Optional[int] = Field(default=None, ge=0, le=MAX_BYTES)
     lines: Optional[int] = Field(default=None, ge=0)
     skip_trailing: Optional[bool] = Field(default=False)
 
-    # Path validation: forbidden chars, absolute required
-    @field_validator("path", mode="before")
-    @classmethod
-    def validate_path_format(cls, v) -> Path:
-        s = str(v) if not isinstance(v, Path) else str(v)
-        if "\0" in s:
-            raise ValueError("Null byte not allowed in path.")
-        if not re.compile(r"^[\w\-./\\]+$").fullmatch(s):
-            raise ValueError("Path contains forbidden characters.")
-        p = Path(s)
-        if not p.is_absolute():
-            raise ValueError("Path must be absolute.")
-        if any(part in (".", "..") for part in p.parts):
-            raise ValueError("Path cannot contain '.' or '..' segments.")
-        return p
-
-    # Path allowlist validation: /home/<username>, /eagle, /lus/eagle
-    @field_validator("path")
-    @classmethod
-    def validate_path_prefix(cls, p: Path) -> Path:
-        if not is_allowed_path(p):
-            raise ValueError(f"Path must start with one of: {ALLOWED_PATHS_TEXT}.")
-        return p
-
-    # file_bytes and lines: exactly one must be provided (mutually exclusive)
     @model_validator(mode="after")
     def validate_file_bytes_and_lines(self):
+        """file_bytes and lines: exactly one must be provided (mutually exclusive)."""
         if self.file_bytes is not None and self.lines is not None:
             raise ValueError("Cannot use 'file_bytes' and 'lines' at the same time.")
         if self.file_bytes is None and self.lines is None:
@@ -199,131 +156,27 @@ class HeadInputData(BaseModelWithForbiddenExtra):
         return self
     
 
-# Input data for ls command
-class LsInputData(BaseModelWithForbiddenExtra):
-    path: Path
+class LsInputData(BaseModelWithPath):
+    """Input data for ls command."""
     show_hidden: Optional[bool] = False
     numeric_uid: Optional[bool] = False
     recursive: Optional[bool] = False
     dereference: Optional[bool] = False
 
-    # Path validation: forbidden chars, absolute required
-    @field_validator("path", mode="before")
-    @classmethod
-    def validate_path_format(cls, v) -> Path:
-        s = str(v) if not isinstance(v, Path) else str(v)
-        if "\0" in s:
-            raise ValueError("Null byte not allowed in path.")
-        if not re.compile(r"^[\w\-./\\]+$").fullmatch(s):
-            raise ValueError("Path contains forbidden characters.")
-        p = Path(s)
-        if not p.is_absolute():
-            raise ValueError("Path must be absolute.")
-        if any(part in (".", "..") for part in p.parts):
-            raise ValueError("Path cannot contain '.' or '..' segments.")
-        return p
 
-    # Path allowlist validation: /home/<username>, /eagle, /lus/eagle
-    @field_validator("path")
-    @classmethod
-    def validate_path_prefix(cls, p: Path) -> Path:
-        if not is_allowed_path(p):
-            raise ValueError(f"Path must start with one of: {ALLOWED_PATHS_TEXT}.")
-        return p
-    
-
-# Input data for rm command
-class RmInputData(BaseModelWithForbiddenExtra):
-    path: Path
-
-    # Path validation: forbidden chars, absolute required, no ..
-    @field_validator("path", mode="before")
-    @classmethod
-    def validate_path_format(cls, v) -> Path:
-        s = str(v) if not isinstance(v, Path) else str(v)
-        if "\0" in s:
-            raise ValueError("Null byte not allowed in path.")
-        if not re.compile(r"^[\w\-./\\]+$").fullmatch(s):
-            raise ValueError("Path contains forbidden characters.")
-        p = Path(s)
-        if not p.is_absolute():
-            raise ValueError("Path must be absolute.")
-        if any(part in (".", "..") for part in p.parts):
-            raise ValueError("Path cannot contain '.' or '..' segments.")
-        return p
-
-    # Path allowlist validation: /home/<username>, /eagle, /lus/eagle
-    @field_validator("path")
-    @classmethod
-    def validate_path_prefix(cls, p: Path) -> Path:
-        if not is_allowed_path(p):
-            raise ValueError(f"Path must start with one of: {ALLOWED_PATHS_TEXT}.")
-        return p
-
-
-# Input data for view command
-class ViewInputData(BaseModelWithForbiddenExtra):
-    path: Path
+class ViewInputData(BaseModelWithPath):
+    """Input data for view command."""
     size: int = Field(ge=0, le=MAX_BYTES)
     offset: int = Field(ge=0)
 
-    # Path validation: forbidden chars, absolute required
-    @field_validator("path", mode="before")
-    @classmethod
-    def validate_path_format(cls, v) -> Path:
-        s = str(v) if not isinstance(v, Path) else str(v)
-        if "\0" in s:
-            raise ValueError("Null byte not allowed in path.")
-        if not re.compile(r"^[\w\-./\\]+$").fullmatch(s):
-            raise ValueError("Path contains forbidden characters.")
-        p = Path(s)
-        if not p.is_absolute():
-            raise ValueError("Path must be absolute.")
-        if any(part in (".", "..") for part in p.parts):
-            raise ValueError("Path cannot contain '.' or '..' segments.")
-        return p
 
-    # Path allowlist validation: /home/<username>, /eagle, /lus/eagle
-    @field_validator("path")
-    @classmethod
-    def validate_path_prefix(cls, p: Path) -> Path:
-        if not is_allowed_path(p):
-            raise ValueError(f"Path must start with one of: {ALLOWED_PATHS_TEXT}.")
-        return p
-
-
-# Input data for mkdir command
-class MkdirInputData(BaseModelWithForbiddenExtra):
-    path: Path
+class MkdirInputData(BaseModelWithPath):
+    """Input data for mkdir command."""
     parent: Optional[bool] = Field(default=False)
-
-    # Path validation: forbidden chars, absolute required
-    @field_validator("path", mode="before")
-    @classmethod
-    def validate_path_format(cls, v) -> Path:
-        s = str(v) if not isinstance(v, Path) else str(v)
-        if "\0" in s:
-            raise ValueError("Null byte not allowed in path.")
-        if not re.compile(r"^[\w\-./\\]+$").fullmatch(s):
-            raise ValueError("Path contains forbidden characters.")
-        p = Path(s)
-        if not p.is_absolute():
-            raise ValueError("Path must be absolute.")
-        if any(part in (".", "..") for part in p.parts):
-            raise ValueError("Path cannot contain '.' or '..' segments.")
-        return p
-
-    # Path allowlist validation: /home/<username>, /eagle, /lus/eagle
-    @field_validator("path")
-    @classmethod
-    def validate_path_prefix(cls, p: Path) -> Path:
-        if not is_allowed_path(p):
-            raise ValueError(f"Path must start with one of: {ALLOWED_PATHS_TEXT}.")
-        return p
     
 
-# Function to restrict path based on the target resource
-def validate_base_path(path: Path, resource_name: str):
+def _validate_base_path(path: Path, resource_name: str):
+    """Function to restrict path based on the target resource."""
 
     # Recover the allowed path bases for the given resource
     allowed_bases = ALLOWED_PATH_BASES.get(resource_name.lower(), None)
@@ -351,3 +204,12 @@ def validate_base_path(path: Path, resource_name: str):
         status_code=HTTP_400_BAD_REQUEST,
         detail=f"Allowed base paths for filesystem {resource_name} are: {allowed_text}."
     )
+
+
+def validate_data_with_path(input_data: dict, pydantic_class: BaseModel, resource_name: str):
+    """Validate input parameters that include a path, and raise exception if something goes wrong."""
+    try:
+        validated = pydantic_class(**input_data)
+        _validate_base_path(validated.path, resource_name)
+    except Exception as e:
+        raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=f"Input validation error: {str(e)}")
