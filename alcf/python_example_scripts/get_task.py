@@ -2,7 +2,7 @@ import os
 import requests
 import json
 from dotenv import load_dotenv
-load_dotenv()
+load_dotenv(override=True)
 
 # Define your task ID
 task_id = "6daa409a-09a8-4b76-80ad-c9ca51e9d461"
