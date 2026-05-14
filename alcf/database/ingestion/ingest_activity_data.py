@@ -23,6 +23,7 @@ from alcf.database.models import (
     Incident, Event, Resource
 )
 from alcf.database.database import get_db_session_context, get_db_resource_from_id, engine
+from alcf.database.ingestion.inference_service_status import get_incident_event_from_status_url
 from app.routers.status.models import Status, IncidentType
 
 # List of ALCF resource IDs
@@ -331,8 +332,12 @@ async def ingest_activity_data_for_resource(resource_id: str, db):
         if resource is None:
             raise ValueError(f"Resource {resource_id} not found")
 
-        # Create incident and event objects from activity.json file
-        incident, event = await get_incident_event_from_activity_json(resource.id, resource.name)
+        # Create incident and event objects
+        # TODO: Generalize our functions to extract resource status
+        if resource_id == "72bbd8c7-b511-4dc3-84b5-c4fddc297504": # Inference Service
+            incident, event = await get_incident_event_from_status_url()
+        else: # Other resources based on activity.json file
+            incident, event = await get_incident_event_from_activity_json(resource.id, resource.name)
 
         # Record current datetime (timezone-naive for database compatibility)
         current_datetime = datetime.now(timezone.utc).replace(tzinfo=None)
