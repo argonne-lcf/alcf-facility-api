@@ -1,7 +1,7 @@
 import os
 import requests
 from dotenv import load_dotenv
-load_dotenv()
+load_dotenv(override=True)
 
 # Targeted resource
 resource_id = "6115bd2c-957a-4543-abff-5fae52992ff2" # Home
