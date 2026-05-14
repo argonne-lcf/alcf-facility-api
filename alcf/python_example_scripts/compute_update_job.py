@@ -2,7 +2,7 @@ import json
 import os
 import requests
 from dotenv import load_dotenv
-load_dotenv()
+load_dotenv(override=True)
 
 # Targeted resource
 #resource_id = "7f7d0593-162e-43b9-8476-07d7d137d6ab" # Edith
