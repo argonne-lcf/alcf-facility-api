@@ -7,7 +7,15 @@ from app.routers.filesystem import models as filesystem_models
 from alcf.auth.alcf_adapter import AlcfAuthenticatedAdapter
 from starlette.status import HTTP_501_NOT_IMPLEMENTED, HTTP_400_BAD_REQUEST 
 from typing import Any, Tuple
-from alcf.filesystem import validation
+from alcf.filesystem.validation import (
+    validate_data_with_path,
+    ChmodInputData,
+    ChownInputData,
+    LsInputData,
+    HeadInputData,
+    ViewInputData,
+    MkdirInputData
+)
 from alcf.maintenance import require_component_operational
 from alcf.enums import APIComponent
 
@@ -27,11 +35,7 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
         input_data = request_model.model_dump()
 
         # Validate data
-        try:
-            validated = validation.ChmodInputData(**input_data)
-            _ = validation.validate_base_path(validated.path, resource.name)
-        except Exception as e:
-            raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=f"Input validation error: {str(e)}")
+        validate_data_with_path(input_data, ChmodInputData, resource.name)
 
         # Submit task to Globus Compute and wait for the task ID
         task_id = await globus_utils.submit_task("chmod", resource.name, input_data, user)
@@ -62,11 +66,7 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
         input_data["user"] = input_data.pop("owner")
 
         # Validate data
-        try:
-            validated = validation.ChownInputData(**input_data)
-            _ = validation.validate_base_path(validated.path, resource.name)
-        except Exception as e:
-            raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=f"Input validation error: {str(e)}")
+        validate_data_with_path(input_data, ChownInputData, resource.name)
 
         # Submit task to Globus Compute and wait for the result
         task_id = await globus_utils.submit_task("chown", resource.name, input_data, user)
@@ -112,11 +112,7 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
         }
 
         # Validate data
-        try:
-            validated = validation.LsInputData(**input_data)
-            _ = validation.validate_base_path(validated.path, resource.name)
-        except Exception as e:
-            raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=f"Input validation error: {str(e)}")
+        validate_data_with_path(input_data, LsInputData, resource.name)
 
         # Submit task to Globus Compute and wait for the task ID
         task_id = await globus_utils.submit_task("ls", resource.name, input_data, user)
@@ -154,11 +150,7 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
         }
 
         # Validate data
-        try:
-            validated = validation.HeadInputData(**input_data)
-            _ = validation.validate_base_path(validated.path, resource.name)
-        except Exception as e:
-            raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=f"Input validation error: {str(e)}")
+        validate_data_with_path(input_data, HeadInputData, resource.name)
 
         # Submit task to Globus Compute and wait for the task ID
         task_id = await globus_utils.submit_task("head", resource.name, input_data, user)
@@ -208,11 +200,7 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
         }
 
         # Validate data
-        try:
-            validated = validation.ViewInputData(**input_data)
-            _ = validation.validate_base_path(validated.path, resource.name)
-        except Exception as e:
-            raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=f"Input validation error: {str(e)}")
+        validate_data_with_path(input_data, ViewInputData, resource.name)
 
         # Submit task to Globus Compute and wait for the task ID
         task_id = await globus_utils.submit_task("view", resource.name, input_data, user)
@@ -287,11 +275,7 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
         input_data = request_model.model_dump()
 
         # Validate data
-        try:
-            validated = validation.MkdirInputData(**input_data)
-            _ = validation.validate_base_path(validated.path, resource.name)
-        except Exception as e:
-            raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=f"Input validation error: {str(e)}")
+        validate_data_with_path(input_data, MkdirInputData, resource.name)
 
         # Submit task to Globus Compute and wait for the task ID
         task_id = await globus_utils.submit_task("mkdir", resource.name, input_data, user)
