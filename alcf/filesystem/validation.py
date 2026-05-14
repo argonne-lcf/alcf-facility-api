@@ -175,7 +175,7 @@ class MkdirInputData(BaseModelWithPath):
     parent: Optional[bool] = Field(default=False)
     
 
-def validate_base_path(path: Path, resource_name: str):
+def _validate_base_path(path: Path, resource_name: str):
     """Function to restrict path based on the target resource."""
 
     # Recover the allowed path bases for the given resource
@@ -204,3 +204,12 @@ def validate_base_path(path: Path, resource_name: str):
         status_code=HTTP_400_BAD_REQUEST,
         detail=f"Allowed base paths for filesystem {resource_name} are: {allowed_text}."
     )
+
+
+def validate_data_with_path(input_data: dict, pydantic_class: BaseModel, resource_name: str):
+    """Validate input parameters that include a path, and raise exception if something goes wrong."""
+    try:
+        validated = pydantic_class(**input_data)
+        _validate_base_path(validated.path, resource_name)
+    except Exception as e:
+        raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=f"Input validation error: {str(e)}")
