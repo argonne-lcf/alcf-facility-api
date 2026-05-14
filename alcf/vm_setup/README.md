@@ -268,10 +268,23 @@ Check the current status of Gunicorn:
 sudo systemctl status gunicorn
 ```
 
-Follow the service logs with:
+Follow the gunicorn logs with:
 ```bash
-sudo tail -f -n 1000 /home/apiuser/alcf-facility-api/logs/fastapi.access.log
-sudo tail -f -n 1000 /home/apiuser/alcf-facility-api/logs/fastapi.error.log
+sudo tail -f -n 1000 /var/logs/alcf-facility-api/logs/fastapi.access.log
+sudo tail -f -n 1000 /var/logs/alcf-facility-api/logs/fastapi.error.log
+```
+
+Stdout activity logs can be monitored with filters using `jq`:
+
+```bash
+# Filter logs by API component
+tail -f -n 1000 /var/logs/alcf-facility-api/log.out | jq 'select (.stream=="compute")'
+
+# Filter logs by API component and only show a subset of fields
+tail -f -n 1000 /var/logs/alcf-facility-api/log.out | jq 'select (.stream=="compute") | {api_function, status_code, alcf_username}'
+
+# See error logs
+tail -f -n 1000 /var/logs/alcf-facility-api/err.out
 ```
 
 ## Nginx web server

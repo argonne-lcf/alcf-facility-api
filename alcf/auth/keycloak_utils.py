@@ -7,11 +7,9 @@ import hashlib
 import json
 from json.decoder import JSONDecodeError
 from app.types.user import User
-from alcf.auth.utils import introspect_token as globus_introspect_token
 from alcf.auth.utils import (
-    get_session_info_identities, 
-    get_user_details,
-    generate_error_message
+    generate_error_message,
+    get_alcf_username_from_token,
 )
 from app.config import logger
 from alcf.config import AUTHORIZED_IDP_DOMAIN
@@ -36,7 +34,7 @@ HEADERS = {
 
 
 # Post request to Keycloak (using Redis cache)
-def post_keycloak(payload: dict = None, url: str = None):
+def post_keycloak(payload: dict = None, url: str = None, ttl=60):
     """
     Post request to Keycloak server.
     Uses Redis cache for multi-worker support with fallback to in-memory cache.
@@ -64,22 +62,6 @@ def post_keycloak(payload: dict = None, url: str = None):
 
     # Perform the token introspection if not taken from the cache
     result = _perform_post_keycloak(payload=payload, url=url)
-
-    # Set short cache time if an error is triggered
-    if result[0] is None:
-        ttl = 60
-
-    # If the post request was successful ...
-    else:
-
-        # Calculate time until token expiration (Unix timestamp difference)
-        if "exp" in result[0]:
-            seconds_until_expiration = result[0]["exp"] - int(time.time())
-        else:
-            seconds_until_expiration = 600
-
-        # Set cache time and make sure it is not shorter than the time until token expiration
-        ttl = min(600, seconds_until_expiration)
     
     # Cache the result (successful or error)
     try:
@@ -94,7 +76,7 @@ def post_keycloak(payload: dict = None, url: str = None):
 
 
 # Post request to Keycloak (using fallback in-memory cache)
-@cached(cache=TTLCache(maxsize=1024, ttl=60*10))
+@cached(cache=TTLCache(maxsize=1024, ttl=10))
 def _post_keycloak_memory_cache(payload: dict = None, url: str = None):
     return _perform_post_keycloak(payload=payload, url=url)
 
@@ -140,7 +122,8 @@ def get_keycloak_impersonation_client_token():
             "client_id": KEYCLOAK_IMPERSONATION_SERVICE_CLIENT_ID,
             "client_secret": KEYCLOAK_IMPERSONATION_SERVICE_CLIENT_SECRET,
         },
-        url=KEYCLOAK_TOKEN_ENDPOINT_URL
+        url=KEYCLOAK_TOKEN_ENDPOINT_URL,
+        ttl=3600
     )
 
     # Error message
@@ -168,7 +151,8 @@ def get_impersonated_user_token(subject_token: str = None, requested_subject: st
             "requested_subject": requested_subject,
             "audience": KEYCLOAK_PBS_GRAPHQL_AUDIENCE,
         },
-        url=KEYCLOAK_TOKEN_ENDPOINT_URL
+        url=KEYCLOAK_TOKEN_ENDPOINT_URL,
+        ttl=600
     )
 
     # Error message
@@ -192,7 +176,8 @@ def introspect_token(token: str = None):
             "client_secret": KEYCLOAK_IMPERSONATION_SERVICE_CLIENT_SECRET,
             "token": token
         },
-        url=f"{KEYCLOAK_TOKEN_ENDPOINT_URL}/introspect"
+        url=f"{KEYCLOAK_TOKEN_ENDPOINT_URL}/introspect",
+        ttl=600
     )
 
     # Error message
@@ -209,38 +194,18 @@ def introspect_token(token: str = None):
 # Generate user Keycloak token
 def generate_user_keycloak_token(
     user: User = None
-    ) -> tuple[str, str]:
+    ) -> str:
     """
     Take the already-vetted pydantic user object and attempt to generate a 
     Keycloak access token on their behalf.
     """
 
-    # Recover the Globus token introspection from cache
-    globus_introspection, user_groups, _, error_message = globus_introspect_token(user.api_key)
-    if len(error_message) > 0:
-        logger.error(f"generate_user_keycloak_token: {error_message}")
+    # Recover ALCF username from the Globus introspection
+    alcf_username, error_message = get_alcf_username_from_token(user.api_key)
+    if error_message:
         raise HTTPException(
             status_code=HTTP_401_UNAUTHORIZED,
-            detail=f"Could not recover Globus token introspection in the context of GraphQL submission."
-        )
-    
-    # Recover Globus username (username@idp_domain) tied to the IdP used during authentication
-    session_info_identities, _ = get_session_info_identities(globus_introspection)
-    globus_user, _ = get_user_details(session_info_identities, user_groups)
-    
-    # Recover the ALCF username from the Globus introspection
-    try:
-        alcf_username, idp_domain = globus_user.username.split("@")
-        if idp_domain != AUTHORIZED_IDP_DOMAIN:
-            raise HTTPException(
-            status_code=HTTP_401_UNAUTHORIZED,
-            detail=f"Globus username does not have the authorized {AUTHORIZED_IDP_DOMAIN} domain."
-        )
-    except Exception as e:
-        error_message = generate_error_message("Could not recover ALCF username from Globus introspection.", e)
-        raise HTTPException(
-            status_code=HTTP_401_UNAUTHORIZED,
-            detail=error_message
+            detail=f"GraphQL pre-submission error: {error_message}"
         )
     
     # Get Keycloak impersonation client token from credentials
@@ -265,5 +230,5 @@ def generate_user_keycloak_token(
         )
 
     # Return the user access token
-    return user_access_token, alcf_username
+    return user_access_token
 

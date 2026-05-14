@@ -94,6 +94,7 @@ class AlcfSettings(BaseSettings):
     graphql_httpx_trust_env: bool = Field(default=True)
     authorized_idp_domain: str
     component_maintenance_notices: Optional[Dict[APIComponent, str]] = None
+    env: Optional[str] = Field(default="development")
 
     # Load from .env file
     class Config(SettingsConfigDict):
@@ -136,3 +137,4 @@ REDIS_HOST = settings.redis.host
 REDIS_PORT = settings.redis.port
 GRAPHQL_HTTPX_TRUST_ENV = settings.graphql_httpx_trust_env
 AUTHORIZED_IDP_DOMAIN = settings.authorized_idp_domain
+ENV = settings.env

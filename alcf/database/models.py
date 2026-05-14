@@ -84,26 +84,3 @@ class Task(SQLModel, table=True):
     globus_function_id: Optional[str] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
-
-
-class AccessLog(SQLModel, table=True):
-    """Access log entry"""
-    id: str = Field(primary_key=True, index=True)
-    user_id: str = Field(index=True)
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
-    responded_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
-    api_route: str
-    origin_ip: str
-    status_code: int
-    error: Optional[float] = None
-
-class ComputeLog(SQLModel, table=True):
-    """Compute submit log entry"""
-    id: str = Field(primary_key=True, index=True)
-    access_log_id: str = Field(index=True)
-    resource_id: str = Field(index=True)
-    input: str = Field(sa_column=Column(JSON))
-    result: Optional[str] = None
-    alcf_username: str
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
-    responded_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None))

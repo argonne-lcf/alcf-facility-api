@@ -2,6 +2,7 @@ from app.routers.facility import models as facility_models
 from app.routers.facility.facility_adapter import FacilityAdapter as FacilityFacilityAdapter
 from alcf.database.database import get_db_facilities, get_db_sites
 from alcf.database import models as db_models
+from alcf.logging.decorators import log_facility_operation
 
 class AlcfAdapter(FacilityFacilityAdapter):
     """Facility adapter definition for the Facility component of the IRI Facility API."""
@@ -10,6 +11,7 @@ class AlcfAdapter(FacilityFacilityAdapter):
     FACILITY_ID = "8da81144-304b-4fd0-b2fe-eda33bb38720"
 
     # Get facility
+    @log_facility_operation
     async def get_facility(
         self: "AlcfAdapter",
         modified_since: str | None = None
@@ -29,6 +31,7 @@ class AlcfAdapter(FacilityFacilityAdapter):
 
 
     # List sites
+    @log_facility_operation
     async def list_sites(
         self: "AlcfAdapter",
         modified_since: str | None = None, 
@@ -51,6 +54,7 @@ class AlcfAdapter(FacilityFacilityAdapter):
         return [self.__format_site(site) for site in sites]
 
     # Get site
+    @log_facility_operation
     async def get_site(
         self: "AlcfAdapter",
         site_id: str,
