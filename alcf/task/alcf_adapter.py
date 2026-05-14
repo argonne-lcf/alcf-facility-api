@@ -7,6 +7,7 @@ from starlette.status import (
     HTTP_403_FORBIDDEN, 
     HTTP_500_INTERNAL_SERVER_ERROR
 )
+from datetime import datetime, timezone
 from alcf.endpoints import get_endpoint
 from alcf.enums import APIComponent, EndpointType
 from app.routers.task.facility_adapter import FacilityAdapter as TaskFacilityAdapter
@@ -16,7 +17,9 @@ from app.routers.task import models as task_models
 from alcf.task.utils import filesystem_commands, filesystem_format_functions, filesystem_model_responses
 from alcf.auth.alcf_adapter import AlcfAuthenticatedAdapter
 from alcf.database.database import add_task_to_db, update_task_in_db, get_db_task_from_id, get_db_tasks_by_user
+from alcf.database import models as db_models
 from alcf.globus.utils import get_task_status
+from alcf.config import TASK_TIMEOUT_SEC
 from alcf.logging.decorators import log_task_operation
 import json
 import logging
@@ -46,8 +49,7 @@ class AlcfAdapter(TaskFacilityAdapter, AlcfAuthenticatedAdapter):
             )
 
         # Convert the database task into an IRI Task model and update if needed
-        iri_task = self._convert_db_task_to_iri_task(db_task)
-        iri_task = await self._update_iri_task(user, iri_task)
+        iri_task = await self._update_iri_task(user, db_task)
 
         # Return IRI task
         return iri_task
@@ -67,8 +69,7 @@ class AlcfAdapter(TaskFacilityAdapter, AlcfAuthenticatedAdapter):
         tasks = []
         for db_task in db_tasks:
             try:
-                iri_task = self._convert_db_task_to_iri_task(db_task)
-                iri_task = await self._update_iri_task(user, iri_task)
+                iri_task = await self._update_iri_task(user, db_task)
                 tasks.append(iri_task)
             except Exception as e:
                 log.warning(f"Could not convert database model to IRI Task model: {e}")
@@ -203,13 +204,29 @@ class AlcfAdapter(TaskFacilityAdapter, AlcfAuthenticatedAdapter):
 
 
     # Update IRI task
-    async def _update_iri_task(self, user: User, iri_task: task_models.Task) -> task_models.Task:
+    async def _update_iri_task(self, user: User, db_task: db_models.Task) -> task_models.Task:
             
+        # Convert the database task into an IRI task
+        iri_task = self._convert_db_task_to_iri_task(db_task)
+
         # If the task status should be checked and updated ...
         if iri_task.status in [task_models.TaskStatus.pending.value, task_models.TaskStatus.active.value]:
 
-            # Query latest status for the task
-            status, result = get_task_status(user, iri_task.id)
+            # Calculate how long the task has been running for
+            seconds_passed = (
+                    datetime.now(timezone.utc).replace(tzinfo=None) - db_task.created_at
+                ).total_seconds()
+
+            # Fail task if stalled
+            if seconds_passed >= TASK_TIMEOUT_SEC:
+                status = task_models.TaskStatus.failed.value
+                result = {
+                    "error": f"Task timedout after {TASK_TIMEOUT_SEC} seconds."
+                }
+
+            # Query latest status for the task if not stalled
+            else:
+                status, result = get_task_status(user, iri_task.id)
 
             # If the task status changed ...
             if status != iri_task.status:
