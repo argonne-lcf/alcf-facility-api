@@ -95,6 +95,18 @@ class RedisSettings(BaseSettings):
         env_prefix = "REDIS_"
 
 
+# Account
+class AccountSettings(BaseSettings):
+    """Account configuration."""
+
+    # Optional
+    request_timeout_sec: Optional[int] = Field(default=60)
+
+    # Prefix of environment variables
+    class Config(SettingsConfigDict):
+        env_prefix = "ACCOUNT_"
+
+
 class AlcfSettings(BaseSettings):
     """Main ALCF application settings."""
 
@@ -104,6 +116,7 @@ class AlcfSettings(BaseSettings):
     keycloak: KeycloakSettings = Field(default_factory=KeycloakSettings)
     globus: GlobusSettings = Field(default_factory=GlobusSettings)
     redis: RedisSettings = Field(default_factory=RedisSettings)
+    account: AccountSettings = Field(default_factory=AccountSettings)
 
     # Other variables without a prefix
     graphql_httpx_trust_env: bool = Field(default=True)
@@ -152,6 +165,7 @@ GLOBUS_SERVICE_API_CLIENT_SECRET = settings.globus.service_api_client_secret
 GLOBUS_HA_POLICY = settings.globus.ha_policy
 GLOBUS_GROUP = settings.globus.group
 GLOBUS_AUTHORIZED_USERNAMES = settings.globus.authorized_usernames
+ACCOUNT_REQUEST_TIMEOUT_SEC = settings.account.request_timeout_sec
 REDIS_HOST = settings.redis.host
 REDIS_PORT = settings.redis.port
 GRAPHQL_HTTPX_TRUST_ENV = settings.graphql_httpx_trust_env
