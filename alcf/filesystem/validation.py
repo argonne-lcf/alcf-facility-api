@@ -206,10 +206,21 @@ def _validate_base_path(path: Path, resource_name: str):
     )
 
 
-def validate_data_with_path(input_data: dict, pydantic_class: BaseModel, resource_name: str):
+def _forbid_hidden_file(path: Path):
+    """Raise an error if the path is a hidden file."""
+    if path.name.startswith("."):
+        raise HTTPException(
+            detail="Accessing content of hidden files is forbidden.",
+            status_code=HTTP_400_BAD_REQUEST
+        )
+
+
+def validate_data_with_path(input_data: dict, pydantic_class: BaseModel, resource_name: str, forbid_hidden: bool = False):
     """Validate input parameters that include a path, and raise exception if something goes wrong."""
     try:
         validated = pydantic_class(**input_data)
         _validate_base_path(validated.path, resource_name)
+        if forbid_hidden:
+            _forbid_hidden_file(validated.path)
     except Exception as e:
         raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=f"Input validation error: {str(e)}")
