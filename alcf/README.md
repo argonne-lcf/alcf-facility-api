@@ -200,6 +200,16 @@ Create a `alcf_endpoints.json` file with the following structure:
                 }
             }
         }
+    },
+    "account": {
+        "all": {
+            "all": {
+                "endpoint_type": "ni_rest_api",
+                "config": {
+                    "url": "https://...."
+                }
+            }
+        }
     }
 }
 ```
