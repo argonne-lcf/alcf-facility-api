@@ -90,6 +90,28 @@ class GlobusMultiUserEndpoint(_BaseEndpoint):
     @property
     def function_id(self) -> str:
         return self._validated.config.function_id
+    
+
+# ====================
+# Ni REST API endpoint
+# ====================
+
+# Ni REST API endpoint configuration
+class _NiRESTAPIEndpointConfig(BaseModel):
+    url: str
+
+
+# Ni REST API endpoint implementation
+class NiRESTAPIEndpoint(_BaseEndpoint):
+
+    # Data validation upon initialization
+    def __init__(self, input_params: dict):
+        super().__init__(input_params, _EndpointParams[_NiRESTAPIEndpointConfig])
+
+    # URL property
+    @property
+    def url(self) -> str:
+        return self._validated.config.url
 
 
 # ==================
@@ -100,6 +122,7 @@ class GlobusMultiUserEndpoint(_BaseEndpoint):
 _ENDPOINT_CLASSES: dict[str, type[_BaseEndpoint]] = {
     EndpointType.PBS_GRAPHQL.value: PBSGraphqlEndpoint,
     EndpointType.GLOBUS_MULTI_USER_ENDPOINT.value: GlobusMultiUserEndpoint,
+    EndpointType.NI_REST_API.value: NiRESTAPIEndpoint
 }
 
 
