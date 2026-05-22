@@ -1,5 +1,5 @@
 from fastapi import HTTPException
-from starlette.status import (HTTP_500_INTERNAL_SERVER_ERROR)
+from starlette.status import HTTP_500_INTERNAL_SERVER_ERROR, HTTP_400_BAD_REQUEST
 from app.routers.compute import models as compute_models
 from alcf.compute.graphql import models as graphql_models
 from typing import Any, List
@@ -154,8 +154,17 @@ def format_commandArgs(
 ) -> graphql_models.Job:
     """Format executable arguments commandArgs to work with GraphQL if needed."""
     
-    # For each argument in the list ...
+    # If /bin/bash ...
     if job.commandArgs and job.remoteCommand == "/bin/bash":
+
+        # Max of two arguments with /bin/bash
+        if len(job.commandArgs) > 2:
+            raise HTTPException(
+                status_code=HTTP_400_BAD_REQUEST,
+                detail="List of arguments for /bin/bash must have a length of 2 at most."
+            )
+
+        # For each argument in the list ...
         for i_arg, argument in enumerate(job.commandArgs):
 
             # Escape quotes for GraphQL
