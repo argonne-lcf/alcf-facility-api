@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from pydantic import ValidationError, BaseModel, field_validator, Field
+from pydantic import BaseModel, field_validator, Field
 from typing import List, Optional
 
 from app.routers.account.models import AllocationUnit
@@ -11,7 +11,7 @@ class NiProject(BaseModel):
     users: List[str]
     resources: List[str]
     description: Optional[str] = Field(default="N/A")
-    last_updated: Optional[datetime] = Field(default=datetime(2000, 1, 1, 0, 0, 0, tzinfo=timezone.utc))
+    last_modified: Optional[datetime] = Field(default=datetime(2000, 1, 1, 0, 0, 0, tzinfo=timezone.utc))
 
 
 class NiAllocation(BaseModel):
@@ -37,14 +37,6 @@ class NiCapability(BaseModel):
     description: Optional[str] = Field(default="N/A")
     last_updated: Optional[datetime] = Field(default=datetime(2000, 1, 1, 0, 0, 0, tzinfo=timezone.utc))
 
-    @field_validator("last_updated", mode="before")
-    @classmethod
-    def format_last_updated(cls, value):
-        if isinstance(value, str) and value.startswith("datetime::"):
-            value = value.removeprefix("datetime::")
-        dt = datetime.fromisoformat(value)
-        return dt.replace(tzinfo=timezone.utc)
-
     @field_validator("units", mode="after")
     @classmethod
     def format_units(cls, value):
@@ -55,7 +47,7 @@ class NiCapability(BaseModel):
             elif ni_unit == "TB": # TODO: need to handle the conversion, add TB in IRI, or receive bytes
                 formatted_units.append(AllocationUnit.bytes.value)
             else:
-                raise ValidationError(f"Cannot format allocation unit. {ni_unit} not supported.")
+                raise ValueError(f"Cannot format allocation unit. {ni_unit} not supported.")
         return formatted_units
     
 
