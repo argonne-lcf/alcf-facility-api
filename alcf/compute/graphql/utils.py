@@ -5,7 +5,7 @@ from fastapi import HTTPException
 from app.types.user import User
 from alcf.compute.graphql import models as graphql_models
 from alcf.endpoints import get_endpoint
-from alcf.enums import EndpointType, APIComponent
+from alcf.enums import EndpointType, APIComponent, AllType
 from alcf.config import GRAPHQL_HTTPX_TRUST_ENV
 from starlette.status import (
     HTTP_400_BAD_REQUEST, 
@@ -273,7 +273,7 @@ def get_graphql_url(resource_name: str) -> str:
     graphql_endpoint = get_endpoint(
         api_component=APIComponent.COMPUTE.value,
         resource_name=resource_name,
-        operation="all"
+        operation=AllType.ALL.value
     )
 
     # Return GraphQL URL
