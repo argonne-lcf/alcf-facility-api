@@ -156,7 +156,7 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
         }
 
         # Validate data
-        validate_data_with_path(input_data, HeadInputData, resource.name)
+        validate_data_with_path(input_data, HeadInputData, resource.name, forbid_hidden=True)
 
         # Submit task to Globus Compute and wait for the task ID
         task_id = await globus_utils.submit_task("head", resource.name, input_data, user)
@@ -208,7 +208,7 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
         }
 
         # Validate data
-        validate_data_with_path(input_data, ViewInputData, resource.name)
+        validate_data_with_path(input_data, ViewInputData, resource.name, forbid_hidden=True)
 
         # Submit task to Globus Compute and wait for the task ID
         task_id = await globus_utils.submit_task("view", resource.name, input_data, user)
