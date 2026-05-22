@@ -147,7 +147,7 @@ def head(params):
 
     # Check if path is a hidden file
     if input_data.path.name.startswith("."):
-        return Response(error=f"Cannot view hidden file {input_data.path}.").model_dump()
+        return Response(error=f"Accessing content of hidden files is forbidden. {input_data.path}.").model_dump()
 
     # Check if O_NOFOLLOW is supported (TOCTOU protection)
     o_nofollow = getattr(os, "O_NOFOLLOW", None)
