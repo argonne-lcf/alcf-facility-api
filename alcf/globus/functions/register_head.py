@@ -145,6 +145,10 @@ def head(params):
     if not input_data.path.is_file():
         return Response(error=f"Path is not a file: {input_data.path}").model_dump()
 
+    # Check if path is a hidden file
+    if input_data.path.name.startswith("."):
+        return Response(error=f"Cannot view hidden file {input_data.path}.").model_dump()
+
     # Check if O_NOFOLLOW is supported (TOCTOU protection)
     o_nofollow = getattr(os, "O_NOFOLLOW", None)
     if o_nofollow is None:
