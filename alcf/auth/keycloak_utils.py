@@ -1,10 +1,5 @@
-import time
 import httpx
 from fastapi import HTTPException
-from alcf.cache.redis import get_redis_client
-from cachetools import TTLCache, cached
-import hashlib
-import json
 from json.decoder import JSONDecodeError
 from app.types.user import User
 from alcf.auth.utils import (
@@ -12,7 +7,6 @@ from alcf.auth.utils import (
     get_alcf_username_from_token,
 )
 from app.config import logger
-from alcf.config import AUTHORIZED_IDP_DOMAIN
 from starlette.status import (
     HTTP_401_UNAUTHORIZED,
 )
@@ -23,6 +17,7 @@ from alcf.config import (
     KEYCLOAK_PBS_GRAPHQL_AUDIENCE,
     KEYCLOAK_SERVER_URL,
 )
+from alcf.cache.manager import cache_manager
 
 # Keycloak URL to generate and exchange tokens
 KEYCLOAK_TOKEN_ENDPOINT_URL = f"{KEYCLOAK_SERVER_URL}/realms/{KEYCLOAK_REALM_NAME}/protocol/openid-connect/token"
@@ -33,56 +28,9 @@ HEADERS = {
 }
 
 
-# Post request to Keycloak (using Redis cache)
-def post_keycloak(payload: dict = None, url: str = None, ttl=60):
-    """
-    Post request to Keycloak server.
-    Uses Redis cache for multi-worker support with fallback to in-memory cache.
-    Returns serializable data.
-    """
-    
-    # Create cache key from token hash
-    # Store the entire hash to avoid collisions where different users would have the same last hash digits
-    input_str = f"{json.dumps(payload)}-{url}"
-    token_hash = hashlib.sha256(input_str.encode()).hexdigest()
-    cache_key = f"post_keycloak:{token_hash}"
-    
-    # Try to get post result from cache first
-    try:
-        redis_client = get_redis_client()
-        if redis_client:
-            cached_data = redis_client.get(cache_key)
-            if cached_data:
-                return json.loads(cached_data)
-        
-    # Fall back to in-memory cache if needed
-    except Exception as e:
-        logger.warning(f"Redis cache error for post request to Keycloak: {e}")
-        return _post_keycloak_memory_cache(payload=payload, url=url)
-
-    # Perform the token introspection if not taken from the cache
-    result = _perform_post_keycloak(payload=payload, url=url)
-    
-    # Cache the result (successful or error)
-    try:
-        redis_client = get_redis_client()
-        if redis_client:
-            redis_client.setex(cache_key, ttl, json.dumps(result))
-    except Exception as e:
-        logger.warning(f"Failed to cache post request to Keycloak: {e}")
-        # Still return the result even if caching fails
-    
-    return result
-
-
-# Post request to Keycloak (using fallback in-memory cache)
-@cached(cache=TTLCache(maxsize=1024, ttl=10))
-def _post_keycloak_memory_cache(payload: dict = None, url: str = None):
-    return _perform_post_keycloak(payload=payload, url=url)
-
-
 # Make actual post requests to Keycloak
-def _perform_post_keycloak(payload: dict = None, url: str = None):
+@cache_manager.cached(ttl=600)
+def post_keycloak(payload: dict = None, url: str = None):
     """
     Do not raise exception here so that we can cache repeated errors.
     """
@@ -122,8 +70,7 @@ def get_keycloak_impersonation_client_token():
             "client_id": KEYCLOAK_IMPERSONATION_SERVICE_CLIENT_ID,
             "client_secret": KEYCLOAK_IMPERSONATION_SERVICE_CLIENT_SECRET,
         },
-        url=KEYCLOAK_TOKEN_ENDPOINT_URL,
-        ttl=3600
+        url=KEYCLOAK_TOKEN_ENDPOINT_URL
     )
 
     # Error message
@@ -151,8 +98,7 @@ def get_impersonated_user_token(subject_token: str = None, requested_subject: st
             "requested_subject": requested_subject,
             "audience": KEYCLOAK_PBS_GRAPHQL_AUDIENCE,
         },
-        url=KEYCLOAK_TOKEN_ENDPOINT_URL,
-        ttl=600
+        url=KEYCLOAK_TOKEN_ENDPOINT_URL
     )
 
     # Error message
@@ -176,8 +122,7 @@ def introspect_token(token: str = None):
             "client_secret": KEYCLOAK_IMPERSONATION_SERVICE_CLIENT_SECRET,
             "token": token
         },
-        url=f"{KEYCLOAK_TOKEN_ENDPOINT_URL}/introspect",
-        ttl=600
+        url=f"{KEYCLOAK_TOKEN_ENDPOINT_URL}/introspect"
     )
 
     # Error message
