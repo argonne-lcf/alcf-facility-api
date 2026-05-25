@@ -8,14 +8,14 @@ from alcf.config import (
     GLOBUS_GROUP,
     AUTHORIZED_IDP_DOMAIN
 )
-from alcf.cache.redis import get_redis_client
 import json
 import hashlib
 from pydantic import BaseModel, Field
 from typing import Optional, List, Tuple
 import globus_sdk
 import time
-from cachetools import TTLCache, cached
+
+from alcf.cache.manager import cache_manager
 
 # Tool to log access requests
 import logging
@@ -70,80 +70,10 @@ def get_globus_service_api_client():
     )
 
 
-# Introspect token
-def introspect_token(access_token: str):
-    """
-    Introspect a token with policies, collect group memberships, and return the response.
-    Uses Redis cache for multi-worker support with fallback to in-memory cache.
-    
-    Returns serializable data instead of Globus SDK objects.
-    """
-    
-    # Create cache key from token hash
-    # Store the entire hash to avoid collisions where different users would have the same last hash digits
-    token_hash = hashlib.sha256(access_token.encode()).hexdigest()
-    cache_key = f"token_introspect:{token_hash}"
-    
-    # Try to get introspection from cache first
-    try:
-        redis_client = get_redis_client()
-        if redis_client:
-            cached_data = redis_client.get(cache_key)
-            if cached_data:
-                return json.loads(cached_data)
-        
-    # Fall back to in-memory cache if needed
-    except Exception as e:
-        log.warning(f"Redis cache error for token introspection: {e}")
-        return _introspect_token_memory_cache(access_token)
-
-    # Perform the token introspection if not taken from the cache
-    result = _perform_token_introspection(access_token)
-
-    # Set short cache time if an error is triggered
-    if result[0] is None:
-        ttl = 60
-
-    # If the introspection was successful ...
-    else:
-
-        # Calculate time until token expiration (Unix timestamp difference)
-        try:
-            introspection_exp = result[0]["exp"]
-            seconds_until_expiration = introspection_exp - int(time.time())
-        except Exception as e:
-            log.warning(f"Failed to extract introspection result[0]['exp']: {e}")
-            seconds_until_expiration = 0
-
-        # Set cache time and make sure it is not shorter than the time until token expiration
-        ttl = min(600, seconds_until_expiration)
-    
-    # Cache the result (successful or error)
-    try:
-        redis_client = get_redis_client()
-        if redis_client:
-            redis_client.setex(cache_key, ttl, json.dumps(result))
-    except Exception as e:
-        log.warning(f"Failed to cache token introspection: {e}")
-        # Still return the result even if caching fails
-    
-    return result
-
-
-# Introspect token memory cache
-@cached(cache=TTLCache(maxsize=1024, ttl=60*10))
-def _introspect_token_memory_cache(access_token: str):
-    """
-    Fallback in-memory cache for token introspection
-    """
-    return _perform_token_introspection(access_token)
-
-
 # Perform token introspection
-def _perform_token_introspection(access_token: str):
-    """
-    Perform the actual token introspection and return serializable data.
-    """
+@cache_manager.cached(ttl=600)
+def introspect_token(access_token: str):
+    """Perform token introspection and return serializable data."""
 
     # Create Globus SDK confidential client
     try:
@@ -378,56 +308,8 @@ def validate_access_token(access_token) -> TokenValidationResponse:
     )
 
 
-# TODO: Build re-usable cache functions (issue already created on Github)
-def get_alcf_username_from_token(access_token: str, ttl: int = 600):
-    """
-    Use a token introspection response (which should be cached at this state)
-    to recover the alcf usernamne of the authenticated user.
-    Uses Redis cache for multi-worker support with fallback to in-memory cache.
-    """
-    
-    # Create cache key from token hash
-    # Store the entire hash to avoid collisions where different users would have the same last hash digits
-    token_hash = hashlib.sha256(access_token.encode()).hexdigest()
-    cache_key = f"alcf_username_:{token_hash}"
-    
-    # Try to get username from cache first
-    try:
-        redis_client = get_redis_client()
-        if redis_client:
-            cached_data = redis_client.get(cache_key)
-            if cached_data:
-                return json.loads(cached_data)
-        
-    # Fall back to in-memory cache if needed
-    except Exception as e:
-        log.warning(f"Redis cache error for alcf_username: {e}")
-        return _get_alcf_username_memory_cache(access_token)
-
-    # Perform the token introspection if not taken from the cache
-    result = _perform_get_alcf_username(access_token)
-    
-    # Cache the result
-    try:
-        redis_client = get_redis_client()
-        if redis_client:
-            redis_client.setex(cache_key, ttl, json.dumps(result))
-    except Exception as e:
-        log.warning(f"Failed to cache alcf_username: {e}")
-        # Still return the result even if caching fails
-    
-    return result
-
-
-@cached(cache=TTLCache(maxsize=1024, ttl=60*10))
-def _get_alcf_username_memory_cache(access_token: str):
-    """
-    Fallback in-memory cache for getting ALCF username from token
-    """
-    return _perform_get_alcf_username(access_token)
-
-
-def _perform_get_alcf_username(access_token: str) -> Tuple[str, str]:
+@cache_manager.cached(ttl=600)
+def get_alcf_username_from_token(access_token: str) -> Tuple[str, str]:
     """
     Use a token introspection response (which should be cached at this state)
     to recover the alcf usernamne of the authenticated user.
