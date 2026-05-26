@@ -135,6 +135,11 @@ def view(params):
     if not input_data.path.is_file():
         return Response(error=f"Path {input_data.path} is not a file.").model_dump()
 
+    # Check if path or any parent directory is hidden
+    for part in input_data.path.parts:
+        if part.startswith(".") and part != ".":
+            return Response(error="Accessing hidden content is forbidden.").model_dump()
+
     # Check if O_NOFOLLOW is supported (TOCTOU protection)
     o_nofollow = getattr(os, "O_NOFOLLOW", None)
     if o_nofollow is None:
