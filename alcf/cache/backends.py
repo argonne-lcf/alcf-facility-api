@@ -58,10 +58,8 @@ class MemoryCache(CacheBackend):
 
     def set(self, key: str, value: str, ttl: int = 60):
         with self.lock:
-            if len(self.cache) >= self.maxsize:
-                oldest_key = min(
-                    self.cache.keys(),
-                    key=lambda k: self.cache[k][1]
-                )
-                del self.cache[oldest_key]
+            if key in self.cache: # Remove existing key so we re-insert as newest
+                del self.cache[key]
+            elif len(self.cache) >= self.maxsize:
+                self.cache.popitem(last=False) # Remove last entry if cache already full
             self.cache[key] = (value, time.time() + ttl)
