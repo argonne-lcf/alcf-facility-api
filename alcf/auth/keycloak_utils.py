@@ -16,6 +16,7 @@ from alcf.config import (
     KEYCLOAK_REALM_NAME,
     KEYCLOAK_PBS_GRAPHQL_AUDIENCE,
     KEYCLOAK_SERVER_URL,
+    CACHE_TTL_KEYCLOAK
 )
 from alcf.cache.manager import cache_manager
 
@@ -29,7 +30,7 @@ HEADERS = {
 
 
 # Make actual post requests to Keycloak
-@cache_manager.cached(ttl=600)
+@cache_manager.cached(ttl=CACHE_TTL_KEYCLOAK)
 def post_keycloak(payload: dict = None, url: str = None):
     """
     Do not raise exception here so that we can cache repeated errors.
