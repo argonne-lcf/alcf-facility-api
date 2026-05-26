@@ -9,6 +9,20 @@ from alcf.enums import APIComponent
 load_dotenv()
 
 
+# Cache
+class CacheTTLSettings(BaseSettings):
+    """Cache configuration."""
+
+    # Optional
+    keycloak: Optional[int] = Field(default=600)
+    globus: Optional[int] = Field(default=600)
+    token_introspection: Optional[int] = Field(default=600)
+
+    # Prefix of environment variables
+    class Config(SettingsConfigDict):
+        env_prefix = "CACHE_TTL_"
+
+
 # Database
 class DatabaseSettings(BaseSettings):
     """Database configuration."""
@@ -85,6 +99,7 @@ class AlcfSettings(BaseSettings):
     """Main ALCF application settings."""
 
     # Grouped variables with a prefix
+    cache_ttl: CacheTTLSettings = Field(default_factory=CacheTTLSettings)
     database: DatabaseSettings = Field(default_factory=DatabaseSettings)
     keycloak: KeycloakSettings = Field(default_factory=KeycloakSettings)
     globus: GlobusSettings = Field(default_factory=GlobusSettings)
@@ -120,6 +135,9 @@ settings = AlcfSettings()
 
 # Assign variables
 COMPONENT_MAINTENANCE_NOTICES = settings.component_maintenance_notices
+CACHE_TTL_KEYCLOAK = settings.cache_ttl.keycloak
+CACHE_TTL_GLOBUS = settings.cache_ttl.globus
+CACHE_TTL_TOKEN_INTROSPECTION = settings.cache_ttl.token_introspection
 DATABASE_URL = settings.database.url
 DATABASE_SQL_ECHO = settings.database.sql_echo
 KEYCLOAK_REALM_NAME = settings.keycloak.realm_name
