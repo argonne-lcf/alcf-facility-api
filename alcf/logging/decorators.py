@@ -1,6 +1,7 @@
 from functools import wraps
 from app.types.user import User
 from app.routers.status import models as status_models
+from app.routers.account import models as account_models
 from alcf.auth.utils import get_alcf_username_from_token
 from alcf.logging.utils import get_input_from_func, run_and_log
 from alcf.logging.schemas import (
@@ -58,6 +59,12 @@ def log_account_operation(func):
 
         # Gather input data
         input_data = get_input_from_func(func, *args, **kwargs)
+
+        # Streamline input if possible
+        if "project" in input_data:
+            if isinstance(input_data["project"], account_models.Project):
+                input_data["project_id"] = input_data["project"].id
+                del input_data["project"]
 
         # Extract and remove user and resource objects from the input payload
         user: User = input_data.pop("user") if "user" in input_data else None
