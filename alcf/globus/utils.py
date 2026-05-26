@@ -12,11 +12,12 @@ from globus_compute_sdk.serialize import ComputeSerializer, CombinedCode
 from globus_sdk import AccessTokenAuthorizer
 ComputeScopes = ComputeScopeBuilder()
 
+from alcf.config import CACHE_TTL_GLOBUS
 from alcf.cache.manager import cache_manager
 
 
 # Get Globus Compute Executor
-@cache_manager.cached(ttl=600)
+@cache_manager.cached(ttl=CACHE_TTL_GLOBUS)
 def get_compute_executor(user_name: str, user_api_key: str) -> Executor:
     """Create a Globus Compute SDK client from user's access token"""
     try:
@@ -38,7 +39,7 @@ def get_compute_executor(user_name: str, user_api_key: str) -> Executor:
 
 
 # Get Globus Compute Client
-@cache_manager.cached(ttl=600)
+@cache_manager.cached(ttl=CACHE_TTL_GLOBUS)
 def get_compute_client(user_name: str, user_api_key: str) -> Client:
     """Create a Globus Compute SDK client from user's access token"""
     try:
