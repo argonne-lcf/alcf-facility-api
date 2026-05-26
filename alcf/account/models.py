@@ -32,10 +32,14 @@ class NiAllocation(BaseModel):
     
 
 class NiCapability(BaseModel):
+    id: str
     name: str
     units: List[str]
     description: Optional[str] = Field(default="N/A")
     last_updated: Optional[datetime] = Field(default=datetime(2000, 1, 1, 0, 0, 0, tzinfo=timezone.utc))
+    charge_factor: Optional[float] = Field(default=None)
+    view_factor: Optional[float] = Field(default=None)
+    charge_item: Optional[str] = Field(default=None)
 
     @field_validator("units", mode="after")
     @classmethod
@@ -61,3 +65,14 @@ class NiAllocations(BaseModel):
 
 class NiCapabilities(BaseModel):
     capabilities: List[NiCapability]
+    
+    @field_validator("capabilities", mode="before")
+    @classmethod
+    def filter_invalid_capabilities(cls, value):
+        valid_capabilities = []
+        for capability in value:
+            try:
+                valid_capabilities.append(NiCapability(**capability))
+            except ValueError:
+                continue
+        return valid_capabilities
