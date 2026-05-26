@@ -6,7 +6,8 @@ from alcf.config import (
     GLOBUS_SERVICE_API_CLIENT_SECRET, 
     GLOBUS_HA_POLICY,
     GLOBUS_GROUP,
-    AUTHORIZED_IDP_DOMAIN
+    AUTHORIZED_IDP_DOMAIN,
+    CACHE_TTL_TOKEN_INTROSPECTION
 )
 import json
 import hashlib
@@ -71,7 +72,7 @@ def get_globus_service_api_client():
 
 
 # Perform token introspection
-@cache_manager.cached(ttl=600)
+@cache_manager.cached(ttl=CACHE_TTL_TOKEN_INTROSPECTION)
 def introspect_token(access_token: str):
     """Perform token introspection and return serializable data."""
 
@@ -308,7 +309,7 @@ def validate_access_token(access_token) -> TokenValidationResponse:
     )
 
 
-@cache_manager.cached(ttl=600)
+@cache_manager.cached(ttl=CACHE_TTL_TOKEN_INTROSPECTION)
 def get_alcf_username_from_token(access_token: str) -> Tuple[str, str]:
     """
     Use a token introspection response (which should be cached at this state)
