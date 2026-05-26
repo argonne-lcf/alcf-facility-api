@@ -22,7 +22,7 @@ class AsyncHttpClient:
             )
         elif isinstance(e, httpx.TimeoutException):
             raise HTTPException(
-                details=f"Request timeout.",
+                detail=f"Request timeout.",
                 status_code=504,
             )
         elif isinstance(e, httpx.HTTPError):
