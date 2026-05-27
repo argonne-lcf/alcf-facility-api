@@ -277,7 +277,7 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
         input_data = {"path": path}
 
         # Validate data
-        validate_data_with_path(input_data, BaseModelWithPath, resource.name)
+        validate_data_with_path(input_data, BaseModelWithPath, resource.name, forbid_hidden=True)
 
         # Submit task to Globus Compute and wait for the task ID
         task_id = await globus_utils.submit_task("rm", resource.name, input_data, user)
