@@ -14,7 +14,8 @@ from alcf.filesystem.validation import (
     LsInputData,
     HeadInputData,
     ViewInputData,
-    MkdirInputData
+    MkdirInputData,
+    BaseModelWithPath,
 )
 from alcf.maintenance import require_component_operational
 from alcf.enums import APIComponent
@@ -270,8 +271,27 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
         resource: status_models.Resource, 
         user: User, 
         path: str, 
-    ):
-        raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="Not implemented yet.")
+    ) -> str:
+        
+        # Build data for the command
+        input_data = {"path": path}
+
+        # Validate data
+        validate_data_with_path(input_data, BaseModelWithPath, resource.name, forbid_hidden=True)
+
+        # Submit task to Globus Compute and wait for the task ID
+        task_id = await globus_utils.submit_task("rm", resource.name, input_data, user)
+
+        # Return task ID to the user
+        return task_id
+    
+
+    # Format rm response
+    def format_rm_response(
+        self: "AlcfAdapter",
+        result
+    ) -> filesystem_models.RemoveResponse:
+        return filesystem_models.RemoveResponse(output=result)
 
 
     # Mkdir

@@ -11,7 +11,8 @@ filesystem_commands = {
     "chown": filesystem_adaptor.chown,
     "head": filesystem_adaptor.head,
     "view": filesystem_adaptor.view,
-    "mkdir": filesystem_adaptor.mkdir
+    "mkdir": filesystem_adaptor.mkdir,
+    "rm": filesystem_adaptor.rm
 }
 
 # Mapping between filesystem commands and result formating functions (needed for newly generate result)
@@ -21,7 +22,8 @@ filesystem_format_functions = {
     "chown": filesystem_adaptor.format_chown_response,
     "head": filesystem_adaptor.format_head_response,
     "view": filesystem_adaptor.format_view_response,
-    "mkdir": filesystem_adaptor.format_mkdir_response
+    "mkdir": filesystem_adaptor.format_mkdir_response,
+    "rm": filesystem_adaptor.format_rm_response
 }
 
 # Mapping between filesystem commands and response type (needed for database extraction)
