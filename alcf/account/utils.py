@@ -1,13 +1,11 @@
-from asyncache import cached
-from cachetools import TTLCache
-
 from starlette.status import HTTP_400_BAD_REQUEST
 from fastapi import HTTPException
 
 from alcf.endpoints import get_endpoint
 from alcf.enums import EndpointType, APIComponent, AllType
 from alcf.httpx_client import AsyncHttpClient
-from alcf.config import ACCOUNT_REQUEST_TIMEOUT_SEC
+from alcf.config import ACCOUNT_REQUEST_TIMEOUT_SEC, CACHE_TTL_NI_REST
+from alcf.cache.manager import cache_manager
 
 
 def get_ni_rest_api_url() -> str:
@@ -31,7 +29,7 @@ def get_ni_rest_api_url() -> str:
     
 
 # TODO: introduce reusable Redis caching functions with in-memory fallback
-@cached(cache=TTLCache(maxsize=1024, ttl=600))
+@cache_manager.cached(ttl=CACHE_TTL_NI_REST)
 async def get_ni_rest(
     url: str = None,
     access_token: str = None,
