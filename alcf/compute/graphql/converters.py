@@ -104,12 +104,16 @@ def format_task_count(iri_jobspec: compute_models.JobSpec) -> dict:
 # Format tasks resources
 def format_tasks_resources(iri_jobspec: compute_models.JobSpec, resource_name: str) -> List[dict]:
     node_count = get_node_count(iri_jobspec)
-    return [
+    tasks_resources = [
         {
             "index": f"0-{node_count-1}" if node_count > 1 else "0",
             "slots": get_default_slots(resource_name)
         }
     ]
+    memory = iri_jobspec.resources.memory if iri_jobspec.resources else None
+    if memory:
+        tasks_resources[0]["memory"] = memory
+    return tasks_resources
 
 
 # Get GraphQL Job from IRI JobSpec
@@ -117,8 +121,7 @@ def get_graphql_job_from_iri_jobspec(
     iri_jobspec: compute_models.JobSpec,
     resource_name: str
 ) -> graphql_models.Job:
-    """Convert an IRI JobSpec to a GraphQL Job model."""
-    
+    """Convert an IRI JobSpec to a GraphQL Job model."""    
     # Define mapping ('graphql_job':'iri_job')
     field_mapping = {
         'name': 'name',
@@ -128,7 +131,6 @@ def get_graphql_job_from_iri_jobspec(
         'errorPath': 'stderr_path',
         'outputPath': 'stdout_path',
         'resourcesRequested.jobResources.wallClockTime': lambda js: js.attributes.duration if js.attributes and js.attributes.duration else None,
-        'resourcesRequested.jobResources.physicalMemory': lambda js: js.resources.memory if js.resources else None,
         'resourcesRequested.jobResources.customResources': lambda js: format_custom_resources(js) if js.attributes else None,
         'resourcesRequested.taskCount': lambda js: format_task_count(js),
         'resourcesRequested.tasksResources': lambda js: format_tasks_resources(js, resource_name),
