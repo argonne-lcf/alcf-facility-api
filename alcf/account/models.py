@@ -18,8 +18,9 @@ class NiAllocation(BaseModel):
     allocation_id: str
     resource: str
     project: str
-    balance: int
-    deposits: int
+    balance: float
+    deposits: float
+    unit: str
 
     @property
     def used(self) -> int:
@@ -29,6 +30,16 @@ class NiAllocation(BaseModel):
     @classmethod
     def format_allocation_id(cls, value):
         return str(value)
+    
+    @field_validator("unit", mode="after")
+    @classmethod
+    def format_units(cls, value):
+        if value == "node-hours":
+            return AllocationUnit.node_hours.value
+        elif value == "bytes":
+            return AllocationUnit.bytes.value
+        else:
+            raise ValueError(f"Cannot format allocation unit. {value} not supported.")
     
 
 class NiCapability(BaseModel):
