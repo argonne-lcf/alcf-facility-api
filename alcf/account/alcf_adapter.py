@@ -96,13 +96,8 @@ class AlcfAdapter(AccountFacilityAdapter, AlcfAuthenticatedAdapter):
         # Validate data
         ni_allocations = ni_models.NiAllocations(allocations=response).allocations
 
-        # Create IRI response
-        iri_response = []
-        capabilities = await self.get_capabilities()
-        for ni_allocation in ni_allocations:
-            capability = next((c for c in capabilities if c.name == ni_allocation.resource), None)
-            iri_response.append(self._format_allocation(project, capability, ni_allocation))
-        return iri_response
+        # Return response in IRI format
+        return [self._format_allocation(project, a) for a in ni_allocations]
 
     
     # Get user allocations
@@ -171,7 +166,6 @@ class AlcfAdapter(AccountFacilityAdapter, AlcfAuthenticatedAdapter):
     def _format_allocation(
         self: "AlcfAdapter",
         project: account_models.Project,
-        capability: types_models.Capability,
         ni_allocation: ni_models.NiAllocation
     ) -> account_models.ProjectAllocation:
         """Create IRI allocation from Ni data"""
@@ -184,7 +178,7 @@ class AlcfAdapter(AccountFacilityAdapter, AlcfAuthenticatedAdapter):
                     account_models.AllocationEntry(
                         allocation=ni_allocation.deposits,
                         usage=ni_allocation.used,
-                        unit=next(iter(capability.units), None)
+                        unit=ni_allocation.unit
                     )
                 ]
          
