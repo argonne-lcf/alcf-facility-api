@@ -98,7 +98,7 @@ class GlobusMultiUserEndpoint(_BaseEndpoint):
 
 # Globus transfer endpoint configuration
 class _GlobusTransferEndpointConfig(BaseModel):
-    collection_id: str
+    endpoint_id: str
 
 
 # Globus transfer endpoint implementation
@@ -108,10 +108,10 @@ class GlobusTransferEndpoint(_BaseEndpoint):
     def __init__(self, input_params: dict):
         super().__init__(input_params, _EndpointParams[_GlobusTransferEndpointConfig])
 
-    # Collection ID property
+    # Endpoint ID property
     @property
-    def collection_id(self) -> str:
-        return self._validated.config.collection_id
+    def endpoint_id(self) -> str:
+        return self._validated.config.endpoint_id
 
 
 # ==================
