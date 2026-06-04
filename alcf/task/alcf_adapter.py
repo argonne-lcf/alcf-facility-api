@@ -106,11 +106,13 @@ class AlcfAdapter(TaskFacilityAdapter, AlcfAuthenticatedAdapter):
                     resource_name=resource.name,
                     operation=task.command,
                 )
-                if globus_endpoint.endpoint_type == EndpointType.GLOBUS_MULTI_USER_ENDPOINT.value:
+                try:
                     globus_endpoint_id = globus_endpoint.endpoint_id
-                    globus_function_id = globus_endpoint.function_id
-                else:
+                except Exception:
                     globus_endpoint_id = None
+                try:
+                    globus_function_id = globus_endpoint.function_id
+                except Exception:
                     globus_function_id = None
 
                 # Create task entry in database
