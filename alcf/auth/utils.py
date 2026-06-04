@@ -9,8 +9,6 @@ from alcf.config import (
     AUTHORIZED_IDP_DOMAIN,
     CACHE_TTL_TOKEN_INTROSPECTION
 )
-import json
-import hashlib
 from pydantic import BaseModel, Field
 from typing import Optional, List, Tuple
 import globus_sdk
@@ -115,9 +113,8 @@ def introspect_token(access_token: str):
     
     # Get dependent access tokens
     try:
-        dependent_tokens = client.oauth2_get_dependent_tokens(access_token)
-        access_token = dependent_tokens.by_resource_server["groups.api.globus.org"]["access_token"]
-        globus_compute_access_token = dependent_tokens.by_resource_server["funcx_service"]["access_token"]
+        dependent_tokens_response = client.oauth2_get_dependent_tokens(access_token).by_resource_server
+        dependent_tokens = GlobusDependentTokens()
     except Exception as e:
         error_message = generate_error_message("Could not recover dependent access tokens.", e)
         return None, [], None, error_message
