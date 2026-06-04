@@ -1,136 +1,13 @@
-from alcf.endpoints import get_endpoint
-from alcf.enums import EndpointType, APIComponent
-from alcf.auth.utils import introspect_token as globus_introspect_token
-from starlette.status import HTTP_500_INTERNAL_SERVER_ERROR, HTTP_400_BAD_REQUEST
+from alcf.endpoints import get_endpoint, EndpointType, APIComponent
+from alcf.globus.utils_compute import submit_compute_task
+from starlette.status import HTTP_501_NOT_IMPLEMENTED
 from fastapi import HTTPException
 from app.types.user import User
-from app.routers.task import models as task_models
-from globus_compute_sdk import Client, Executor
-from globus_compute_sdk.sdk.login_manager import AuthorizerLoginManager
-from globus_compute_sdk.sdk.login_manager.manager import ComputeScopeBuilder
-from globus_compute_sdk.serialize import ComputeSerializer, CombinedCode
-from globus_sdk import AccessTokenAuthorizer
-ComputeScopes = ComputeScopeBuilder()
+from typing import Tuple
 
 from alcf.config import CACHE_TTL_GLOBUS
 from alcf.cache.manager import cache_manager
 
-
-# Get Globus Compute Executor
-@cache_manager.cached(ttl=CACHE_TTL_GLOBUS)
-def get_compute_executor(user_name: str, user_api_key: str) -> Executor:
-    """Create a Globus Compute SDK client from user's access token"""
-    try:
-
-        # Get Globus Compute client
-        gcc = get_compute_client(user_name, user_api_key)
-
-        # Create and return the executor
-        return Executor(
-            client=gcc,
-            batch_size=1,
-            api_burst_limit=1,
-            serializer = ComputeSerializer(strategy_code=CombinedCode())
-        )
-        
-    # Error if something wrong happen
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Could not create Globus Compute executor for user {user_name}: {e}")
-
-
-# Get Globus Compute Client
-@cache_manager.cached(ttl=CACHE_TTL_GLOBUS)
-def get_compute_client(user_name: str, user_api_key: str) -> Client:
-    """Create a Globus Compute SDK client from user's access token"""
-    try:
-
-        # Get Globus authorizers
-        compute_auth = AccessTokenAuthorizer(user_api_key)
-
-        # Create Globus login manager using tokens
-        compute_login_manager = AuthorizerLoginManager(
-            authorizers={
-                ComputeScopes.resource_server: compute_auth,
-            }
-        )
-        #compute_login_manager.ensure_logged_in()
-
-        # Create Compute client
-        return Client(login_manager=compute_login_manager)
-    
-    # Error if something wrong happen
-    except Exception as e:
-        raise HTTPException(
-            status_code=500, 
-            detail=f"Could not create Globus Compute client for user {user_name}: {e}"
-        )
-    
-
-# Submit task and get result
-# TODO (if you keep this, make this async)
-def submit_task_and_get_result(
-        function_name: str, 
-        resource_name: str, 
-        input_data: dict, 
-        user: User
-    ):
-    """Extract endpoint and function IDs, submit task, and wait for result."""
-        
-    # Extract Globus multi-user endpoint for the targetted resource
-    globus_endpoint = get_endpoint(
-        api_component=APIComponent.FILESYSTEM.value,
-        resource_name=resource_name,
-        operation=function_name,
-    )
-
-    # Make sure the endpoint is a Globus multi-user endpoint
-    if globus_endpoint.endpoint_type != EndpointType.GLOBUS_MULTI_USER_ENDPOINT.value:    
-        raise HTTPException(
-            status_code=HTTP_400_BAD_REQUEST, 
-            detail=f"Endpoint for {resource_name} is not a Globus multi-user endpoint."
-        )
-        
-    # Get Globus Compute executor from user's token
-    gce = get_compute_executor(user.name, user.api_key)
-    gce.endpoint_id = globus_endpoint.endpoint_id
-
-    # Make sure the endpoint runs on the login node
-    gce.user_endpoint_config = {"provider": "local"}
-
-    # Submit task to Globus Compute
-    try:
-        future = gce.submit_to_registered_function(globus_endpoint.function_id, args=[input_data])
-    except Exception as e:
-        raise HTTPException(
-            status_code=HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Could not submit task to Globus Compute: {e}"
-        )
-        
-    # Wait for the response
-    try:
-        response = future.result(timeout=60)
-    except Exception as e:
-        raise HTTPException(
-            status_code=HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Could not recover result from Globus Compute: {e}"
-        )
-        
-    # Error if something wrong happened
-    if "error" in response and response["error"]:
-        raise HTTPException(
-            status_code=HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Runtime error: {response["error"]}"
-        )
-
-    # Return result
-    try:
-        return response["output"]
-    except Exception as e:
-        raise HTTPException(
-            status_code=HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Could not parse Globus Compute response: {e}"
-        )
-    
 
 # Submit task
 async def submit_task(
@@ -138,105 +15,42 @@ async def submit_task(
         resource_name: str, 
         input_data: dict, 
         user: User
-    ) -> str:
-    """Extract endpoint and function IDs, submit task, and return task ID."""
+    ) -> Tuple[str, dict]:
+    """Extract Globus endpoint, submit task, and return task ID and result (if possible)."""
         
-    # Extract Globus multi-user endpoint for the targetted resource
+    # Extract filesystem endpoint for the targetted resource
     globus_endpoint = get_endpoint(
         api_component=APIComponent.FILESYSTEM.value,
         resource_name=resource_name,
         operation=function_name,
     )
 
-    # Make sure the endpoint is a Globus multi-user endpoint
-    if globus_endpoint.endpoint_type != EndpointType.GLOBUS_MULTI_USER_ENDPOINT.value:
-        raise HTTPException(
-            status_code=HTTP_400_BAD_REQUEST, 
-            detail=f"Endpoint for {resource_name} is not a Globus multi-user endpoint."
+    # Submit Globus Compute task
+    if globus_endpoint.endpoint_type == EndpointType.GLOBUS_MULTI_USER_ENDPOINT.value:
+        task_id, result = await submit_compute_task(
+            globus_endpoint,
+            input_data, 
+            user
         )
 
-    # Recover Globus Compute access token (from cache)
-    _, _, globus_compute_access_token, _ = globus_introspect_token(user.api_key)
-    user.api_key = globus_compute_access_token
-
-    # Get Globus Compute client from user's token
-    gcc = get_compute_client(user.name, user.api_key)
-
-    # Submit task to Globus Compute
-    try:
-        batch = gcc.create_batch()
-        batch.add(globus_endpoint.function_id, [input_data])
-        batch_response = gcc.batch_run(globus_endpoint.endpoint_id, batch)
-    except Exception as e:
-        raise HTTPException(
-            status_code=HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Could not submit task to Globus Compute: {e}"
-        )
-    
-    # Try to recover the task ID
-    try:
-        task_id = list(batch_response["tasks"].values())[0][0]
-    except Exception as e:
-        raise HTTPException(
-            status_code=HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Could not recover Globus Compute task ID: {e}"
-        )
-        
-    # Return the Globus Compute task ID
-    return task_id
-
-
-# Get task status
-# TODO: cache this
-def get_task_status(user: User, task_id: str):
-    """Check the status of a task with Globus Compute and return result if completed."""
-
-    # Recover Globus Compute access token (from cache)
-    _, _, globus_compute_access_token, _ = globus_introspect_token(user.api_key)
-    user.api_key = globus_compute_access_token
-
-    # Get Globus Compute client using user's credentials
-    gcc = get_compute_client(user.name, user.api_key)
-
-    # Try to get the task status from Globus
-    try:
-        task_status = gcc.get_task(task_id)
-    except Exception as e:
-        raise HTTPException(
-            status_code=HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Could not get task status from Globus Compute: {e}"
+    # Submit Globus Transfer task
+    if globus_endpoint.endpoint_type == EndpointType.GLOBUS_TRANSFER_ENDPOINT.value:
+        task_id, result = await submit_transfer_task(
+            function_name, 
+            globus_endpoint,
+            input_data, 
+            user
         )
 
-    # Still pending
-    if task_status["pending"]:
-        status = task_models.TaskStatus.pending.value
-        result = None
-
-    # If function execution succeeded (but may still include an error) ...
-    elif task_status.get("status", None) == "success":
-
-        # Gather the result
-        result = task_status.get("result", None)
-
-        # Failed
-        if result["error"]:
-            status = task_models.TaskStatus.failed.value
-            result = {
-                "error": result["error"]
-            }
-
-        # Completed
-        else:
-            status = task_models.TaskStatus.completed.value
-            result = result["output"]
-
-    # Failed if an error occured outside of the function execution
+    # Error if endpoint not supported 
     else:
-        status = task_models.TaskStatus.failed.value
-        result = {
-            "error": "Unexpected error outside of the function execution."
-        }
+        raise HTTPException(
+            status_code=HTTP_501_NOT_IMPLEMENTED, 
+            detail=f"Endpoint for {function_name} on {resource_name} is not supported."
+        )
 
-    # Return the status and result (if any)
-    return status, result
+    return task_id, result
+
+
+
 
