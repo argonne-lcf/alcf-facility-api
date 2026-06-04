@@ -10,3 +10,4 @@ class APIComponent(str, Enum):
 class EndpointType(str, Enum):
     PBS_GRAPHQL = "pbs_graphql"
     GLOBUS_MULTI_USER_ENDPOINT = "globus_multi_user_endpoint"
+    GLOBUS_TRANSFER_ENDPOINT = "globus_transfer_endpoint"
