@@ -1,4 +1,3 @@
-from cachetools import TTLCache, cached
 from fastapi import HTTPException
 from globus_sdk import AccessTokenAuthorizer, TransferClient
 from alcf.endpoints import GlobusTransferEndpoint
@@ -9,8 +8,12 @@ from starlette.status import HTTP_501_NOT_IMPLEMENTED, HTTP_401_UNAUTHORIZED, HT
 from typing import Tuple
 from uuid import uuid4
 
+from alcf.config import CACHE_TTL_GLOBUS
+from alcf.cache.manager import cache_manager
+
+
 # Get Globus Transfer Client
-@cached(cache=TTLCache(maxsize=1024, ttl=60 * 60))
+@cache_manager.cached(ttl=CACHE_TTL_GLOBUS)
 def get_transfer_client(user_name: str, user_api_key: str) -> TransferClient:
     """Create a Globus Transfer SDK client from user's access token"""
     try:
