@@ -1,8 +1,10 @@
 from sqlmodel import SQLModel, Field, JSON
 from enum import Enum
-from sqlalchemy import Column, DateTime
+from sqlalchemy import Column
 from typing import List, Optional
 from datetime import datetime, timezone
+
+from alcf.enums import EndpointType
 
 # API component enumeration
 class FilesystemSubmitMethods(str, Enum):
@@ -82,5 +84,6 @@ class Task(SQLModel, table=True):
     task_command: str = Field(sa_column=Column(JSON))  # Store TaskCommand as JSON string
     globus_endpoint_id: Optional[str] = None
     globus_function_id: Optional[str] = None
+    globus_endpoint_type: Optional[str] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
