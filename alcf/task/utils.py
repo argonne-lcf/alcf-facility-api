@@ -1,5 +1,13 @@
-from alcf.filesystem.alcf_adapter import AlcfAdapter as FilesystemAdaptor
+import json
+
+from fastapi import HTTPException
+from starlette.status import HTTP_500_INTERNAL_SERVER_ERROR
+from typing import Any, Callable, Tuple
+
 from app.routers.filesystem import models as filesystem_models
+from app.routers.task.models import TaskStatus
+from alcf.auth.utils import generate_error_message
+from alcf.filesystem.alcf_adapter import AlcfAdapter as FilesystemAdaptor
 
 # Instantiate the Filesystem adaptor
 filesystem_adaptor = FilesystemAdaptor()
@@ -34,3 +42,55 @@ filesystem_model_responses = {
     "view": filesystem_models.GetViewFileResponse,
     "mkdir": filesystem_models.PostMkdirResponse
 }
+
+# Format result for database
+def format_result_for_db(
+    result: Any,
+    status: TaskStatus,
+    format_function: Callable
+) -> Any:
+    """Format result field and return json string for database."""
+
+    # None if no result was provided
+    if result is None:
+        return None
+    
+    # Successful completed tasks
+    if status == TaskStatus.completed.value:
+        
+        # Format result to the IRI spec
+        try:
+            result = format_function(result) # This should give a pydantic model instance
+        except Exception as e:
+            error_message = generate_error_message("Completed task result not compliant with IRI spec.")
+            raise HTTPException(
+                status_code=HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=error_message
+            )
+        
+        # Return json string
+        if isinstance(result, Tuple):
+            return json.dumps(result)
+        else:
+            return json.dumps(result.model_dump())
+    
+    # Failed tasks
+    elif status == TaskStatus.failed.value:
+                
+        # Add dictionary wrap if needed
+        if isinstance(result, str):
+            result = {"error": result}
+
+        # Return json string
+        try:
+            return json.dumps(result)
+        except Exception as e:
+            error_message = generate_error_message("Failed task result cannot be converted to JSON.")
+            raise HTTPException(
+                status_code=HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=error_message
+            )
+
+    # Skip formatting if task still active or pending
+    else:
+        return result
