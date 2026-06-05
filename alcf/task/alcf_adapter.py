@@ -1,6 +1,4 @@
 from fastapi import HTTPException
-from typing import Tuple
-from copy import deepcopy
 from starlette.status import (
     HTTP_501_NOT_IMPLEMENTED, 
     HTTP_404_NOT_FOUND, 
@@ -14,7 +12,7 @@ from app.routers.task.facility_adapter import FacilityAdapter as TaskFacilityAda
 from app.routers.status import models as status_models
 from app.types.user import User
 from app.routers.task import models as task_models
-from alcf.task.utils import filesystem_commands, filesystem_format_functions, filesystem_model_responses
+from alcf.task.utils import filesystem_commands, filesystem_format_functions, filesystem_model_responses, format_result_for_db
 from alcf.auth.alcf_adapter import AlcfAuthenticatedAdapter
 from alcf.database.database import add_task_to_db, update_task_in_db, get_db_task_from_id, get_db_tasks_by_user
 from alcf.database import models as db_models
@@ -120,16 +118,17 @@ class AlcfAdapter(TaskFacilityAdapter, AlcfAuthenticatedAdapter):
                 if result:
                     if failed:
                         status = task_models.TaskStatus.failed.value
-                        result = json.dumps(result)
                     else:
                         status = task_models.TaskStatus.completed.value
-                        result = filesystem_format_functions[task.command](result)
-                        if isinstance(result, Tuple):
-                            result = json.dumps(result)
-                        else:
-                            result = json.dumps(result.model_dump())
                 else:
                     status = task_models.TaskStatus.pending.value
+
+                # Format result for database
+                result = format_result_for_db(
+                    result,
+                    status,
+                    filesystem_format_functions[task.command]
+                )
 
                 # Create task entry in database
                 await add_task_to_db({
@@ -250,27 +249,16 @@ class AlcfAdapter(TaskFacilityAdapter, AlcfAuthenticatedAdapter):
             # If the task status changed ...
             if status != iri_task.status:
 
-                # Format result if a raw successful result got generated
-                result_for_db = deepcopy(result)
-                if result or isinstance(result, list):
-                    try:
-                        if status == task_models.TaskStatus.completed.value:
-                            result = filesystem_format_functions[iri_task.command.command](result)
-                            if isinstance(result, Tuple):
-                                result_for_db = json.dumps(result)
-                            else:
-                                result_for_db = json.dumps(result.model_dump())
-                        elif status == task_models.TaskStatus.failed.value:
-                            result_for_db = json.dumps(result)
-                    except Exception as e:
-                        raise HTTPException(
-                            status_code=HTTP_500_INTERNAL_SERVER_ERROR, 
-                            detail=f"Could not format result: {e}"
-                        )
-
                 # Update IRI task data
                 iri_task.status = status
                 iri_task.result = result
+
+                # Format result for database
+                result_for_db = format_result_for_db(
+                    result,
+                    status,
+                    filesystem_format_functions[iri_task.command.command]
+                )
 
                 # Update status and result in database
                 try:
