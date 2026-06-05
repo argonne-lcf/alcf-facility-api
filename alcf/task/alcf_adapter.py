@@ -9,7 +9,7 @@ from starlette.status import (
 )
 from datetime import datetime, timezone
 from alcf.endpoints import get_endpoint
-from alcf.enums import APIComponent, EndpointType
+from alcf.enums import APIComponent
 from app.routers.task.facility_adapter import FacilityAdapter as TaskFacilityAdapter
 from app.routers.status import models as status_models
 from app.types.user import User
@@ -24,6 +24,8 @@ from alcf.logging.decorators import log_task_operation
 import json
 import logging
 log = logging.getLogger(__name__)
+
+from alcf.enums import EndpointType
 
 
 
@@ -98,7 +100,7 @@ class AlcfAdapter(TaskFacilityAdapter, AlcfAuthenticatedAdapter):
             if task.command in filesystem_commands:
 
                 # Execute the command and get the task ID
-                task_id = await filesystem_commands[task.command](**kwargs)
+                task_id, result, failed = await filesystem_commands[task.command](**kwargs)
 
                 # Extract Globus multi-user endpoint for the targetted resource
                 globus_endpoint = get_endpoint(
@@ -106,24 +108,39 @@ class AlcfAdapter(TaskFacilityAdapter, AlcfAuthenticatedAdapter):
                     resource_name=resource.name,
                     operation=task.command,
                 )
-                try:
-                    globus_endpoint_id = globus_endpoint.endpoint_id
-                except Exception:
-                    globus_endpoint_id = None
-                try:
+
+                # Collect function ID if available
+                if globus_endpoint.endpoint_type == EndpointType.GLOBUS_MULTI_USER_ENDPOINT.value:
                     globus_function_id = globus_endpoint.function_id
-                except Exception:
+                else:
                     globus_function_id = None
+
+                # Define task status based on the result and failed flag
+                # This is done to support both async and sync tasks
+                if result:
+                    if failed:
+                        status = task_models.TaskStatus.failed.value
+                        result = json.dumps(result)
+                    else:
+                        status = task_models.TaskStatus.completed.value
+                        result = filesystem_format_functions[task.command](result)
+                        if isinstance(result, Tuple):
+                            result = json.dumps(result)
+                        else:
+                            result = json.dumps(result.model_dump())
+                else:
+                    status = task_models.TaskStatus.pending.value
 
                 # Create task entry in database
                 await add_task_to_db({
                     "id": task_id,
                     "user_id": user.id,
-                    "status": task_models.TaskStatus.pending.value,
+                    "status": status,
                     "task_command": json.dumps(task.model_dump()),
-                    "result": None,
-                    "globus_endpoint_id": globus_endpoint_id,
-                    "globus_function_id": globus_function_id
+                    "result": result,
+                    "globus_endpoint_id": globus_endpoint.endpoint_id,
+                    "globus_function_id": globus_function_id,
+                    "globus_endpoint_type": globus_endpoint.endpoint_type,
                 })
                 
                 # Return the task ID to the user
@@ -228,7 +245,7 @@ class AlcfAdapter(TaskFacilityAdapter, AlcfAuthenticatedAdapter):
 
             # Query latest status for the task if not stalled
             else:
-                status, result = get_task_status(user, iri_task.id)
+                status, result = await get_task_status(user, iri_task.id, db_task.globus_endpoint_type)
 
             # If the task status changed ...
             if status != iri_task.status:
