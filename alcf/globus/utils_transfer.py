@@ -1,15 +1,19 @@
+import stat
+from pathlib import Path
 from fastapi import HTTPException
-from globus_sdk import AccessTokenAuthorizer, TransferClient
+from globus_sdk import AccessTokenAuthorizer, TransferClient, TransferAPIError
 from alcf.endpoints import GlobusTransferEndpoint
 from alcf.auth.utils import introspect_token as globus_introspect_token
 from alcf.auth.utils import LOGOUT_MESSAGE_STR
 from app.types.user import User
 from starlette.status import HTTP_501_NOT_IMPLEMENTED, HTTP_401_UNAUTHORIZED, HTTP_500_INTERNAL_SERVER_ERROR
-from typing import Tuple
+from typing import Tuple, Any
 from uuid import uuid4
 
-from alcf.config import CACHE_TTL_GLOBUS
+from alcf.auth.utils import generate_error_message
 from alcf.cache.manager import cache_manager
+from alcf.config import CACHE_TTL_GLOBUS
+from alcf.filesystem.validation import ALLOWED_PATH_BASES
 
 
 # Get Globus Transfer Client
@@ -19,10 +23,28 @@ def get_transfer_client(user_name: str, user_api_key: str) -> TransferClient:
     try:
         return TransferClient(authorizer=AccessTokenAuthorizer(user_api_key))
     except Exception as e:
+        error_message = generate_error_message(
+            f"Could not create Globus Transfer client for user {user_name}", e
+        )
         raise HTTPException(
             status_code=500, 
-            detail=f"Could not create Globus Transfer client for user {user_name}: {e}"
+            detail=error_message
         )
+    
+
+# Strip base
+def __strip_base(path: str, location: str) -> Path:
+    """Remove base path from path to start at the base of a Globus collection."""
+    path = Path(path) if isinstance(path, str) else path
+    for base in ALLOWED_PATH_BASES[location]:
+        try:
+            return path.relative_to(base)
+        except ValueError:
+            pass
+    raise HTTPException(
+        status_code=HTTP_500_INTERNAL_SERVER_ERROR, 
+        detail=f"Could not remove the base path for {str(path)} for {location} collection."
+    )
     
 
 # Execute ls command
@@ -30,7 +52,7 @@ async def transfer_ls(
     globus_endpoint: GlobusTransferEndpoint,
     input_data: dict, 
     user: User
-) -> Tuple[str, dict]:
+) -> Tuple[str, dict, bool]:
     
     # Unsupported parameters
     for bool_parameter in ["numeric_uid", "recursive", "dereference"]:
@@ -52,71 +74,28 @@ async def transfer_ls(
         "show_hidden": input_data.get("show_hidden", False)
     }
 
+    # Remove base path to start at the base of the Globus collection
+    input_data["path"] = __strip_base(input_data["path"], globus_endpoint.location)
+
     # Generate a task ID (since Globus Transfer ls is synchronous)
     task_id = str(uuid4())
 
-    # Submit
-    # TODO make this async
+    # Submit operation
     try:
-        response = transfer_client.operation_ls(globus_endpoint.endpoint_id, path="inference_service/vllm_logs")
+        ls_response = transfer_client.operation_ls(globus_endpoint.endpoint_id, **input_data)
+    except TransferAPIError as e:
+        return task_id, {"error": str(e.message)}, True
     except Exception as e:
+        error_message = generate_error_message("Could not submit Globus Transfer ls task.", e)
         raise HTTPException(
             status_code=HTTP_500_INTERNAL_SERVER_ERROR, 
-            detail=f"Could not submit Globus Transfer ls task: {e}"
+            detail=error_message
         )
     
-    # Extract ls result
-    try:
-        result = response.data["DATA"]
-    except Exception as e:
-        raise HTTPException(
-            status_code=HTTP_500_INTERNAL_SERVER_ERROR, 
-            detail="Could not extract result from Globus Transfer ls task."
-        )
+    # Return task ID, formatted result, and non-failure flag
+    return task_id, __format_ls_response(ls_response), False
 
-    # Format result
-    result = [
-        {
-            "name"
-        }
-    for ...]
-    HEHEHEHEHEHEHEHEHEH
-    THINK carefully here, do you want to hardcode this here? or do you want a 
-    special per-transfer/per-compute formatting special fancy thing that would separate submittion from formatting?????
-    {
-        "name": "parsl.GlobusComputeEngine-HighThroughputExecutor.block-0.1764194504.5648103.nodes",
-        "type": "file",
-        "link_target": "",
-        "user": "bcote",
-        "group": "users",
-        "permissions": "rw-r--r--",
-        "last_modified": "2025-11-26T22:01:47Z",
-        "size": "25"
-      }
-    {
-       'name': 'sophia_vllm_nvidia', 
-       'type': 'dir', 
-       'link_target': None, 
-       'user': 'openinference_svc',
-        'group': 'inference_service',
-        'permissions': '2755', 
-       'last_modified': '2026-04-07 23:17:41+00:00', 
-       'size': 4096, 
-       }
     
-    # Return task ID and result
-    return task_id, result
-    #def for entry in transfer_client.operation_ls(globus_endpoint.endpoint_id, path="inference_service/vllm_logs"):
-    #print(entry)
-
-    #input_data = {
-    #        "path": path,
-    #        "show_hidden": show_hidden,
-    #        #"numeric_uid": numeric_uid,
-    #        #"recursive": recursive,
-    #        #"dereference": dereference
-    #    }
-
 def get_globus_transfer_access_token(user: User) -> str:
 
     # Recover Globus access token from the introspection (from cache)
@@ -163,3 +142,57 @@ async def submit_transfer_task(
 
     # Submit the transfer command
     return await TRANSFER_FUNCTION_MAP[function_name](globus_endpoint, input_data, user)
+
+
+# Format ls response
+def __format_ls_response(ls_response: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Convert ls Transfer response to IRI response."""
+
+    # Extract ls result
+    try:
+        ls_data = ls_response.data["DATA"]
+    except Exception as e:
+        error_message = generate_error_message("Could not extract result from Globus Transfer ls task.", e)
+        raise HTTPException(
+            status_code=HTTP_500_INTERNAL_SERVER_ERROR, 
+            detail=error_message
+        )
+    
+    # Format all entries
+    return [__format_ls_entry(entry) for entry in ls_data]
+
+
+# Format ls entry
+def __format_ls_entry(ls_entry: dict[str, Any]) -> dict[str, Any]:
+    """Convert ls Transfer entry to IRI entry."""
+
+    try:
+        # Filter to only keep relevant keys
+        formatted_entry = {
+            key: ls_entry[key]
+            for key in (
+                "name",
+                "type",
+                "link_target",
+                "user",
+                "group",
+                "permissions",
+                "last_modified",
+                "size",
+            )
+        }
+
+        # Adjust formatting
+        formatted_entry["permissions"] = stat.filemode(int(formatted_entry["permissions"], 8))[1:]
+        formatted_entry["size"] = str(formatted_entry["size"])
+
+        # Return IRI-compliant formated entry
+        return formatted_entry
+    
+    # Error handling
+    except Exception as e:
+        error_message = generate_error_message("Could format Globus Transfer ls entry.", e)
+        raise HTTPException(
+            status_code=500, 
+            detail=error_message
+        )
