@@ -36,12 +36,12 @@ def get_transfer_client(access_token: str, user_name: str) -> TransferClient:
     
 
 # Strip base
-def __strip_base(path: str, location: str) -> Path:
+def __strip_base(path: str, location: str) -> str:
     """Remove base path from path to start at the base of a Globus collection."""
     path = Path(path) if isinstance(path, str) else path
     for base in ALLOWED_PATH_BASES[location]:
         try:
-            return path.relative_to(base)
+            return str(path.relative_to(base))
         except ValueError:
             pass
     raise HTTPException(
@@ -72,9 +72,9 @@ async def transfer_ls(
     }
     
     # Submit operation and return generated response object
-    transfer_client = get_transfer_client(get_globus_transfer_access_token(user), user.name)
+    transfer_client: TransferClient = get_transfer_client(get_globus_transfer_access_token(user), user.name)
     response = await submit_transfer_client_operation(
-        transfer_client.operation_ls, globus_endpoint.endpoint_id, input_data
+        transfer_client.operation_ls, globus_endpoint.endpoint_id, **input_data
     )
 
     # Return formatted response
@@ -83,19 +83,50 @@ async def transfer_ls(
     return response
 
 
+# Execute mkdir command
+async def transfer_mkdir(
+    globus_endpoint: GlobusTransferEndpoint,
+    input_data: dict, 
+    user: User
+) -> GlobusSubmitResponse:
+    
+    # Unsupported parameters
+    if input_data.get("parent", False):
+        raise HTTPException(
+            status_code=HTTP_501_NOT_IMPLEMENTED, 
+            detail=f"'parent' argument not supported with Globus Transfer mkdir operation."
+        )
+    
+    # Prepare the input data
+    path = __strip_base(input_data.get("path", None), globus_endpoint.location)
+    
+    # Submit operation and return generated response object
+    transfer_client: TransferClient = get_transfer_client(get_globus_transfer_access_token(user), user.name)
+    response = await submit_transfer_client_operation(
+        transfer_client.operation_mkdir, globus_endpoint.endpoint_id, path
+    )
+
+    # Return formatted response
+    if not response.failed:
+        response.result = {"output": None}
+    return response
+
+
+
 async def submit_transfer_client_operation(
     client_operation: Callable,
     endpoint_id: str,
-    data: dict[str, Any]
+    *args,
+    **kwargs
 ) -> GlobusSubmitResponse:
     """Submit Globus transfer operation and return response if possible"""
     try:
-        result = await asyncio.to_thread(client_operation, endpoint_id, **data)
+        result = await asyncio.to_thread(client_operation, endpoint_id, *args, **kwargs)
         return GlobusSubmitResponse(result=result)
     except TransferAPIError as e:
         return GlobusSubmitResponse(result=str(e.message), failed=True)
     except Exception as e:
-        error_message = generate_error_message("Could not submit Globus Transfer ls task.", e)
+        error_message = generate_error_message("Could not submit Globus Transfer task.", e)
         raise HTTPException(
             status_code=HTTP_500_INTERNAL_SERVER_ERROR, 
             detail=error_message
@@ -126,7 +157,8 @@ def get_globus_transfer_access_token(user: User) -> str:
 
 # Map between function names and transfer functions
 TRANSFER_FUNCTION_MAP = {
-    "ls": transfer_ls
+    "ls": transfer_ls,
+    "mkdir": transfer_mkdir
 }
 
 
