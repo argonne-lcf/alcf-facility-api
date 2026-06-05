@@ -19,6 +19,7 @@ from alcf.filesystem.validation import (
 )
 from alcf.maintenance import require_component_operational
 from alcf.enums import APIComponent
+from alcf.globus.schemas import GlobusSubmitResponse
 from alcf.logging.decorators import log_filesystem_operation
 
 
@@ -33,7 +34,7 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
         resource: status_models.Resource, 
         user: User, 
         request_model: filesystem_models.PutFileChmodRequest
-    ) -> Tuple[str, dict, bool]:
+    ) -> GlobusSubmitResponse:
         
         # Build data for the command
         input_data = request_model.model_dump()
@@ -61,7 +62,7 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
         resource: status_models.Resource, 
         user: User, 
         request_model: filesystem_models.PutFileChownRequest
-    ) -> Tuple[str, dict, bool]:
+    ) -> GlobusSubmitResponse:
 
         # Build data for the command
         input_data = request_model.model_dump()
@@ -94,7 +95,7 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
         numeric_uid: bool, 
         recursive: bool, 
         dereference: bool,
-    ) -> Tuple[str, dict, bool]:
+    ) -> GlobusSubmitResponse:
         
         # Disable options that are not ready yet
         if recursive:
@@ -137,7 +138,7 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
         file_bytes: int, 
         lines: int, 
         skip_trailing: bool,
-    ) -> Tuple[str, dict, bool]:
+    ) -> GlobusSubmitResponse:
         
         # Build data for the command
         input_data = {
@@ -187,7 +188,7 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
         path: str, 
         size: int,
         offset: int,
-    ) -> Tuple[str, dict, bool]:
+    ) -> GlobusSubmitResponse:
         
         # Build data for the command
         input_data = {
@@ -256,7 +257,7 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
         resource: status_models.Resource, 
         user: User, 
         path: str, 
-    ) -> Tuple[str, dict, bool]:
+    ) -> GlobusSubmitResponse:
         
         # Build data for the command
         input_data = {"path": path}
@@ -284,7 +285,7 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
         resource: status_models.Resource, 
         user: User, 
         request_model: filesystem_models.PostMakeDirRequest,
-    ) -> Tuple[str, dict, bool]:
+    ) -> GlobusSubmitResponse:
         
         # Build data for the command
         input_data = request_model.model_dump()
