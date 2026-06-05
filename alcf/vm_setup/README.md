@@ -194,6 +194,16 @@ psql -U apiuser -d facilityapi_db -c "ALTER TABLE task ADD COLUMN globus_endpoin
 psql -U apiuser -d facilityapi_db -c "ALTER TABLE task ADD COLUMN globus_function_id TEXT;"
 ```
 
+Add globus_endpoint_type and to Task
+```bash
+# Create the column
+psql -U apiuser -d facilityapi_db -c "ALTER TABLE task ADD COLUMN globus_endpoint_type TEXT;"
+
+# Add globus_multi_user_endpoint to all (pre-Transfer) existing task entries
+psql -U apiuser -d facilityapi_db -c "UPDATE task SET globus_endpoint_type = 'globus_multi_user_endpoint' WHERE globus_endpoint_type IS NULL;"
+
+```
+
 ## Redis cache
 
 Install redis
