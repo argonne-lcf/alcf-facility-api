@@ -62,7 +62,7 @@ def format_result_for_db(
         try:
             result = format_function(result) # This should give a pydantic model instance
         except Exception as e:
-            error_message = generate_error_message("Completed task result not compliant with IRI spec.")
+            error_message = generate_error_message("Completed task result not compliant with IRI spec.", e)
             raise HTTPException(
                 status_code=HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=error_message
@@ -85,7 +85,7 @@ def format_result_for_db(
         try:
             return json.dumps(result)
         except Exception as e:
-            error_message = generate_error_message("Failed task result cannot be converted to JSON.")
+            error_message = generate_error_message("Failed task result cannot be converted to JSON.", e)
             raise HTTPException(
                 status_code=HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=error_message
