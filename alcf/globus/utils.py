@@ -1,12 +1,13 @@
 from alcf.endpoints import get_endpoint, EndpointType, APIComponent
 from alcf.globus.utils_compute import submit_compute_task
-from starlette.status import HTTP_501_NOT_IMPLEMENTED
+from alcf.globus.utils_transfer import submit_transfer_task
+from starlette.status import HTTP_501_NOT_IMPLEMENTED, HTTP_500_INTERNAL_SERVER_ERROR
 from fastapi import HTTPException
 from app.types.user import User
 from typing import Tuple
 
-from alcf.config import CACHE_TTL_GLOBUS
-from alcf.cache.manager import cache_manager
+from alcf.enums import EndpointType
+from alcf.globus.utils_compute import get_compute_task_status
 
 
 # Submit task
@@ -15,7 +16,7 @@ async def submit_task(
         resource_name: str, 
         input_data: dict, 
         user: User
-    ) -> Tuple[str, dict]:
+    ) -> Tuple[str, dict, bool]:
     """Extract Globus endpoint, submit task, and return task ID and result (if possible)."""
         
     # Extract filesystem endpoint for the targetted resource
@@ -27,7 +28,7 @@ async def submit_task(
 
     # Submit Globus Compute task
     if globus_endpoint.endpoint_type == EndpointType.GLOBUS_MULTI_USER_ENDPOINT.value:
-        task_id, result = await submit_compute_task(
+        return await submit_compute_task(
             globus_endpoint,
             input_data, 
             user
@@ -35,7 +36,7 @@ async def submit_task(
 
     # Submit Globus Transfer task
     if globus_endpoint.endpoint_type == EndpointType.GLOBUS_TRANSFER_ENDPOINT.value:
-        task_id, result = await submit_transfer_task(
+        return await submit_transfer_task(
             function_name, 
             globus_endpoint,
             input_data, 
@@ -49,7 +50,21 @@ async def submit_task(
             detail=f"Endpoint for {function_name} on {resource_name} is not supported."
         )
 
-    return task_id, result
+
+# Get task status
+async def get_task_status(
+    user: User,
+    task_id: str,
+    globus_endpoint_type: str
+) -> tuple[str, str]:
+    """Get latest status of a Globus task."""
+    if globus_endpoint_type == EndpointType.GLOBUS_MULTI_USER_ENDPOINT.value:
+        return get_compute_task_status(user, task_id)
+    else:
+        raise HTTPException(
+            status_code=HTTP_500_INTERNAL_SERVER_ERROR, 
+            detail=f"Task status query not supported for {globus_endpoint_type}."
+        )
 
 
 
