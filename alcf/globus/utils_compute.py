@@ -14,6 +14,7 @@ ComputeScopes = ComputeScopeBuilder()
 
 from alcf.config import CACHE_TTL_GLOBUS
 from alcf.cache.manager import cache_manager
+from alcf.globus.schemas import GlobusSubmitResponse
 
 
 # Get Globus Compute Executor
@@ -70,7 +71,7 @@ async def submit_compute_task(
         globus_endpoint: _BaseEndpoint,
         input_data: dict, 
         user: User
-    ) -> Tuple[str, dict, bool]:
+    ) -> GlobusSubmitResponse:
 
     # Recover Globus Compute access token (from cache)
     _, _, dependent_tokens, _ = globus_introspect_token(user.api_key)
@@ -100,7 +101,7 @@ async def submit_compute_task(
         
     # Return the Globus Compute task ID with no result
     # Task ID, empty result, False for not failed
-    return task_id, None, False
+    return GlobusSubmitResponse(task_id=task_id)
 
 
 # Get Globus Compute task status
