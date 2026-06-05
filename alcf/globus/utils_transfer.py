@@ -1,6 +1,9 @@
 import asyncio
 import stat
+
 from pathlib import Path
+from typing import Tuple, Any, Callable
+
 from fastapi import HTTPException
 from globus_sdk import AccessTokenAuthorizer, TransferClient, TransferAPIError
 from alcf.endpoints import GlobusTransferEndpoint
@@ -8,21 +11,20 @@ from alcf.auth.utils import introspect_token as globus_introspect_token
 from alcf.auth.utils import LOGOUT_MESSAGE_STR
 from app.types.user import User
 from starlette.status import HTTP_501_NOT_IMPLEMENTED, HTTP_401_UNAUTHORIZED, HTTP_500_INTERNAL_SERVER_ERROR
-from typing import Tuple, Any
-from uuid import uuid4
 
 from alcf.auth.utils import generate_error_message
 from alcf.cache.manager import cache_manager
 from alcf.config import CACHE_TTL_GLOBUS
 from alcf.filesystem.validation import ALLOWED_PATH_BASES
+from alcf.globus.schemas import GlobusSubmitResponse
 
 
 # Get Globus Transfer Client
 @cache_manager.cached(ttl=CACHE_TTL_GLOBUS)
-def get_transfer_client(user_name: str, user_api_key: str) -> TransferClient:
+def get_transfer_client(access_token: str, user_name: str) -> TransferClient:
     """Create a Globus Transfer SDK client from user's access token"""
     try:
-        return TransferClient(authorizer=AccessTokenAuthorizer(user_api_key))
+        return TransferClient(authorizer=AccessTokenAuthorizer(access_token))
     except Exception as e:
         error_message = generate_error_message(
             f"Could not create Globus Transfer client for user {user_name}", e
@@ -53,7 +55,7 @@ async def transfer_ls(
     globus_endpoint: GlobusTransferEndpoint,
     input_data: dict, 
     user: User
-) -> Tuple[str, dict, bool]:
+) -> GlobusSubmitResponse:
     
     # Unsupported parameters
     for bool_parameter in ["numeric_uid", "recursive", "dereference"]:
@@ -63,40 +65,41 @@ async def transfer_ls(
                 detail=f"{bool_parameter} not supported with Globus Transfer ls operation."
             )
 
-    # Extract Globus Transfer access token
-    access_token = get_globus_transfer_access_token(user)
-
-    # Get Globus Transfer client using the user's token
-    transfer_client = get_transfer_client(user.name, access_token)
-
     # Prepare the input data
     input_data = {
-        "path": input_data.get("path", None),
+        "path": __strip_base(input_data.get("path", None), globus_endpoint.location),
         "show_hidden": input_data.get("show_hidden", False)
     }
+    
+    # Submit operation and return generated response object
+    transfer_client = get_transfer_client(get_globus_transfer_access_token(user), user.name)
+    response = await submit_transfer_client_operation(
+        transfer_client.operation_ls, globus_endpoint.endpoint_id, input_data
+    )
 
-    # Remove base path to start at the base of the Globus collection
-    input_data["path"] = __strip_base(input_data["path"], globus_endpoint.location)
+    # Return formatted response
+    if not response.failed:
+        response.result = __format_ls_response(response.result)
+    return response
 
-    # Generate a task ID (since Globus Transfer ls is synchronous)
-    task_id = str(uuid4())
 
-    # Submit operation
+async def submit_transfer_client_operation(
+    client_operation: Callable,
+    endpoint_id: str,
+    data: dict[str, Any]
+) -> GlobusSubmitResponse:
+    """Submit Globus transfer operation and return response if possible"""
     try:
-        ls_response = await asyncio.to_thread(
-            transfer_client.operation_ls, globus_endpoint.endpoint_id, **input_data
-        )
+        result = await asyncio.to_thread(client_operation, endpoint_id, **data)
+        return GlobusSubmitResponse(result=result)
     except TransferAPIError as e:
-        return task_id, {"error": str(e.message)}, True
+        return GlobusSubmitResponse(result=str(e.message), failed=True)
     except Exception as e:
         error_message = generate_error_message("Could not submit Globus Transfer ls task.", e)
         raise HTTPException(
             status_code=HTTP_500_INTERNAL_SERVER_ERROR, 
             detail=error_message
         )
-    
-    # Return task ID, formatted result, and non-failure flag
-    return task_id, __format_ls_response(ls_response), False
 
     
 def get_globus_transfer_access_token(user: User) -> str:
