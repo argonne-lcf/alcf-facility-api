@@ -24,7 +24,7 @@ import logging
 log = logging.getLogger(__name__)
 
 from alcf.enums import EndpointType
-
+from alcf.globus.schemas import GlobusSubmitResponse
 
 
 class AlcfAdapter(TaskFacilityAdapter, AlcfAuthenticatedAdapter):
@@ -98,7 +98,7 @@ class AlcfAdapter(TaskFacilityAdapter, AlcfAuthenticatedAdapter):
             if task.command in filesystem_commands:
 
                 # Execute the command and get the task ID
-                task_id, result, failed = await filesystem_commands[task.command](**kwargs)
+                response: GlobusSubmitResponse = await filesystem_commands[task.command](**kwargs)
 
                 # Extract Globus multi-user endpoint for the targetted resource
                 globus_endpoint = get_endpoint(
@@ -115,8 +115,8 @@ class AlcfAdapter(TaskFacilityAdapter, AlcfAuthenticatedAdapter):
 
                 # Define task status based on the result and failed flag
                 # This is done to support both async and sync tasks
-                if result:
-                    if failed:
+                if response.result:
+                    if response.failed:
                         status = task_models.TaskStatus.failed.value
                     else:
                         status = task_models.TaskStatus.completed.value
@@ -124,19 +124,17 @@ class AlcfAdapter(TaskFacilityAdapter, AlcfAuthenticatedAdapter):
                     status = task_models.TaskStatus.pending.value
 
                 # Format result for database
-                result = format_result_for_db(
-                    result,
-                    status,
-                    filesystem_format_functions[task.command]
+                result_for_db = format_result_for_db(
+                    response.result, status, filesystem_format_functions[task.command]
                 )
 
                 # Create task entry in database
                 await add_task_to_db({
-                    "id": task_id,
+                    "id": response.task_id,
                     "user_id": user.id,
                     "status": status,
                     "task_command": json.dumps(task.model_dump()),
-                    "result": result,
+                    "result": result_for_db,
                     "globus_endpoint_id": globus_endpoint.endpoint_id,
                     "globus_function_id": globus_function_id,
                     "globus_endpoint_type": globus_endpoint.endpoint_type,
@@ -144,7 +142,7 @@ class AlcfAdapter(TaskFacilityAdapter, AlcfAuthenticatedAdapter):
                 
                 # Return the task ID to the user
                 return task_models.TaskSubmitResponse(
-                    task_id=task_id
+                    task_id=response.task_id
                 )
             
             # Unsupported commands
