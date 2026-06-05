@@ -109,8 +109,14 @@ async def transfer_mkdir(
     # Return formatted response
     if not response.failed:
         response.result = {"output": None}
+        try:
+            stat = await submit_transfer_client_operation(
+                transfer_client.operation_stat, globus_endpoint.endpoint_id, path
+            )
+            response.result = {"output": __format_ls_entry(stat.result.data)}
+        except:
+            pass
     return response
-
 
 
 async def submit_transfer_client_operation(
