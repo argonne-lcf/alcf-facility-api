@@ -9,6 +9,7 @@ from contextlib import asynccontextmanager
 from . import models as db_models
 from alcf.config import DATABASE_URL, DATABASE_SQL_ECHO
 
+from alcf.auth.utils import generate_error_message
 
 engine = create_async_engine(
     DATABASE_URL,
@@ -63,9 +64,10 @@ async def add_to_db(data: dict, db_model_class):
             await session.commit()
         except Exception as e:
             await session.rollback()
+            error_message = generate_error_message("Error creating database object.", e)
             raise HTTPException(
                 status_code=HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Error creating database object: {e}"
+                detail=error_message
             )
 
 # Function to update an existing entry to the database
@@ -250,7 +252,8 @@ async def get_db_objects(
             result = await session.execute(stmt)
             return result.scalars().all()
         except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Error retrieving database objects: {e}")
+            error_message = generate_error_message("Error retrieving database objects.", e)
+            raise HTTPException(status_code=500, detail=error_message)
 
 # Function to extract a list of facility entries from a list of IDs (or all if no IDs provided)
 async def get_db_facilities(
@@ -402,4 +405,5 @@ async def get_db_tasks_by_user(
             result = await session.execute(stmt)
             return result.scalars().all()
         except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Error retrieving tasks: {e}")
+            error_message = generate_error_message("Error retrieving tasks.", e)
+            raise HTTPException(status_code=500, detail=error_message)
