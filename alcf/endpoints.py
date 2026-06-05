@@ -98,6 +98,7 @@ class GlobusMultiUserEndpoint(_BaseEndpoint):
 
 # Globus transfer endpoint configuration
 class _GlobusTransferEndpointConfig(BaseModel):
+    location: str
     endpoint_id: str
 
 
@@ -107,6 +108,11 @@ class GlobusTransferEndpoint(_BaseEndpoint):
     # Data validation upon initialization
     def __init__(self, input_params: dict):
         super().__init__(input_params, _EndpointParams[_GlobusTransferEndpointConfig])
+
+    # Location property
+    @property
+    def location(self) -> str:
+        return self._validated.config.location
 
     # Endpoint ID property
     @property
