@@ -5,7 +5,7 @@ from app.routers.status import models as status_models
 from app.types.user import User
 from app.routers.filesystem import models as filesystem_models
 from alcf.auth.alcf_adapter import AlcfAuthenticatedAdapter
-from starlette.status import HTTP_501_NOT_IMPLEMENTED, HTTP_400_BAD_REQUEST 
+from starlette.status import HTTP_501_NOT_IMPLEMENTED 
 from typing import Any, Tuple
 from alcf.filesystem.validation import (
     validate_data_with_path,
@@ -33,7 +33,7 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
         resource: status_models.Resource, 
         user: User, 
         request_model: filesystem_models.PutFileChmodRequest
-    ) -> str:
+    ) -> Tuple[str, dict, bool]:
         
         # Build data for the command
         input_data = request_model.model_dump()
@@ -41,11 +41,8 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
         # Validate data
         validate_data_with_path(input_data, ChmodInputData, resource.name)
 
-        # Submit task to Globus Compute and wait for the task ID
-        task_id = await globus_utils.submit_task("chmod", resource.name, input_data, user)
-
-        # Return task ID to the user
-        return task_id
+        # Submit task with Globus and return the task ID
+        return await globus_utils.submit_task("chmod", resource.name, input_data, user)
 
 
     # Format chmod response
@@ -64,7 +61,7 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
         resource: status_models.Resource, 
         user: User, 
         request_model: filesystem_models.PutFileChownRequest
-    ) -> str:
+    ) -> Tuple[str, dict, bool]:
 
         # Build data for the command
         input_data = request_model.model_dump()
@@ -73,11 +70,8 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
         # Validate data
         validate_data_with_path(input_data, ChownInputData, resource.name)
 
-        # Submit task to Globus Compute and wait for the result
-        task_id = await globus_utils.submit_task("chown", resource.name, input_data, user)
-
-        # Return task ID to the user
-        return task_id
+        # Submit task with Globus and return the task ID
+        return await globus_utils.submit_task("chown", resource.name, input_data, user)
 
 
     # Format chown response
@@ -100,7 +94,7 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
         numeric_uid: bool, 
         recursive: bool, 
         dereference: bool,
-    ) -> str:
+    ) -> Tuple[str, dict, bool]:
         
         # Disable options that are not ready yet
         if recursive:
@@ -120,11 +114,8 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
         # Validate data
         validate_data_with_path(input_data, LsInputData, resource.name)
 
-        # Submit task to Globus Compute and wait for the task ID
-        task_id = await globus_utils.submit_task("ls", resource.name, input_data, user)
-
-        # Return task ID to the user
-        return task_id
+        # Submit task with Globus and return the task ID
+        return await globus_utils.submit_task("ls", resource.name, input_data, user)
     
 
     # Format ls response
@@ -146,7 +137,7 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
         file_bytes: int, 
         lines: int, 
         skip_trailing: bool,
-    ) -> str:
+    ) -> Tuple[str, dict, bool]:
         
         # Build data for the command
         input_data = {
@@ -159,11 +150,8 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
         # Validate data
         validate_data_with_path(input_data, HeadInputData, resource.name, forbid_hidden=True)
 
-        # Submit task to Globus Compute and wait for the task ID
-        task_id = await globus_utils.submit_task("head", resource.name, input_data, user)
-
-        # Return task ID to the user
-        return task_id
+        # Submit task with Globus and return the task ID
+        return await globus_utils.submit_task("head", resource.name, input_data, user)
 
 
     # Format head response
@@ -199,7 +187,7 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
         path: str, 
         size: int,
         offset: int,
-    ) -> str:
+    ) -> Tuple[str, dict, bool]:
         
         # Build data for the command
         input_data = {
@@ -211,11 +199,8 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
         # Validate data
         validate_data_with_path(input_data, ViewInputData, resource.name, forbid_hidden=True)
 
-        # Submit task to Globus Compute and wait for the task ID
-        task_id = await globus_utils.submit_task("view", resource.name, input_data, user)
-
-        # Return task ID to the user
-        return task_id
+        # Submit task with Globus and return the task ID
+        return await globus_utils.submit_task("view", resource.name, input_data, user)
 
 
     # Format view response
@@ -271,7 +256,7 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
         resource: status_models.Resource, 
         user: User, 
         path: str, 
-    ) -> str:
+    ) -> Tuple[str, dict, bool]:
         
         # Build data for the command
         input_data = {"path": path}
@@ -279,11 +264,8 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
         # Validate data
         validate_data_with_path(input_data, BaseModelWithPath, resource.name, forbid_hidden=True)
 
-        # Submit task to Globus Compute and wait for the task ID
-        task_id = await globus_utils.submit_task("rm", resource.name, input_data, user)
-
-        # Return task ID to the user
-        return task_id
+        # Submit task with Globus and return the task ID
+        return await globus_utils.submit_task("rm", resource.name, input_data, user)
     
 
     # Format rm response
@@ -302,7 +284,7 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
         resource: status_models.Resource, 
         user: User, 
         request_model: filesystem_models.PostMakeDirRequest,
-    ) -> str:
+    ) -> Tuple[str, dict, bool]:
         
         # Build data for the command
         input_data = request_model.model_dump()
@@ -310,12 +292,9 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
         # Validate data
         validate_data_with_path(input_data, MkdirInputData, resource.name)
 
-        # Submit task to Globus Compute and wait for the task ID
-        task_id = await globus_utils.submit_task("mkdir", resource.name, input_data, user)
+        # Submit task with Globus and return the task ID
+        return await globus_utils.submit_task("mkdir", resource.name, input_data, user)
 
-        # Return task ID to the user
-        return task_id
-    
 
     # Format mkdir response
     def format_mkdir_response(
