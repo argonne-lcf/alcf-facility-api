@@ -70,7 +70,7 @@ async def submit_compute_task(
         globus_endpoint: _BaseEndpoint,
         input_data: dict, 
         user: User
-    ) -> Tuple[str, dict]:
+    ) -> Tuple[str, dict, bool]:
 
     # Recover Globus Compute access token (from cache)
     _, _, dependent_tokens, _ = globus_introspect_token(user.api_key)
@@ -99,12 +99,13 @@ async def submit_compute_task(
         )
         
     # Return the Globus Compute task ID with no result
-    return task_id, None
+    # Task ID, empty result, False for not failed
+    return task_id, None, False
 
 
 # Get Globus Compute task status
 # TODO: cache this
-def get_compute_task_status(user: User, task_id: str):
+def get_compute_task_status(user: User, task_id: str) -> tuple[str, str]:
     """Check the status of a task with Globus Compute and return result if completed."""
 
     # Recover Globus Compute access token (from cache)
