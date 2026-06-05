@@ -1,3 +1,4 @@
+import asyncio
 import stat
 from pathlib import Path
 from fastapi import HTTPException
@@ -82,7 +83,9 @@ async def transfer_ls(
 
     # Submit operation
     try:
-        ls_response = transfer_client.operation_ls(globus_endpoint.endpoint_id, **input_data)
+        ls_response = await asyncio.to_thread(
+            transfer_client.operation_ls, globus_endpoint.endpoint_id, **input_data
+        )
     except TransferAPIError as e:
         return task_id, {"error": str(e.message)}, True
     except Exception as e:
