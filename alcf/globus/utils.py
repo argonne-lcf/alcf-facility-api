@@ -1,13 +1,12 @@
 from alcf.endpoints import get_endpoint, EndpointType, APIComponent
-from alcf.globus.utils_compute import submit_compute_task
-from alcf.globus.utils_transfer import submit_transfer_task
 from starlette.status import HTTP_501_NOT_IMPLEMENTED, HTTP_500_INTERNAL_SERVER_ERROR
 from fastapi import HTTPException
 from app.types.user import User
-from typing import Tuple
 
 from alcf.enums import EndpointType
-from alcf.globus.utils_compute import get_compute_task_status
+from alcf.globus.utils_compute import submit_compute_task, get_compute_task_status
+from alcf.globus.utils_transfer import submit_transfer_task
+from alcf.globus.schemas import GlobusSubmitResponse
 
 
 # Submit task
@@ -16,7 +15,7 @@ async def submit_task(
         resource_name: str, 
         input_data: dict, 
         user: User
-    ) -> Tuple[str, dict, bool]:
+    ) -> GlobusSubmitResponse:
     """Extract Globus endpoint, submit task, and return task ID and result (if possible)."""
         
     # Extract filesystem endpoint for the targetted resource
