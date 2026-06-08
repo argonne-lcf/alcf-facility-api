@@ -19,6 +19,7 @@ from alcf.database import models as db_models
 from alcf.globus.utils import get_task_status
 from alcf.config import TASK_TIMEOUT_SEC
 from alcf.logging.decorators import log_task_operation
+from alcf.enums import EndpointType
 import json
 import logging
 log = logging.getLogger(__name__)
@@ -233,8 +234,8 @@ class AlcfAdapter(TaskFacilityAdapter, AlcfAuthenticatedAdapter):
                     datetime.now(timezone.utc).replace(tzinfo=None) - db_task.created_at
                 ).total_seconds()
 
-            # Fail task if stalled
-            if seconds_passed >= TASK_TIMEOUT_SEC:
+            # Fail task if stalled (except for Transfer tasks)
+            if seconds_passed >= TASK_TIMEOUT_SEC and db_task.globus_endpoint_type != EndpointType.GLOBUS_TRANSFER_ENDPOINT.value:
                 status = task_models.TaskStatus.failed.value
                 result = {
                     "error": f"Task timedout after {TASK_TIMEOUT_SEC} seconds."
