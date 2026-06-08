@@ -22,6 +22,7 @@ filesystem_commands = {
     "mkdir": filesystem_adaptor.mkdir,
     "rm": filesystem_adaptor.rm,
     "file": filesystem_adaptor.file,
+    "mv": filesystem_adaptor.mv,
 }
 
 # Mapping between filesystem commands and result formating functions (needed for newly generate result)
@@ -34,6 +35,7 @@ filesystem_format_functions = {
     "mkdir": filesystem_adaptor.format_mkdir_response,
     "rm": filesystem_adaptor.format_rm_response,
     "file": filesystem_adaptor.format_file_response,
+    "mv": filesystem_adaptor.format_mv_response,
 }
 
 # Mapping between filesystem commands and response type (needed for database extraction)
@@ -44,6 +46,7 @@ filesystem_model_responses = {
     "view": filesystem_models.GetViewFileResponse,
     "mkdir": filesystem_models.PostMkdirResponse,
     "file": filesystem_models.GetFileTypeResponse,
+    "mv": filesystem_models.PostMoveResponse,
 }
 
 # Format result for database
