@@ -5,7 +5,7 @@ from app.types.user import User
 
 from alcf.enums import EndpointType
 from alcf.globus.utils_compute import submit_compute_task, get_compute_task_status
-from alcf.globus.utils_transfer import submit_transfer_task
+from alcf.globus.utils_transfer import submit_transfer_task, get_transfer_task_status
 from alcf.globus.schemas import GlobusSubmitResponse
 
 
@@ -59,6 +59,8 @@ async def get_task_status(
     """Get latest status of a Globus task."""
     if globus_endpoint_type == EndpointType.GLOBUS_MULTI_USER_ENDPOINT.value:
         return get_compute_task_status(user, task_id)
+    elif globus_endpoint_type == EndpointType.GLOBUS_TRANSFER_ENDPOINT.value:
+        return get_transfer_task_status(user, task_id)
     else:
         raise HTTPException(
             status_code=HTTP_500_INTERNAL_SERVER_ERROR, 
