@@ -1,5 +1,6 @@
 import asyncio
 import stat
+import json
 
 from pathlib import Path
 from typing import Tuple, Any, Callable
@@ -9,9 +10,10 @@ from globus_sdk import AccessTokenAuthorizer, TransferClient, TransferAPIError
 from alcf.endpoints import GlobusTransferEndpoint
 from alcf.auth.utils import introspect_token as globus_introspect_token
 from alcf.auth.utils import LOGOUT_MESSAGE_STR
+from app.routers.task import models as task_models
 from app.types.user import User
 from starlette.status import HTTP_501_NOT_IMPLEMENTED, HTTP_401_UNAUTHORIZED, HTTP_500_INTERNAL_SERVER_ERROR
-from globus_sdk import GlobusHTTPResponse
+from globus_sdk import GlobusHTTPResponse, DeleteData
 
 from alcf.auth.utils import generate_error_message
 from alcf.cache.manager import cache_manager
@@ -170,15 +172,43 @@ async def gt_iri_file(
     return response
 
 
+# Execute IRI rm command
+async def gt_iri_rm(
+    globus_endpoint: GlobusTransferEndpoint,
+    input_data: dict, 
+    user: User
+) -> GlobusSubmitResponse:
+    
+    # Prepare the input data
+    path = __strip_base(input_data.get("path", None), globus_endpoint.location)
+    
+    # Submit operation and return generated response object
+    transfer_client: TransferClient = get_transfer_client(get_globus_transfer_access_token(user), user.name)
+    ddata = DeleteData(endpoint=globus_endpoint.endpoint_id, recursive=True)
+    ddata.add_item(path)
+    response = await submit_transfer_client_operation(
+        transfer_client.submit_delete, ddata
+    )
+
+    # Return formatted response (remove result to keep task pending)
+    if not response.failed:
+        try:
+            response.task_id = response.result.data["task_id"]
+            response.result = None
+        except Exception as e:
+            error_message = generate_error_message("Could extract task ID from Globus.", e)
+            raise HTTPException(status_code=500, detail=error_message)
+    return response    
+
+
 async def submit_transfer_client_operation(
     client_operation: Callable,
-    endpoint_id: str,
     *args,
     **kwargs
 ) -> GlobusSubmitResponse:
     """Submit Globus transfer operation and return response if possible"""
     try:
-        result = await asyncio.to_thread(client_operation, endpoint_id, *args, **kwargs)
+        result = await asyncio.to_thread(client_operation, *args, **kwargs)
         return GlobusSubmitResponse(result=result)
     except TransferAPIError as e:
         return GlobusSubmitResponse(result=str(e.message), failed=True)
@@ -218,6 +248,7 @@ TRANSFER_FUNCTION_MAP = {
     "mkdir": gt_iri_mkdir,
     "file": gt_iri_file,
     "mv": gt_iri_mv,
+    "rm": gt_iri_rm,
 }
 
 
@@ -300,3 +331,60 @@ def __format_file_resonse(globus_response: GlobusHTTPResponse) -> dict[str, str]
     except Exception as e:
         error_message = generate_error_message("Could format Globus Transfer stat response.", e)
         raise HTTPException(status_code=500, detail=error_message)
+
+
+# Get Globus Transfer task status
+# TODO: cache this
+def get_transfer_task_status(user: User, task_id: str) -> tuple[str, str]:
+    """Check the status of a task with Globus Transfer and return result if completed."""
+
+    # Get Globus Transfer client using user's credentials
+    transfer_client: TransferClient = get_transfer_client(get_globus_transfer_access_token(user), user.name)
+
+    # Try to get the task status from Globus
+    try:
+        task_status = transfer_client.get_task(task_id)
+    except Exception as e:
+        error_message = generate_error_message("Could not get task status from Globus Transfer", e)
+        raise HTTPException(
+            status_code=HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=error_message
+        )
+    
+    # Error if format changed
+    if "status" not in task_status:
+        raise HTTPException(
+            status_code=HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Cannot access status from Globus Transfer get_task response."
+        )
+
+    # Still pending
+    if task_status["status"] == "ACTIVE":
+        status = task_models.TaskStatus.pending.value
+        result = None
+
+    # Successful
+    elif task_status["status"] == "SUCCEEDED":
+        status = task_models.TaskStatus.completed.value
+        if task_status["type"] == "DELETE":
+            result = "Delete successful."
+        else:
+            result = None
+
+    # Failed
+    elif task_status["status"] == "FAILED":
+        status = task_models.TaskStatus.failed.value
+        try:
+            result = {"error": task_status["fatal_error"]}
+        except:
+            result = {"error": "Task failed."}
+
+    # Error if unknown
+    else:
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Globus Transfer status {task_status['status']} not supported yet."
+        )
+
+    # Return the status and result (if any)
+    return status, result
