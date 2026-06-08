@@ -11,6 +11,7 @@ from alcf.auth.utils import introspect_token as globus_introspect_token
 from alcf.auth.utils import LOGOUT_MESSAGE_STR
 from app.types.user import User
 from starlette.status import HTTP_501_NOT_IMPLEMENTED, HTTP_401_UNAUTHORIZED, HTTP_500_INTERNAL_SERVER_ERROR
+from globus_sdk import GlobusHTTPResponse
 
 from alcf.auth.utils import generate_error_message
 from alcf.cache.manager import cache_manager
@@ -50,8 +51,8 @@ def __strip_base(path: str, location: str) -> str:
     )
     
 
-# Execute ls command
-async def transfer_ls(
+# Execute IRI ls command
+async def gt_iri_ls(
     globus_endpoint: GlobusTransferEndpoint,
     input_data: dict, 
     user: User
@@ -83,8 +84,8 @@ async def transfer_ls(
     return response
 
 
-# Execute mkdir command
-async def transfer_mkdir(
+# Execute IRI mkdir command
+async def gt_iri_mkdir(
     globus_endpoint: GlobusTransferEndpoint,
     input_data: dict, 
     user: User
@@ -116,6 +117,28 @@ async def transfer_mkdir(
             response.result = {"output": __format_ls_entry(stat.result.data)}
         except:
             pass
+    return response
+
+
+# Execute IRI file command
+async def gt_iri_file(
+    globus_endpoint: GlobusTransferEndpoint,
+    input_data: dict, 
+    user: User
+) -> GlobusSubmitResponse:
+    
+    # Prepare the input data
+    path = __strip_base(input_data.get("path", None), globus_endpoint.location)
+    
+    # Submit operation and return generated response object
+    transfer_client: TransferClient = get_transfer_client(get_globus_transfer_access_token(user), user.name)
+    response = await submit_transfer_client_operation(
+        transfer_client.operation_stat, globus_endpoint.endpoint_id, path
+    )
+
+    # Return formatted response 
+    if not response.failed:
+        response.result = __format_file_resonse(response.result)
     return response
 
 
@@ -163,8 +186,9 @@ def get_globus_transfer_access_token(user: User) -> str:
 
 # Map between function names and transfer functions
 TRANSFER_FUNCTION_MAP = {
-    "ls": transfer_ls,
-    "mkdir": transfer_mkdir
+    "ls": gt_iri_ls,
+    "mkdir": gt_iri_mkdir,
+    "file": gt_iri_file
 }
 
 
@@ -236,7 +260,14 @@ def __format_ls_entry(ls_entry: dict[str, Any]) -> dict[str, Any]:
     # Error handling
     except Exception as e:
         error_message = generate_error_message("Could format Globus Transfer ls entry.", e)
-        raise HTTPException(
-            status_code=500, 
-            detail=error_message
-        )
+        raise HTTPException(status_code=500, detail=error_message)
+    
+
+# Format file response
+def __format_file_resonse(globus_response: GlobusHTTPResponse) -> dict[str, str]:
+    """Convert ls Stat to IRI File response."""
+    try:
+        return {"output": globus_response.data["type"]}
+    except Exception as e:
+        error_message = generate_error_message("Could format Globus Transfer stat response.", e)
+        raise HTTPException(status_code=500, detail=error_message)
