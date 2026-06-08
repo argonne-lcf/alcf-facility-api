@@ -20,7 +20,8 @@ filesystem_commands = {
     "head": filesystem_adaptor.head,
     "view": filesystem_adaptor.view,
     "mkdir": filesystem_adaptor.mkdir,
-    "rm": filesystem_adaptor.rm
+    "rm": filesystem_adaptor.rm,
+    "file": filesystem_adaptor.file,
 }
 
 # Mapping between filesystem commands and result formating functions (needed for newly generate result)
@@ -31,7 +32,8 @@ filesystem_format_functions = {
     "head": filesystem_adaptor.format_head_response,
     "view": filesystem_adaptor.format_view_response,
     "mkdir": filesystem_adaptor.format_mkdir_response,
-    "rm": filesystem_adaptor.format_rm_response
+    "rm": filesystem_adaptor.format_rm_response,
+    "file": filesystem_adaptor.format_file_response,
 }
 
 # Mapping between filesystem commands and response type (needed for database extraction)
@@ -40,7 +42,8 @@ filesystem_model_responses = {
     "chmod": filesystem_models.PutFileChmodResponse,
     "chown": filesystem_models.PutFileChownResponse,
     "view": filesystem_models.GetViewFileResponse,
-    "mkdir": filesystem_models.PostMkdirResponse
+    "mkdir": filesystem_models.PostMkdirResponse,
+    "file": filesystem_models.GetFileTypeResponse,
 }
 
 # Format result for database
