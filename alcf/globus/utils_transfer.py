@@ -109,14 +109,42 @@ async def gt_iri_mkdir(
 
     # Return formatted response
     if not response.failed:
-        response.result = {"output": None}
         try:
             stat = await submit_transfer_client_operation(
                 transfer_client.operation_stat, globus_endpoint.endpoint_id, path
             )
             response.result = {"output": __format_ls_entry(stat.result.data)}
         except:
-            pass
+            response.result = {"output": None}
+    return response
+
+
+# Execute IRI mv command
+async def gt_iri_mv(
+    globus_endpoint: GlobusTransferEndpoint,
+    input_data: dict, 
+    user: User
+) -> GlobusSubmitResponse:
+    
+    # Prepare the input data
+    old_path = __strip_base(input_data.get("path", None), globus_endpoint.location)
+    new_path = __strip_base(input_data.get("target_path", None), globus_endpoint.location)
+    
+    # Submit operation and return generated response object
+    transfer_client: TransferClient = get_transfer_client(get_globus_transfer_access_token(user), user.name)
+    response = await submit_transfer_client_operation(
+        transfer_client.operation_rename, globus_endpoint.endpoint_id, old_path, new_path
+    )
+
+    # Return formatted response
+    if not response.failed:
+        try:
+            stat = await submit_transfer_client_operation(
+                transfer_client.operation_stat, globus_endpoint.endpoint_id, new_path
+            )
+            response.result = {"output": __format_ls_entry(stat.result.data)}
+        except:
+            response.result = {"output": None}
     return response
 
 
@@ -188,7 +216,8 @@ def get_globus_transfer_access_token(user: User) -> str:
 TRANSFER_FUNCTION_MAP = {
     "ls": gt_iri_ls,
     "mkdir": gt_iri_mkdir,
-    "file": gt_iri_file
+    "file": gt_iri_file,
+    "mv": gt_iri_mv,
 }
 
 
