@@ -392,8 +392,29 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
         resource: status_models.Resource, 
         user: User, 
         request_model: filesystem_models.PostMoveRequest,
+    ) -> GlobusSubmitResponse:
+
+        # Build data for the command
+        input_data = request_model.model_dump()
+
+        # Validate data
+        validate_data_with_path(
+            {"path": input_data.get("path", None)}, BaseModelWithPath, resource.name
+        )
+        validate_data_with_path(
+            {"path": input_data.get("target_path", None)}, BaseModelWithPath, resource.name
+        )
+
+        # Submit task with Globus and return the task ID
+        return await globus_utils.submit_task("mv", resource.name, input_data, user)
+    
+    
+    # Format mv response
+    def format_mv_response(
+        self: "AlcfAdapter",
+        result
     ) -> filesystem_models.PostMoveResponse:
-        raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="Not implemented yet.")
+        return filesystem_models.PostMoveResponse(**result)
 
 
     # Cp
