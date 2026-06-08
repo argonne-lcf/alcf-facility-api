@@ -13,13 +13,21 @@ from alcf.auth.utils import LOGOUT_MESSAGE_STR
 from app.routers.task import models as task_models
 from app.types.user import User
 from starlette.status import HTTP_501_NOT_IMPLEMENTED, HTTP_401_UNAUTHORIZED, HTTP_500_INTERNAL_SERVER_ERROR
-from globus_sdk import GlobusHTTPResponse, DeleteData
+from globus_sdk import GlobusHTTPResponse, DeleteData, TransferData
 
 from alcf.auth.utils import generate_error_message
 from alcf.cache.manager import cache_manager
 from alcf.config import CACHE_TTL_GLOBUS
 from alcf.filesystem.validation import ALLOWED_PATH_BASES
 from alcf.globus.schemas import GlobusSubmitResponse
+
+
+# No email notification
+NOTIFY_KWARGS = {
+    "notify_on_succeeded": False,
+    "notify_on_failed": False,
+    "notify_on_inactive": False,
+}
 
 
 # Get Globus Transfer Client
@@ -184,7 +192,11 @@ async def gt_iri_rm(
     
     # Submit operation and return generated response object
     transfer_client: TransferClient = get_transfer_client(get_globus_transfer_access_token(user), user.name)
-    ddata = DeleteData(endpoint=globus_endpoint.endpoint_id, recursive=True)
+    ddata = DeleteData(
+        endpoint=globus_endpoint.endpoint_id,
+        recursive=True,
+        **NOTIFY_KWARGS
+    )
     ddata.add_item(path)
     response = await submit_transfer_client_operation(
         transfer_client.submit_delete, ddata
@@ -198,7 +210,46 @@ async def gt_iri_rm(
         except Exception as e:
             error_message = generate_error_message("Could extract task ID from Globus.", e)
             raise HTTPException(status_code=500, detail=error_message)
-    return response    
+    return response
+
+
+# Execute IRI cp command
+async def gt_iri_cp(
+    globus_endpoint: GlobusTransferEndpoint,
+    input_data: dict, 
+    user: User
+) -> GlobusSubmitResponse:
+    
+    # Prepare the input data
+    source_path = __strip_base(input_data.get("path", None), globus_endpoint.location)
+    destination_path = __strip_base(input_data.get("target_path", None), globus_endpoint.location)
+
+    # Return failed task if file does not exist
+    response_check: GlobusSubmitResponse = await gt_iri_file(globus_endpoint, input_data, user)
+    if response_check.failed:
+        return response_check
+    
+    # Submit operation and return generated response object
+    transfer_client: TransferClient = get_transfer_client(get_globus_transfer_access_token(user), user.name)
+    tdata = TransferData(
+        source_endpoint=globus_endpoint.endpoint_id,
+        destination_endpoint=globus_endpoint.endpoint_id,
+        **NOTIFY_KWARGS
+    )
+    tdata.add_item(source_path, destination_path)
+    response = await submit_transfer_client_operation(
+        transfer_client.submit_transfer, tdata
+    )
+
+    # Return formatted response (remove result to keep task pending)
+    if not response.failed:
+        try:
+            response.task_id = response.result.data["task_id"]
+            response.result = None
+        except Exception as e:
+            error_message = generate_error_message("Could extract task ID from Globus.", e)
+            raise HTTPException(status_code=500, detail=error_message)
+    return response  
 
 
 async def submit_transfer_client_operation(
@@ -249,6 +300,7 @@ TRANSFER_FUNCTION_MAP = {
     "file": gt_iri_file,
     "mv": gt_iri_mv,
     "rm": gt_iri_rm,
+    "cp": gt_iri_cp,
 }
 
 
@@ -350,7 +402,7 @@ def get_transfer_task_status(user: User, task_id: str) -> tuple[str, str]:
             status_code=HTTP_500_INTERNAL_SERVER_ERROR,
             detail=error_message
         )
-    
+
     # Error if format changed
     if "status" not in task_status:
         raise HTTPException(
@@ -368,6 +420,8 @@ def get_transfer_task_status(user: User, task_id: str) -> tuple[str, str]:
         status = task_models.TaskStatus.completed.value
         if task_status["type"] == "DELETE":
             result = "Delete successful."
+        if task_status["type"] == "TRANSFER":
+            result = {"error": "Transfer/copy successful."}
         else:
             result = None
 
@@ -382,7 +436,7 @@ def get_transfer_task_status(user: User, task_id: str) -> tuple[str, str]:
     # Error if unknown
     else:
         raise HTTPException(
-            status_code=500, 
+            status_code=HTTP_500_INTERNAL_SERVER_ERROR, 
             detail=f"Globus Transfer status {task_status['status']} not supported yet."
         )
 
