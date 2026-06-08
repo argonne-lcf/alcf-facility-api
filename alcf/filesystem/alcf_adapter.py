@@ -232,8 +232,26 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
         resource: status_models.Resource, 
         user: User, 
         path: str, 
+    ) -> GlobusSubmitResponse:
+        
+        # Build data for the command
+        input_data = {
+            "path": path
+        }
+
+        # Validate data
+        validate_data_with_path(input_data, BaseModelWithPath, resource.name)
+
+        # Submit task with Globus and return the task ID
+        return await globus_utils.submit_task("file", resource.name, input_data, user)
+    
+    
+    # Format file response
+    def format_file_response(
+        self: "AlcfAdapter",
+        result
     ) -> filesystem_models.GetFileTypeResponse:
-        raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="Not implemented yet.")
+        return filesystem_models.GetFileTypeResponse(**result)
 
 
     # Stat
