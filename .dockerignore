@@ -26,3 +26,5 @@ __pycache__/
 # Others
 vm_setup/
 .DS_Store
+
+alcf_*.json
