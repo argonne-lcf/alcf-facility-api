@@ -15,3 +15,7 @@ class EndpointType(str, Enum):
 
 class AllType(str, Enum):
     ALL = "all"
+
+
+class IdentitySourceType(str, Enum):
+    GLOBUS_CLIENT = "globus-client"
