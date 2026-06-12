@@ -1,4 +1,6 @@
 from functools import wraps
+from fastapi import HTTPException
+from starlette.status import HTTP_401_UNAUTHORIZED
 from app.types.user import User
 from app.routers.status import models as status_models
 from app.routers.account import models as account_models
@@ -102,7 +104,12 @@ def log_compute_operation(func):
         resource: status_models.Resource = input_data.pop("resource")
 
         # Recover the ALCF username from the user's API key
-        alcf_username, _ = get_alcf_username_from_token(user.api_key)
+        alcf_username, error_message = get_alcf_username_from_token(user.api_key)
+        if alcf_username is None:
+            raise HTTPException(
+                status_code=HTTP_401_UNAUTHORIZED,
+                detail=error_message
+            )
 
         # Initialize log
         log = AuthComputeLog(
