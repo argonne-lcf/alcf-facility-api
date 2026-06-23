@@ -38,7 +38,7 @@ class AlcfAdapter(AccountFacilityAdapter, AlcfAuthenticatedAdapter):
         
         # Submit query to Ni REST API
         response = await get_ni_rest(
-            url=f"{get_ni_rest_api_url()}/account/capabilities"
+            url=f"{get_ni_rest_api_url()}/capabilities"
         )
 
         # Validate data
@@ -67,7 +67,7 @@ class AlcfAdapter(AccountFacilityAdapter, AlcfAuthenticatedAdapter):
         
         # Submit query to Ni REST API
         response = await get_ni_rest(
-            url=f"{get_ni_rest_api_url()}/account/projects",
+            url=f"{get_ni_rest_api_url()}/projects",
             access_token=generate_user_keycloak_token(user)
         )
 
@@ -89,7 +89,7 @@ class AlcfAdapter(AccountFacilityAdapter, AlcfAuthenticatedAdapter):
         
         # Submit query to Ni REST API
         response = await get_ni_rest(
-            url=f"{get_ni_rest_api_url()}/account/projects/{project.name}/project_allocations",
+            url=f"{get_ni_rest_api_url()}/projects/{project.name}/project_allocations",
             access_token=generate_user_keycloak_token(user)
         )
 
