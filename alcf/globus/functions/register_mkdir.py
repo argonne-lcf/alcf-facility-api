@@ -1,4 +1,4 @@
-from globus_compute_sdk.serialize import ComputeSerializer, CombinedCode
+from globus_compute_sdk.serialize import CombinedCode
 from globus_compute_sdk import Client
 import json
 import os

@@ -5,15 +5,16 @@ import os
 
 # Constants
 FILE_NAME = "function_ids.json"
-COMMAND = "view"
+COMMAND = "checksum"
 
-# Globus Compute function definition (view)
-def view(params):
+# Globus Compute function definition (checksum)
+def checksum(params):
 
     # Import all necessary packages
     from pathlib import Path
-    from pydantic import BaseModel, ConfigDict, Field, field_validator
-    from typing import Literal, Optional
+    from pydantic import BaseModel, ConfigDict, field_validator
+    from typing import Optional
+    import hashlib
     import os
     import pwd
     import re
@@ -37,38 +38,23 @@ def view(params):
     def is_allowed_path(path: Path) -> bool:
         return any(path == base or str(path).startswith(f"{base}/") for base in ALLOWED_PATH_BASES)
 
-    # Maximum number of bytes to read
-    MAX_BYTES = 9_958_272  # 9.5 MB
-
     # Base class that excludes extra fields
     class BaseModelWithForbiddenExtra(BaseModel):
         model_config = ConfigDict(extra="forbid")
 
-    # Pydantic for file content
-    ContentUnit = Literal["bytes"]
-    class FileContent(BaseModelWithForbiddenExtra):
-        """Content of a file slice with metadata."""
-        content: str
-        content_type: ContentUnit
-        start_position: int
-        end_position: int
-
-    # Pydantic for file response
-    class FileResponse(BaseModelWithForbiddenExtra):
-        """Response for viewing a portion of a file."""
-        output: Optional[FileContent] = None
-        offset: int
+    # Pydantic model for file checksum
+    class FileChecksum(BaseModelWithForbiddenExtra):
+        algorithm: str
+        checksum: str
 
     # Pydantic for function response
     class Response(BaseModelWithForbiddenExtra):
-        output: Optional[FileResponse] = None
+        output: Optional[FileChecksum] = None
         error: Optional[str] = None
 
     # Pydantic for input data
     class InputData(BaseModelWithForbiddenExtra):
         path: Path
-        size: int = Field(ge=0, le=MAX_BYTES)
-        offset: int = Field(ge=0)
 
         # Path validation: forbidden chars, absolute required
         @field_validator("path", mode="before")
@@ -113,7 +99,7 @@ def view(params):
         if stat.S_ISLNK(st_path.st_mode):
             return Response(error="Symlink targets are not allowed.").model_dump()
     except OSError:
-        return Response(error="Could not verify whether path is a symlink.").model_dump() 
+        return Response(error="Could not verify whether path is a symlink.").model_dump()
 
     # Resolve path and check if it exists
     try:
@@ -125,9 +111,9 @@ def view(params):
             error=f"Resolved path must stay under one of: {ALLOWED_PATHS_TEXT}."
         ).model_dump()
 
-    # =========================
-    # Execute the view command
-    # =========================
+    # =============================
+    # Execute the checksum command
+    # =============================
 
     path_str = str(input_data.path)
 
@@ -144,7 +130,7 @@ def view(params):
     o_nofollow = getattr(os, "O_NOFOLLOW", None)
     if o_nofollow is None:
         return Response(
-            error="Platform does not support O_NOFOLLOW; TOCTOU-safe view unavailable."
+            error="Platform does not support O_NOFOLLOW; TOCTOU-safe checksum unavailable."
         ).model_dump()
 
     # Open file with O_NOFOLLOW
@@ -158,11 +144,15 @@ def view(params):
         stat_before = os.fstat(fd)
         inode_before = (stat_before.st_ino, stat_before.st_dev)
 
-        # Move cursor to offset and read size bytes
-        os.lseek(fd, input_data.offset, os.SEEK_SET)
-        data = os.read(fd, input_data.size)
-        content = data.decode("utf-8", errors="replace")
-        bytes_read = len(data)
+        # Compute sha256 checksum by streaming file content
+        hasher = hashlib.sha256()
+        chunk_size = 8192
+        while True:
+            chunk = os.read(fd, chunk_size)
+            if not chunk:
+                break
+            hasher.update(chunk)
+        checksum_value = hasher.hexdigest()
 
         # Validate that the file was not changed during the operation (inode match)
         stat_after = os.fstat(fd)
@@ -172,30 +162,24 @@ def view(params):
                 error="File changed during operation (inode mismatch)."
             ).model_dump()
 
-        # Build response
-        file_content = FileContent(
-            content=content,
-            content_type="bytes",
-            start_position=input_data.offset,
-            end_position=input_data.offset + bytes_read,
-        )
-        file_response = FileResponse(output=file_content, offset=input_data.offset)
-        return Response(output=file_response).model_dump()
+        output = FileChecksum(algorithm="SHA-256", checksum=checksum_value)
+        return Response(output=output).model_dump()
 
     # Error if something went wrong
     except OSError:
-        return Response(error=f"Could not execute view command on file {path_str}.").model_dump()
+        return Response(
+            error=f"Could not execute checksum command on file {path_str}."
+        ).model_dump()
 
     # Close file descriptor before returns or raises
     finally:
         os.close(fd)
 
-
 # Create Globus Compute client
 gcc = Client(code_serialization_strategy=CombinedCode())
 
 # Register the function
-COMPUTE_FUNCTION_ID = gcc.register_function(view, public=True)
+COMPUTE_FUNCTION_ID = gcc.register_function(checksum, public=True)
 
 # Load file that stores all function IDs
 if os.path.exists(FILE_NAME):
