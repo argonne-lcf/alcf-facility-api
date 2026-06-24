@@ -12,7 +12,7 @@ from alcf.filesystem.validation import (
     ChmodInputData,
     ChownInputData,
     LsInputData,
-    HeadInputData,
+    FileContentInputData,
     ViewInputData,
     MkdirInputData,
     BaseModelWithPath,
@@ -157,7 +157,7 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
         }
 
         # Validate data
-        validate_data_with_path(input_data, HeadInputData, resource.name, forbid_hidden=True)
+        validate_data_with_path(input_data, FileContentInputData, resource.name, forbid_hidden=True)
 
         # Submit task to Globus Compute and wait for the task ID
         task_id = await globus_utils.submit_task("head", resource.name, input_data, user)
@@ -185,8 +185,32 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
         file_bytes: int | None, 
         lines: int | None, 
         skip_trailing: bool,
-    ) -> Tuple[Any, int]:
-        raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="Not implemented yet.")
+    ) -> str:
+        
+        # Build data for the command
+        input_data = {
+            "path": path,
+            "file_bytes": file_bytes,
+            "lines": lines,
+            "skip_trailing": skip_trailing
+        }
+
+        # Validate data
+        validate_data_with_path(input_data, FileContentInputData, resource.name, forbid_hidden=True)
+
+        # Submit task to Globus Compute and wait for the task ID
+        task_id = await globus_utils.submit_task("tail", resource.name, input_data, user)
+
+        # Return task ID to the user
+        return task_id
+
+
+    # Format tail response
+    def format_tail_response(
+        self: "AlcfAdapter",
+        result
+    ) -> filesystem_models.GetFileTailResponse:
+        return filesystem_models.GetFileTailResponse(**result)
 
 
     # View
@@ -234,8 +258,28 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
         resource: status_models.Resource, 
         user: User, 
         path: str, 
+    ) -> str:
+        
+        # Build data for the command
+        input_data = {
+            "path": path
+        }
+
+        # Validate data
+        validate_data_with_path(input_data, BaseModelWithPath, resource.name, forbid_hidden=True)
+
+        # Submit task to Globus Compute and wait for the task ID
+        task_id = await globus_utils.submit_task("checksum", resource.name, input_data, user)
+
+        # Return task ID to the user
+        return task_id
+        
+    # Format checksum response
+    def format_checksum_response(
+        self: "AlcfAdapter",
+        result
     ) -> filesystem_models.GetFileChecksumResponse:
-        raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="Not implemented yet.")
+        return filesystem_models.GetFileChecksumResponse(**result)
 
 
     # File
@@ -246,8 +290,29 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
         resource: status_models.Resource, 
         user: User, 
         path: str, 
+    ) -> str:
+        
+        # Build data for the command
+        input_data = {
+            "path": path
+        }
+
+        # Validate data
+        validate_data_with_path(input_data, BaseModelWithPath, resource.name, forbid_hidden=True)
+
+        # Submit task to Globus Compute and wait for the task ID
+        task_id = await globus_utils.submit_task("file", resource.name, input_data, user)
+
+        # Return task ID to the user
+        return task_id
+    
+    
+    # Format file response
+    def format_file_response(
+        self: "AlcfAdapter",
+        result
     ) -> filesystem_models.GetFileTypeResponse:
-        raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="Not implemented yet.")
+        return filesystem_models.GetFileTypeResponse(**result)
 
 
     # Stat
