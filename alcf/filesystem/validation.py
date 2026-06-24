@@ -140,7 +140,7 @@ class ChownInputData(BaseModelWithPath):
         return self
     
 
-class HeadInputData(BaseModelWithPath):
+class FileContentInputData(BaseModelWithPath):
     """Input data for head command."""
     file_bytes: Optional[int] = Field(default=None, ge=0, le=MAX_BYTES)
     lines: Optional[int] = Field(default=None, ge=0)
