@@ -12,7 +12,7 @@ def checksum(params):
 
     # Import all necessary packages
     from pathlib import Path
-    from pydantic import BaseModel, ConfigDict, Field, field_validator
+    from pydantic import BaseModel, ConfigDict, field_validator
     from typing import Optional
     import hashlib
     import os
@@ -26,9 +26,6 @@ def checksum(params):
     # ===================================
     # Pydantic models and data validation
     # ===================================
-
-    # Maximum size guard (kept consistent with other file-content functions)
-    MAX_BYTES = 9_958_272  # 9.5 MB
 
     # Define allowed paths
     CURRENT_USERNAME = pwd.getpwuid(os.getuid()).pw_name
@@ -156,8 +153,6 @@ def checksum(params):
                 break
             hasher.update(chunk)
         checksum_value = hasher.hexdigest()
-        if len(checksum_value.encode("utf-8")) > MAX_BYTES:
-            return Response(error="Checksum value exceeded 9.5 MB limit.").model_dump()
 
         # Validate that the file was not changed during the operation (inode match)
         stat_after = os.fstat(fd)
