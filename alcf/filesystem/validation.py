@@ -211,7 +211,7 @@ def _forbid_hidden_file(path: Path):
     for part in path.parts:
         if part.startswith(".") and part != ".":
             raise HTTPException(
-                detail="Accessing hidden content is forbidden.",
+                detail="Hidden content cannot be part of queries.",
                 status_code=HTTP_400_BAD_REQUEST
             )
 
