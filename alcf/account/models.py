@@ -23,7 +23,7 @@ class NiAllocation(BaseModel):
     unit: str
 
     @property
-    def used(self) -> int:
+    def used(self) -> float:
         return self.deposits - self.balance
     
     @field_validator("allocation_id", mode="before")
