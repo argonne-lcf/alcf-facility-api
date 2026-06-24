@@ -34,7 +34,7 @@ async def get_ni_rest(
     url: str = None,
     access_token: str = None,
 ) -> dict:
-    """Make an authenticated POST call to the Ni REST API"""
+    """Make an authenticated GET call to the Ni REST API"""
 
     headers = {"Content-Type": "application/json"}
     if access_token:
