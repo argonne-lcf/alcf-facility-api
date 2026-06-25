@@ -17,6 +17,7 @@ class CacheTTLSettings(BaseSettings):
     keycloak: Optional[int] = Field(default=600)
     globus: Optional[int] = Field(default=600)
     token_introspection: Optional[int] = Field(default=600)
+    ni_rest: Optional[int] = Field(default=600)
 
     # Prefix of environment variables
     class Config(SettingsConfigDict):
@@ -95,6 +96,18 @@ class RedisSettings(BaseSettings):
         env_prefix = "REDIS_"
 
 
+# Account
+class AccountSettings(BaseSettings):
+    """Account configuration."""
+
+    # Optional
+    request_timeout_sec: Optional[int] = Field(default=60)
+
+    # Prefix of environment variables
+    class Config(SettingsConfigDict):
+        env_prefix = "ACCOUNT_"
+
+
 class AlcfSettings(BaseSettings):
     """Main ALCF application settings."""
 
@@ -104,6 +117,7 @@ class AlcfSettings(BaseSettings):
     keycloak: KeycloakSettings = Field(default_factory=KeycloakSettings)
     globus: GlobusSettings = Field(default_factory=GlobusSettings)
     redis: RedisSettings = Field(default_factory=RedisSettings)
+    account: AccountSettings = Field(default_factory=AccountSettings)
 
     # Other variables without a prefix
     graphql_httpx_trust_env: bool = Field(default=True)
@@ -138,6 +152,7 @@ COMPONENT_MAINTENANCE_NOTICES = settings.component_maintenance_notices
 CACHE_TTL_KEYCLOAK = settings.cache_ttl.keycloak
 CACHE_TTL_GLOBUS = settings.cache_ttl.globus
 CACHE_TTL_TOKEN_INTROSPECTION = settings.cache_ttl.token_introspection
+CACHE_TTL_NI_REST = settings.cache_ttl.ni_rest
 DATABASE_URL = settings.database.url
 DATABASE_SQL_ECHO = settings.database.sql_echo
 KEYCLOAK_REALM_NAME = settings.keycloak.realm_name
@@ -152,6 +167,7 @@ GLOBUS_SERVICE_API_CLIENT_SECRET = settings.globus.service_api_client_secret
 GLOBUS_HA_POLICY = settings.globus.ha_policy
 GLOBUS_GROUP = settings.globus.group
 GLOBUS_AUTHORIZED_USERNAMES = settings.globus.authorized_usernames
+ACCOUNT_REQUEST_TIMEOUT_SEC = settings.account.request_timeout_sec
 REDIS_HOST = settings.redis.host
 REDIS_PORT = settings.redis.port
 GRAPHQL_HTTPX_TRUST_ENV = settings.graphql_httpx_trust_env

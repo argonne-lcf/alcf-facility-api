@@ -11,6 +11,7 @@ from dotenv import load_dotenv
 load_dotenv(override=True)
 
 SUITES = [
+    ("account",    "test_account"),
     ("filesystem", "test_filesystem"),
     ("cancel",     "test_job_cancel"),
     ("stdout",     "test_job_stdout"),
@@ -35,12 +36,13 @@ def run_suite(module_name: str) -> bool:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run ALCF Facility API test suites")
+    parser.add_argument("--account",    action="store_true", help="Run account tests")
     parser.add_argument("--filesystem", action="store_true", help="Run filesystem tests")
     parser.add_argument("--cancel",     action="store_true", help="Run job cancel tests")
     parser.add_argument("--stdout",     action="store_true", help="Run job stdout tests")
     args = parser.parse_args()
 
-    run_all = not any([args.filesystem, args.cancel, args.stdout])
+    run_all = not any([args.account, args.filesystem, args.cancel, args.stdout])
 
     selected = [
         (flag, mod)
