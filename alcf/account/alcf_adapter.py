@@ -96,6 +96,10 @@ class AlcfAdapter(AccountFacilityAdapter, AlcfAuthenticatedAdapter):
         # Validate data
         ni_allocations = ni_models.NiAllocations(allocations=response).allocations
 
+        # [TEMPORARY] - Filter to remove storage allocations
+        # TODO: remove once storage usage is available
+        ni_allocations = [a for a in ni_allocations if a.unit != account_models.AllocationUnit.bytes.value]
+
         # Return response in IRI format
         return [self._format_allocation(project, a) for a in ni_allocations]
 
