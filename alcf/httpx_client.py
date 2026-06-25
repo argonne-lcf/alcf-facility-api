@@ -2,6 +2,8 @@ from typing import Any
 import httpx
 from fastapi import HTTPException
 
+from alcf.auth.utils import generate_error_message
+
 class AsyncHttpClient:
     
     def __init__(
@@ -16,21 +18,22 @@ class AsyncHttpClient:
 
     def _handle_error(self, url: str, e: Exception) -> None:
         if isinstance(e, httpx.HTTPStatusError):
+            error_message = generate_error_message(f"Upstream endpoint returned {e.response.status_code}", e)
             raise HTTPException(
-                detail=f"Upstream endpoint returned {e.response.status_code}: {e.response.content[:256]!r}.",
+                detail=error_message,
                 status_code=e.response.status_code,
             )
-        elif isinstance(e, httpx.TimeoutException):
+        if isinstance(e, httpx.TimeoutException):
             raise HTTPException(
                 detail=f"Request timeout.",
                 status_code=504,
             )
-        elif isinstance(e, httpx.HTTPError):
+        if isinstance(e, httpx.HTTPError):
+            error_message = generate_error_message("HTTP error calling backend API", e)
             raise HTTPException(
-                detail=f"HTTP error calling API at {url}: {e}",
+                detail=error_message,
                 status_code=500
             )
-        raise e
 
     async def post(self, url: str, data: Any = None) -> Any:
         try:
@@ -48,5 +51,8 @@ class AsyncHttpClient:
         except (httpx.HTTPStatusError, httpx.TimeoutException, httpx.HTTPError) as e:
             self._handle_error(url, e)
 
-    async def close(self) -> None:
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *args) -> None:
         await self._client.aclose()
