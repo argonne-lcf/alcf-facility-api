@@ -40,9 +40,5 @@ async def get_ni_rest(
     if access_token:
         headers["Authorization"] = f"Bearer {access_token}"
 
-    httpx_client = AsyncHttpClient(
-        timeout=ACCOUNT_REQUEST_TIMEOUT_SEC,
-        headers=headers
-    )
-
-    return await httpx_client.get(url)
+    async with AsyncHttpClient(timeout=ACCOUNT_REQUEST_TIMEOUT_SEC, headers=headers) as client:
+        return await client.get(url)
