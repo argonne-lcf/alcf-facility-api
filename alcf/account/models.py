@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from pydantic import BaseModel, field_validator, Field, model_validator
+from pydantic import BaseModel, field_validator, Field
 from typing import List, Optional
 
 from app.routers.account.models import AllocationUnit
