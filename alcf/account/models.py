@@ -13,6 +13,16 @@ class NiProject(BaseModel):
     description: Optional[str] = Field(default="N/A")
     last_modified: Optional[datetime] = Field(default=datetime(2000, 1, 1, 0, 0, 0, tzinfo=timezone.utc))
 
+    @field_validator("description", "last_modified", mode="before")
+    @classmethod
+    def default_none_fields(cls, v, info):
+        if v is None:
+            if info.field_name == "last_modified":
+                return datetime(2000, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
+            if info.field_name == "description":
+                return "N/A"
+        return v
+
 
 class NiAllocation(BaseModel):
     allocation_id: str
@@ -51,6 +61,16 @@ class NiCapability(BaseModel):
     charge_factor: Optional[float] = Field(default=None)
     view_factor: Optional[float] = Field(default=None)
     charge_item: Optional[str] = Field(default=None)
+
+    @field_validator("description", "last_updated", mode="before")
+    @classmethod
+    def default_none_fields(cls, v, info):
+        if v is None:
+            if info.field_name == "last_updated":
+                return datetime(2000, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
+            if info.field_name == "description":
+                return "N/A"
+        return v
 
     @field_validator("units", mode="after")
     @classmethod
