@@ -216,7 +216,9 @@ def get_iri_job_from_graphql_job(graphql_job: graphql_models.Job) -> compute_mod
     field_mapping = {
         'id': 'jobId',
         'status.state': lambda j: get_iri_state_from_pbs_state(graphql_job.status.state) if j.status and j.status.state is not None else None,
-        'status.exit_code': lambda j: j.status.exitStatus if j.status else None
+        'status.exit_code': lambda j: j.status.exitStatus if j.status else None,
+        'job_spec.attributes.queue_name': lambda j: j.queue.name if j.queue else None,
+        'job_spec.attributes.account': lambda j: j.accountingId,
     }
     
     # Apply mapping
