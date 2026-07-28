@@ -178,7 +178,7 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
             raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="'include_spec' not supported yet.")
 
         # Build filters
-        filters = self.__generate_jobs_filters(historical, {"jobIds": job_id})
+        filters = self.__generate_jobs_filters(historical, {"jobIds": [job_id]})
         
         # Recover GraphQL URL
         graphql_url = get_graphql_url(resource.name)
