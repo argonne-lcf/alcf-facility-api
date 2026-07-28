@@ -279,7 +279,7 @@ def get_iri_state_from_pbs_state(state: int) -> str:
 
 # Get IRI job state from PBS state
 def get_pbs_state_from_iri_state(state: str) -> List[int]:
-    """Return the IRI Facility API compliant state from a PBS GraphQL state."""
+    """Return the list of PBS states that are compliant with IRI API state."""
 
     # Known states
     if state in SUPPORTED_IRI_STATES:
