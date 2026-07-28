@@ -15,8 +15,11 @@ offset = 0
 
 # Filters
 filters = {
-    "owner": "bcote",
-    "states": ["active", "queued"]
+    #"owner": "bcote",
+    #"states": ["active", "queued"],
+    #"jobIds": ["7299126", "7246872"],
+    #"queue": "debug",
+    "accountingId": "AuroraGPT",
 }
 
 # Build headers
