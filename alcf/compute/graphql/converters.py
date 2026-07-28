@@ -13,6 +13,18 @@ DEFAULT_TASK_RESOURCES_SLOTS = {
     "edith": 1,
 }
 
+# Job state mapping
+PBS_STATE_FROM_IRI_STATE = {
+    compute_models.JobState.NEW.value: [1, 14],
+    compute_models.JobState.HELD.value: [2, 3],
+    compute_models.JobState.QUEUED.value: [0, 8],
+    compute_models.JobState.ACTIVE.value: [5, 6, 7, 9],
+    compute_models.JobState.COMPLETED.value: [10],
+    compute_models.JobState.CANCELED.value: [12, 13],
+    compute_models.JobState.FAILED.value: [4, 11],
+}
+SUPPORTED_IRI_STATES = list(PBS_STATE_FROM_IRI_STATE.keys())
+
 
 # Get nested value
 def get_nested_value(obj, path):
@@ -238,7 +250,7 @@ def generate_dictionary_from_mapping(source_model: Any, field_mapping: dict) -> 
 
     
 # Get IRI job state from PBS state
-def get_iri_state_from_pbs_state(state: int) -> int:
+def get_iri_state_from_pbs_state(state: int) -> str:
     """Return the IRI Facility API compliant state from a PBS GraphQL state."""
 
     # Known states
@@ -262,4 +274,20 @@ def get_iri_state_from_pbs_state(state: int) -> int:
         raise HTTPException(
             status_code=HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"PBS job state {state} not supported."
+        )
+
+
+# Get IRI job state from PBS state
+def get_pbs_state_from_iri_state(state: str) -> List[int]:
+    """Return the IRI Facility API compliant state from a PBS GraphQL state."""
+
+    # Known states
+    if state in SUPPORTED_IRI_STATES:
+        return PBS_STATE_FROM_IRI_STATE[state]
+
+    # Unknown state
+    else:
+        raise HTTPException(
+            status_code=HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Job state '{state}' not supported. Supported states: {SUPPORTED_IRI_STATES}."
         )
