@@ -145,6 +145,11 @@ def build_get_job_query(
                             state
                             exitStatus
                         }}
+                        owner
+                        queue {{
+                            name
+                        }}
+                        accountingId
                     }}
                 }}
             }}
