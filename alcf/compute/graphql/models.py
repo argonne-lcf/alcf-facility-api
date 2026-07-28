@@ -57,3 +57,5 @@ class JobResponse(BaseModel):
 class QueryJobsFilter(BaseModel):
     withHistoryJobs: Optional[bool] = False
     jobIds: Optional[str] = None
+    owner: Optional[str] = None
+    states: Optional[List[int]] = None
