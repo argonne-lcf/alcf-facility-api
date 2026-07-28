@@ -59,3 +59,4 @@ class QueryJobsFilter(BaseModel):
     jobIds: Optional[List[str]] = None
     owner: Optional[str] = None
     states: Optional[List[int]] = None
+    queue: Optional[str] = None
