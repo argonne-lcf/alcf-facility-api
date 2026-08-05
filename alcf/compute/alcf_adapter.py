@@ -6,7 +6,8 @@ from alcf.auth.utils import KEYCLOAK_FLAG
 from alcf.auth.keycloak_utils import generate_user_keycloak_token
 from alcf.compute.graphql.converters import (
     get_graphql_job_from_iri_jobspec,
-    get_iri_job_from_graphql_job
+    get_iri_job_from_graphql_job,
+    get_pbs_state_from_iri_state,
 )
 from alcf.maintenance import require_component_operational
 from alcf.enums import APIComponent
@@ -167,7 +168,7 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
         resource: status_models.Resource, 
         user: User, 
         job_id: str,
-        historical: bool = False,
+        historical: bool = True,
         include_spec: bool = False,
     ) -> compute_models.Job:
 
@@ -175,6 +176,9 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
         # Error if input variables are not supported yet
         if include_spec:
             raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="'include_spec' not supported yet.")
+
+        # Build filters
+        filters = self.__generate_jobs_filters(historical, {"jobIds": [job_id]})
         
         # Recover GraphQL URL
         graphql_url = get_graphql_url(resource.name)
@@ -188,7 +192,7 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
         # Submit query to GraphQL API
         response = await post_graphql(
             access_token=user_keycloak_access_token,
-            query=build_get_job_query(user, job_id=job_id, historical=historical),
+            query=build_get_job_query(filters),
             url=graphql_url
         )
 
@@ -221,10 +225,11 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
         
         # [TEMPORARY]
         # Error if input variables are not supported yet
-        if filters:
-            raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="filters not implemented")
         if include_spec:
             raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="'include_spec' not supported yet.")
+
+        # Build filters
+        filters = self.__generate_jobs_filters(historical, filters)
         
         # Recover GraphQL URL
         graphql_url = get_graphql_url(resource.name)
@@ -238,7 +243,7 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
         # Submit query to GraphQL API
         response = await post_graphql(
             access_token=user_keycloak_access_token,
-            query=build_get_job_query(user, historical=historical),
+            query=build_get_job_query(filters),
             url=graphql_url
         )
         
@@ -320,4 +325,49 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
         
         # Return JobResponse object
         return response
-    
+
+
+    # Generate jobs filters
+    def __generate_jobs_filters(
+        self,
+        historical: bool = False,
+        filters: dict[str, object] | None = None,
+    ) -> graphql_models.QueryJobsFilter:
+
+        # Check if filters are supported
+        if filters:
+            supported_keys = [
+                key for key in graphql_models.QueryJobsFilter.model_fields if key != "withHistoryJobs"
+            ]
+            invalid_keys = [
+                key for key in filters if key not in supported_keys
+            ]
+            if invalid_keys:
+                raise HTTPException(
+                    status_code=HTTP_400_BAD_REQUEST,
+                    detail=f"Unsupported filters: {invalid_keys}. Available filters: {supported_keys}."
+                )
+        else:
+            filters = {}
+
+        # State conversion
+        if "states" in filters:
+            if not isinstance(filters["states"], list):
+                filters["states"] = [filters["states"]]
+            pbs_states = []
+            for state in filters["states"]:
+                mapped = get_pbs_state_from_iri_state(state)
+                pbs_states.extend(mapped)
+            filters["states"] = pbs_states
+
+        # Build filter object
+        try:
+            return graphql_models.QueryJobsFilter(
+                withHistoryJobs=historical,
+                **filters,
+            )
+        except ValueError as e:
+            raise HTTPException(
+                status_code=HTTP_400_BAD_REQUEST,
+                detail=str(e)
+            )

@@ -52,6 +52,8 @@ def list_to_graphql_str(l: list, indent: int = 4, base_indent: int = 0) -> str:
     last_i = len(l) - 1
     for i, item in enumerate(l):
         convertion = format_graphql_block(i, item, base_indent=base_indent, indent=indent)
+        if not isinstance(convertion, str):
+            convertion = str(convertion)
         string += base_indent_str + indent_str + convertion
         if i != last_i:
             string += ",\n"
@@ -126,23 +128,15 @@ def build_submit_job_query(
 
 # Build get job query
 def build_get_job_query(
-    user: User, 
-    job_id: str = None,
-    historical: bool = False,
+    filters: graphql_models.QueryJobsFilter
 ) -> str:
-        
-    # Build job query filter
-    filter_data = graphql_models.QueryJobsFilter(
-        withHistoryJobs=historical,
-        jobIds=job_id
-    )
 
     # Generate and return the job submission GraphQL query
-    filter_data = filter_data.model_dump(exclude_none=True)
+    filters = filters.model_dump(exclude_none=True)
     return f"""
         query {{
             jobs (
-                filter: {dictionary_to_graphql_str(filter_data, base_indent=16, indent=4)}
+                filter: {dictionary_to_graphql_str(filters, base_indent=16, indent=4)}
             ) {{
                 edges {{
                     node {{
@@ -151,6 +145,11 @@ def build_get_job_query(
                             state
                             exitStatus
                         }}
+                        owner
+                        queue {{
+                            name
+                        }}
+                        accountingId
                     }}
                 }}
             }}
