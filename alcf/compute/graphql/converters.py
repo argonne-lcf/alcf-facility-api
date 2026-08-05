@@ -290,6 +290,6 @@ def get_pbs_state_from_iri_state(state: str) -> List[int]:
     # Unknown state
     else:
         raise HTTPException(
-            status_code=HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=HTTP_400_BAD_REQUEST,
             detail=f"Job state '{state}' not supported. Supported states: {SUPPORTED_IRI_STATES}."
         )
