@@ -369,5 +369,5 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
         except ValueError as e:
             raise HTTPException(
                 status_code=HTTP_400_BAD_REQUEST,
-                detail={e}
+                detail=str(e)
             )
