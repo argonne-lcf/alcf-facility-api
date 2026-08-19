@@ -15,6 +15,7 @@ SUITES = [
     ("filesystem", "test_filesystem"),
     ("cancel",     "test_job_cancel"),
     ("stdout",     "test_job_stdout"),
+    ("listjobs",   "test_compute_list_jobs"),
 ]
 
 
@@ -40,9 +41,10 @@ def main() -> None:
     parser.add_argument("--filesystem", action="store_true", help="Run filesystem tests")
     parser.add_argument("--cancel",     action="store_true", help="Run job cancel tests")
     parser.add_argument("--stdout",     action="store_true", help="Run job stdout tests")
+    parser.add_argument("--listjobs",   action="store_true", help="Run compute list jobs tests")
     args = parser.parse_args()
 
-    run_all = not any([args.account, args.filesystem, args.cancel, args.stdout])
+    run_all = not any([args.account, args.filesystem, args.cancel, args.stdout, args.listjobs])
 
     selected = [
         (flag, mod)
