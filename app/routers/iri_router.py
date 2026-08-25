@@ -2,8 +2,11 @@ from abc import ABC, abstractmethod
 import os
 import logging
 import importlib
+import threading
 import time
+from typing import Any
 import globus_sdk
+from cachetools import TTLCache
 from fastapi import Request, Depends, HTTPException, APIRouter
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
@@ -11,10 +14,23 @@ from ..types.user import User
 
 bearer_scheme = HTTPBearer()
 
-
 GLOBUS_RS_ID = os.environ.get("GLOBUS_RS_ID")
 GLOBUS_RS_SECRET = os.environ.get("GLOBUS_RS_SECRET")
 GLOBUS_RS_SCOPE_SUFFIX = os.environ.get("GLOBUS_RS_SCOPE_SUFFIX")
+
+
+def _env_true(name: str, default: bool = False) -> bool:
+    """Boolean env var checker."""
+    raw = os.environ.get(name)
+    if raw is None or raw == "":
+        return default
+    return raw.strip().lower() not in {"0", "false", "off", "no"}
+
+
+def _globus_enabled() -> bool:
+    """Globus introspection: on if IRI_AUTH_GLOBUS != off AND GLOBUS_RS_ID/SECRET/SCOPE_SUFFIX configured."""
+    return bool(_env_true("IRI_AUTH_GLOBUS", False) and GLOBUS_RS_ID
+                and GLOBUS_RS_SECRET and GLOBUS_RS_SCOPE_SUFFIX)
 
 
 def get_client_ip(request: Request) -> str | None:
@@ -129,22 +145,27 @@ class IriRouter(APIRouter):
         token = credentials.credentials
         ip_address = get_client_ip(request)
         user_id = None
+        token_info = None
         globus_introspect = None
         exc_msg = ""
-        try:
-            if GLOBUS_RS_ID and GLOBUS_RS_SECRET and GLOBUS_RS_SCOPE_SUFFIX:
-                try:
-                    globus_introspect = await self.get_globus_info(token)
-                    user_id = await self.adapter.get_current_user_globus(token, ip_address, globus_introspect)
-                except Exception as globus_exc:
-                    logging.getLogger().exception("Globus error:", exc_info=globus_exc)
-                    exc_msg = f"Globus authentication failed: {str(globus_exc)}. || "
-            if not user_id:
+
+        if not user_id and _globus_enabled():
+            try:
+                globus_introspect = await self.get_globus_info(token)
+                user_id = await self.adapter.get_current_user_globus(token, ip_address, globus_introspect)
+            except Exception as globus_exc:
+                logging.getLogger().exception("Globus auth error:", exc_info=globus_exc)
+                exc_msg += f"Globus authentication failed: {str(globus_exc)}. || "
+                globus_introspect = None
+
+        if not user_id:
+            try:
                 user_id = await self.adapter.get_current_user(token, ip_address)
-        except Exception as exc:
-            logging.getLogger().exception("Facility Specific auth failed: ", exc_info=exc)
-            exc_msg += f"Facility Specific authentication failed: {str(exc)}"
-            raise HTTPException(status_code=401, detail=exc_msg) from exc
+            except Exception as exc:
+                logging.getLogger().exception("Facility Specific auth failed: ", exc_info=exc)
+                exc_msg += f"Facility Specific authentication failed: {str(exc)}"
+                raise HTTPException(status_code=401, detail=exc_msg) from exc
+
         if not user_id:
             raise HTTPException(status_code=403, detail="Authentication succeeded but no user ID was identified. Contact Facility Admin.")
 
@@ -152,6 +173,7 @@ class IriRouter(APIRouter):
             user_id=user_id,
             api_key=token,
             client_ip=ip_address,
+            token_info=token_info,
             globus_introspect=globus_introspect,
         )
 
@@ -170,6 +192,7 @@ class AuthenticatedAdapter(ABC):
         """
         pass
 
+
     @abstractmethod
     async def get_current_user_globus(self: "AuthenticatedAdapter", api_key: str, client_ip: str | None, globus_introspect: dict | None) -> str:
         """
@@ -180,8 +203,10 @@ class AuthenticatedAdapter(ABC):
         pass
 
     @abstractmethod
-    async def get_user(self: "AuthenticatedAdapter", user_id: str, api_key: str, client_ip: str | None, globus_introspect: dict | None) -> User:
+    async def get_user(self: "AuthenticatedAdapter", user_id: str, api_key: str, client_ip: str | None, token_info: dict | None, globus_introspect: dict | None) -> User:
         """
         Retrieve additional user information (name, email, etc.) for the given user_id.
+        ``token_info`` is populated when OIDC validation produced it;
+        ``globus_introspect`` is populated when Globus introspection produced it.
         """
         pass
