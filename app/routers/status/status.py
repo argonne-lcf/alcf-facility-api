@@ -123,8 +123,6 @@ async def get_incidents(
         resource_id=resource_id,
         resolution=resolution,
     )
-    if not incidents:
-        raise HTTPException(status_code=404, detail="No incidents found")
     return incidents
 
 @router.get(
@@ -168,8 +166,6 @@ async def get_events(
     events = await router.adapter.get_events(
         incident_id=incident_id, offset=offset, limit=limit, resource_id=resource_id, name=name, description=description, status=status, from_=from_, to=to, time_=time_, modified_since=modified_since
     )
-    if not events:
-        raise HTTPException(status_code=404, detail="No events found")
     return events
 
 
