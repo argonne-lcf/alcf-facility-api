@@ -213,6 +213,54 @@ def test_view() -> bool:
         return False
 
 
+def test_tail() -> bool:
+    section("TEST: tail")
+    try:
+        submit_and_wait(
+            "tail (read last lines of notes.txt)",
+            "GET",
+            "tail",
+            params={"path": TEST_TEXT_FILE, "lines": 5},
+        )
+        return True
+    except SystemExit:
+        return False
+
+
+def test_checksum() -> bool:
+    section("TEST: checksum")
+    try:
+        submit_and_wait(
+            "checksum (SHA-256 of notes.txt)",
+            "GET",
+            "checksum",
+            params={"path": TEST_TEXT_FILE},
+        )
+        return True
+    except SystemExit:
+        return False
+
+
+def test_file() -> bool:
+    section("TEST: file")
+    try:
+        submit_and_wait(
+            "file (type of notes.txt)",
+            "GET",
+            "file",
+            params={"path": TEST_TEXT_FILE},
+        )
+        submit_and_wait(
+            "file (type of subdir)",
+            "GET",
+            "file",
+            params={"path": TEST_SUBDIR},
+        )
+        return True
+    except SystemExit:
+        return False
+
+
 def test_rm() -> bool:
     section("TEST: rm")
     try:
@@ -246,7 +294,10 @@ def main() -> None:
     record("chmod", test_chmod())
     record("chown", test_chown())
     record("head", test_head())
+    record("tail", test_tail())
     record("view", test_view())
+    record("checksum", test_checksum())
+    record("file", test_file())
     record("rm", test_rm())
 
     result_summary(passed, failed)
