@@ -43,9 +43,21 @@ class FacilityAdapter(AuthenticatedAdapter):
             else:
                 data = ind
             return {k: v for k, v in data.items() if v is not None}
+
+        def _sanitize_args(args):
+            if not isinstance(args, dict):
+                return args
+            sanitized = {}
+            for k, v in args.items():
+                if k == "content" and isinstance(v, str) and len(v) > 100:
+                    sanitized[k] = v[:100] + f"...<truncated {len(v) - 100} chars>"
+                else:
+                    sanitized[k] = v
+            return sanitized
+
         try:
             r = None
-            logger.info(f"Received task: {task.router}:{task.command} with args: {task.args}")
+            logger.info(f"Received task: {task.router}:{task.command} with args: {_sanitize_args(task.args)}")
             if task.router == "filesystem":
                 fs_adapter = IriRouter.create_adapter(task.router, filesystem_adapter.FacilityAdapter)
                 if task.command == "chmod":
@@ -106,6 +118,6 @@ class FacilityAdapter(AuthenticatedAdapter):
                 return ({"output": f"Task was cancelled due to unknown router/command: {task.router}:{task.command}"}, task_models.TaskStatus.failed)
         except Exception as exc:
             traceback_str = traceback.format_exc()
-            logger.warning(f"Error handling task {task.router}:{task.command} with args: {task.args}\nError: {exc}")
+            logger.warning(f"Error handling task {task.router}:{task.command} with args: {_sanitize_args(task.args)}\nError: {exc}")
             logger.debug(f"Traceback:\n{traceback_str}")
             return ({"output": f"Error: {exc}"}, task_models.TaskStatus.failed)
