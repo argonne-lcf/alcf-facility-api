@@ -141,10 +141,9 @@ class ChownInputData(BaseModelWithPath):
     
 
 class FileContentInputData(BaseModelWithPath):
-    """Input data for head command."""
+    """Base input data for file content commands (head/tail)."""
     file_bytes: Optional[int] = Field(default=None, ge=0, le=MAX_BYTES)
     lines: Optional[int] = Field(default=None, ge=0)
-    skip_trailing: Optional[bool] = Field(default=False)
 
     @model_validator(mode="after")
     def validate_file_bytes_and_lines(self):
@@ -154,6 +153,16 @@ class FileContentInputData(BaseModelWithPath):
         if self.file_bytes is None and self.lines is None:
             raise ValueError("At least one of 'file_bytes' or 'lines' must be provided.")
         return self
+
+
+class HeadInputData(FileContentInputData):
+    """Input data for head command."""
+    skip_trailing: Optional[bool] = Field(default=False)
+
+
+class TailInputData(FileContentInputData):
+    """Input data for tail command."""
+    skip_heading: Optional[bool] = Field(default=False)
     
 
 class LsInputData(BaseModelWithPath):
