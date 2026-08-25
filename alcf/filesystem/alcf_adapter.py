@@ -13,6 +13,8 @@ from alcf.filesystem.validation import (
     ChownInputData,
     LsInputData,
     FileContentInputData,
+    HeadInputData,
+    TailInputData,
     ViewInputData,
     MkdirInputData,
     BaseModelWithPath,
@@ -157,7 +159,7 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
         }
 
         # Validate data
-        validate_data_with_path(input_data, FileContentInputData, resource.name, forbid_hidden=True)
+        validate_data_with_path(input_data, HeadInputData, resource.name, forbid_hidden=True)
 
         # Submit task to Globus Compute and wait for the task ID
         task_id = await globus_utils.submit_task("head", resource.name, input_data, user)
@@ -184,7 +186,7 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
         path: str, 
         file_bytes: int | None, 
         lines: int | None, 
-        skip_trailing: bool,
+        skip_heading: bool,
     ) -> str:
         
         # Build data for the command
@@ -192,11 +194,11 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
             "path": path,
             "file_bytes": file_bytes,
             "lines": lines,
-            "skip_trailing": skip_trailing
+            "skip_heading": skip_heading
         }
 
         # Validate data
-        validate_data_with_path(input_data, FileContentInputData, resource.name, forbid_hidden=True)
+        validate_data_with_path(input_data, TailInputData, resource.name, forbid_hidden=True)
 
         # Submit task to Globus Compute and wait for the task ID
         task_id = await globus_utils.submit_task("tail", resource.name, input_data, user)
@@ -279,7 +281,7 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
         self: "AlcfAdapter",
         result
     ) -> filesystem_models.GetFileChecksumResponse:
-        return filesystem_models.GetFileChecksumResponse(**result)
+        return filesystem_models.GetFileChecksumResponse(output=result)
 
 
     # File
@@ -312,7 +314,7 @@ class AlcfAdapter(FilesystemFacilityAdapter, AlcfAuthenticatedAdapter):
         self: "AlcfAdapter",
         result
     ) -> filesystem_models.GetFileTypeResponse:
-        return filesystem_models.GetFileTypeResponse(**result)
+        return filesystem_models.GetFileTypeResponse(output=result)
 
 
     # Stat
