@@ -12,7 +12,6 @@ from alcf.filesystem.validation import (
     ChmodInputData,
     ChownInputData,
     LsInputData,
-    FileContentInputData,
     HeadInputData,
     TailInputData,
     ViewInputData,
