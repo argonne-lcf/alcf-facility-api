@@ -1,7 +1,5 @@
 import logging
 import os
-import sys
-from app.apilogger import IRI_HANDLER_ATTR
 from dotenv import load_dotenv
 load_dotenv()
 
