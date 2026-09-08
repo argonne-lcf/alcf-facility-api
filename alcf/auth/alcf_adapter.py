@@ -113,6 +113,7 @@ class AlcfAuthenticatedAdapter(AuthenticatedAdapter):
         user_id: str,
         api_key: str,
         client_ip: str = None,
+        token_info: dict = None,
         globus_introspect: dict = None
         ) -> User:
         """
@@ -122,6 +123,8 @@ class AlcfAuthenticatedAdapter(AuthenticatedAdapter):
         # [Temporary] only using the Globus functions vetted for this application
         if globus_introspect:
             raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, detail="Cannot use globus_introspection.")
+        if token_info:
+            raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, detail="Cannot use token_info.")
 
         # Clean API key
         api_key = api_key.replace("Bearer ", "")
