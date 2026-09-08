@@ -15,7 +15,6 @@ import subprocess
 import uuid
 
 from fastapi import HTTPException
-from fastapi.encoders import jsonable_encoder
 from pydantic import BaseModel
 
 from .routers.account import facility_adapter as account_adapter
@@ -180,6 +179,7 @@ class DemoAdapter(
             current_status=status_models.Status.degraded,
             last_modified=day_ago,
             resource_type=status_models.ResourceType.compute,
+            supported_endpoints=[status_models.Endpoint.compute],
         )
 
         hpss = status_models.Resource(
@@ -192,6 +192,7 @@ class DemoAdapter(
             current_status=status_models.Status.up,
             last_modified=day_ago,
             resource_type=status_models.ResourceType.storage,
+            supported_endpoints=[status_models.Endpoint.filesystem],
         )
 
         cfs = status_models.Resource(
@@ -204,6 +205,7 @@ class DemoAdapter(
             current_status=status_models.Status.up,
             last_modified=day_ago,
             resource_type=status_models.ResourceType.storage,
+            supported_endpoints=[status_models.Endpoint.filesystem],
         )
 
         login = status_models.Resource(
@@ -365,8 +367,8 @@ class DemoAdapter(
             sites = [s for s in sites if s.last_modified > ms]
 
         o = offset or 0
-        l = limit or len(sites)
-        return sites[o : o + l]
+        limit_count = limit or len(sites)
+        return sites[o : o + limit_count]
 
     async def get_site(self: "DemoAdapter", site_id: str, modified_since: str | None = None) -> facility_models.Site:
         site = next((s for s in self.sites if s.id == site_id), None)
@@ -412,6 +414,9 @@ class DemoAdapter(
 
     async def get_resource(self: "DemoAdapter", id_: str) -> status_models.Resource:
         return status_models.Resource.find_by_id(self.resources, id_)
+
+    async def get_resources_for_endpoint(self: "DemoAdapter", endpoint: status_models.Endpoint) -> list[status_models.Resource]:
+        return [r for r in self.resources if endpoint in r.supported_endpoints]
 
     async def get_events(
         self: "DemoAdapter",
@@ -511,6 +516,7 @@ class DemoAdapter(
         user_id: str,
         api_key: str,
         client_ip: str | None,
+        token_info: dict | None,
         globus_introspect: dict | None,
     ) -> User:
         if user_id != self.user.id:
