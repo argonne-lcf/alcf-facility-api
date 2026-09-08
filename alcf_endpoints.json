@@ -1,0 +1,207 @@
+{
+    "compute": {
+        "polaris": {
+            "all": {
+                "endpoint_type": "pbs_graphql",
+                "config": {
+                    "url": "https://graphql-bridge-dev-01.lab.alcf.anl.gov/polaris/graphql"
+                }
+            }
+        },
+        "sirius": {
+            "all": {
+                "endpoint_type": "pbs_graphql",
+                "config": {
+                    "url": "https://graphql-bridge-dev-01.lab.alcf.anl.gov/sirius/graphql"
+                }
+            }
+        },
+        "edith": {
+            "all": {
+                "endpoint_type": "pbs_graphql",
+                "config": {
+                    "url": "https://graphql-bridge-dev-01.lab.alcf.anl.gov/edtb/graphql"
+                }
+            }
+        },
+        "crux": {
+            "all": {
+                "endpoint_type": "pbs_graphql",
+                "config": {
+                    "url": "https://graphql-bridge-dev-01.lab.alcf.anl.gov/crux/graphql"
+                }
+            }
+        }
+    },
+    "filesystem": {
+        "eagle": {
+            "chmod": {
+                "endpoint_type": "globus_multi_user_endpoint",
+                "config": {
+                    "location": "sophia",
+                    "endpoint_id": "23aa86aa-c5e3-4af7-aaf0-a456a4625d3d",
+                    "function_id": "f3ab2b19-ef48-46c7-b18e-d2a0d2972d8d"
+                }
+            },
+            "chown": {
+                "endpoint_type": "globus_multi_user_endpoint",
+                "config": {
+                    "location": "sophia",
+                    "endpoint_id": "23aa86aa-c5e3-4af7-aaf0-a456a4625d3d",
+                    "function_id": "3d67c27e-56b5-4268-8aa2-d57c2cf80857"
+                }
+            },
+            "ls": {
+                "endpoint_type": "globus_multi_user_endpoint",
+                "config": {
+                    "location": "sophia",
+                    "endpoint_id": "23aa86aa-c5e3-4af7-aaf0-a456a4625d3d",
+                    "function_id": "4042be04-6148-49e3-9ee5-dfd16141eafb"
+                }
+            },
+            "head": {
+                "endpoint_type": "globus_multi_user_endpoint",
+                "config": {
+                    "location": "sophia",
+                    "endpoint_id": "23aa86aa-c5e3-4af7-aaf0-a456a4625d3d",
+                    "function_id": "68001dbe-c8dc-4a5f-9ac9-0911ba78daec"
+                }
+            },
+            "tail": null,
+            "view": {
+                "endpoint_type": "globus_multi_user_endpoint",
+                "config": {
+                    "location": "sophia",
+                    "endpoint_id": "23aa86aa-c5e3-4af7-aaf0-a456a4625d3d",
+                    "function_id": "4d1c8fd9-d455-4cb9-b74a-5e4a3539128d"
+                }
+            },
+            "checksum": null,
+            "file": null,
+            "stat": null,
+            "rm": {
+                "endpoint_type": "globus_multi_user_endpoint",
+                "config": {
+                    "location": "sophia",
+                    "endpoint_id": "23aa86aa-c5e3-4af7-aaf0-a456a4625d3d",
+                    "function_id": "ad3829ea-cbc0-4249-91f5-d8d20fc6fef5"
+                }
+            },
+            "mkdir": {
+                "endpoint_type": "globus_multi_user_endpoint",
+                "config": {
+                    "location": "sophia",
+                    "endpoint_id": "23aa86aa-c5e3-4af7-aaf0-a456a4625d3d",
+                    "function_id": "b5431e1c-5515-4882-b0ba-0d994aa2e366"
+                }
+            },
+            "symlink": null,
+            "download": null,
+            "upload": null,
+            "compress": null,
+            "extract": null,
+            "mv": null,
+            "cp": null
+        },
+        "home": {
+            "chmod": {
+                "endpoint_type": "globus_multi_user_endpoint",
+                "config": {
+                    "location": "sophia",
+                    "endpoint_id": "23aa86aa-c5e3-4af7-aaf0-a456a4625d3d",
+                    "function_id": "f3ab2b19-ef48-46c7-b18e-d2a0d2972d8d"
+                }
+            },
+            "chown": {
+                "endpoint_type": "globus_multi_user_endpoint",
+                "config": {
+                    "location": "sophia",
+                    "endpoint_id": "23aa86aa-c5e3-4af7-aaf0-a456a4625d3d",
+                    "function_id": "3d67c27e-56b5-4268-8aa2-d57c2cf80857"
+                }
+            },
+            "ls": {
+                "endpoint_type": "globus_multi_user_endpoint",
+                "config": {
+                    "location": "sophia",
+                    "endpoint_id": "23aa86aa-c5e3-4af7-aaf0-a456a4625d3d",
+                    "function_id": "4042be04-6148-49e3-9ee5-dfd16141eafb"
+                }
+            },
+            "head": {
+                "endpoint_type": "globus_multi_user_endpoint",
+                "config": {
+                    "location": "sophia",
+                    "endpoint_id": "23aa86aa-c5e3-4af7-aaf0-a456a4625d3d",
+                    "function_id": "68001dbe-c8dc-4a5f-9ac9-0911ba78daec"
+                }
+            },
+            "tail": {
+                "endpoint_type": "globus_multi_user_endpoint",
+                "config": {
+                    "location": "sophia",
+                    "endpoint_id": "23aa86aa-c5e3-4af7-aaf0-a456a4625d3d",
+                    "function_id": "b06a8bdc-3645-4197-afc7-dd9d280d0bfb"
+                }
+            },
+            "view": {
+                "endpoint_type": "globus_multi_user_endpoint",
+                "config": {
+                    "location": "sophia",
+                    "endpoint_id": "23aa86aa-c5e3-4af7-aaf0-a456a4625d3d",
+                    "function_id": "4d1c8fd9-d455-4cb9-b74a-5e4a3539128d"
+                }
+            },
+            "checksum": {
+                "endpoint_type": "globus_multi_user_endpoint",
+                "config": {
+                    "location": "sophia",
+                    "endpoint_id": "23aa86aa-c5e3-4af7-aaf0-a456a4625d3d",
+                    "function_id": "e2d10084-8d6b-43da-9fe2-b92ad22d261d"
+                }
+            },
+            "file": {
+                "endpoint_type": "globus_multi_user_endpoint",
+                "config": {
+                    "location": "sophia",
+                    "endpoint_id": "23aa86aa-c5e3-4af7-aaf0-a456a4625d3d",
+                    "function_id": "d3dc8add-259f-415f-8e3e-be0cccd9f02c"
+                }
+            },
+            "stat": null,
+            "rm": {
+                "endpoint_type": "globus_multi_user_endpoint",
+                "config": {
+                    "location": "sophia",
+                    "endpoint_id": "23aa86aa-c5e3-4af7-aaf0-a456a4625d3d",
+                    "function_id": "ad3829ea-cbc0-4249-91f5-d8d20fc6fef5"
+                }
+            },
+            "mkdir": {
+                "endpoint_type": "globus_multi_user_endpoint",
+                "config": {
+                    "location": "sophia",
+                    "endpoint_id": "23aa86aa-c5e3-4af7-aaf0-a456a4625d3d",
+                    "function_id": "b5431e1c-5515-4882-b0ba-0d994aa2e366"
+                }
+            },
+            "symlink": null,
+            "download": null,
+            "upload": null,
+            "compress": null,
+            "extract": null,
+            "mv": null,
+            "cp": null
+        }
+    },
+    "account": {
+        "all": {
+            "all": {
+                "endpoint_type": "ni_rest_api",
+                "config": {
+                    "url": "https://graphql-bridge-dev-01.lab.alcf.anl.gov/accounting/account"
+                }
+            }
+        }
+    }
+}
