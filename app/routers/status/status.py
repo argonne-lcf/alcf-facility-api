@@ -41,7 +41,7 @@ async def get_resources(
         examples=[models.ResourceType.compute, models.ResourceType.storage, models.ResourceType.storage_system, models.ResourceType.service],
     ),
     current_status: models.Status = Query(default=None),
-    capability: List[AllocationUnitValue] = Query(default=None, min_length=1),
+    capability: list[str] | None = Query(default_factory=list, description="Capability ids to filter by. Including multiple capability ids returns any matches (logical OR not AND)."),
     _forbid=Depends(forbidExtraQueryParams("name", "description", "group", "offset", "limit", "modified_since", "resource_type", "current_status", "capability", multiParams={"capability"})),
 ) -> list[models.Resource]:
     return await router.adapter.get_resources(
