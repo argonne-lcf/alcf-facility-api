@@ -46,16 +46,8 @@ enable_stdio_inheritance = True
 # Add timestamp to access logs
 access_log_format = '%(t)s %(h)s "%(r)s" %(s)s %(b)s "%(f)s" "%(a)s"'
 
+# Configure uvicorn access log to add timestamps
 def post_worker_init(worker):
-
-    # Make sure all of the IRI apilogger logs go into stderr
-    # This keep the ALCF stdout JSON-structured logs clear and parsable with | jq
-    root = logging.getLogger()
-    for handler in root.handlers:
-        if getattr(handler, IRI_HANDLER_ATTR, False) and isinstance(handler, logging.StreamHandler):
-            handler.stream = sys.stderr
-
-    # Add timestamps to uvicorn access log
     access_logger = logging.getLogger("uvicorn.access")
     if access_logger.handlers:
         for handler in access_logger.handlers:
