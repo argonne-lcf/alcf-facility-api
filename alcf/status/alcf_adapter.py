@@ -1,6 +1,6 @@
 import asyncio
 import datetime
-from starlette.status import HTTP_304_NOT_MODIFIED, HTTP_400_BAD_REQUEST
+from starlette.status import HTTP_304_NOT_MODIFIED, HTTP_400_BAD_REQUEST, HTTP_501_NOT_IMPLEMENTED
 from fastapi import HTTPException
 from app.routers.status.facility_adapter import FacilityAdapter as StatusFacilityAdapter
 
@@ -29,6 +29,14 @@ from alcf.logging.decorators import log_status_operation
 
 class AlcfAdapter(StatusFacilityAdapter):
     """Facility adapter definition for the Status component of the IRI Facility API."""
+
+    # Get resources for endpoint
+    # Note: part of the IRI v.1.2.0 tag but not used by V1
+    async def get_resources_for_endpoint(
+        self: "AlcfAdapter", 
+        endpoint: status_models.Endpoint
+    ) -> list[status_models.Resource]:
+        raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="Not implemented yet.")
 
     # Get resources
     @log_status_operation
