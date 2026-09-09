@@ -1,7 +1,0 @@
-{
-    "3b306e4a-80d9-499e-91c5-65b692ec952d@clients.auth.globus.org": {
-        "source_type": "globus-client",
-        "source_description": "Private client to run automated test suite to monitor the ALCF IRI API",
-        "output_alcf_username": "bcote"
-    }
-}
