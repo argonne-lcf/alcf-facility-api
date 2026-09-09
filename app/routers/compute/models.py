@@ -66,9 +66,9 @@ class JobSpec(IRIBaseModel):
     executable: str|None = Field(default=None,
                                  min_length=1,
                                  description="Path to the executable to run. If container is specified, this will be used as the entrypoint to the container.",
-                                 example="/usr/bin/python")
+                                 example="/bin/bash")
     container: Container|None = Field(default=None, description="Container specification for containerized execution")
-    arguments: list[str] = Field(default_factory=list, description="Command-line arguments to pass to the executable or container", example=["-n", "100"])
+    arguments: list[str] = Field(default_factory=list, description="Command-line arguments to pass to the executable or container", example=["-lc", "echo hello"])
     directory: str|None = Field(default=None, min_length=1, description="Working directory for the job", example="/home/user/work")
     name: str|None = Field(default=None, min_length=1, description="Name of the job", example="my-job")
     inherit_environment: StrictBool = Field(default=True, description="Whether to inherit the environment variables from the submission environment", example=True)
