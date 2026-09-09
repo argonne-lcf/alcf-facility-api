@@ -7,12 +7,13 @@ from alcf.config import (
     GLOBUS_HA_POLICY,
     GLOBUS_GROUP,
     AUTHORIZED_IDP_DOMAIN,
-    CACHE_TTL_TOKEN_INTROSPECTION
+    CACHE_TTL_TOKEN_INTROSPECTION,
+    ALCF_IDENTITY_MAPPING
 )
 import json
 import hashlib
 from pydantic import BaseModel, Field
-from typing import Optional, List, Tuple
+from typing import Optional, List, Tuple, Any
 import globus_sdk
 import time
 
@@ -254,6 +255,75 @@ def validate_access_token(access_token) -> TokenValidationResponse:
             error_message=f"Globus token expired. {LOGOUT_MESSAGE_STR}"
         )
     
+    # Authorize Globus service-account client
+    if is_service_account_client(introspection):
+        authorize_response: TokenValidationResponse = authorize_client_introspection(introspection)
+
+    # Authorize Globus user
+    else:
+        authorize_response: TokenValidationResponse = authorize_user_introspection(introspection, user_groups)
+
+    # Add Globus Compute access token to the user details if necessary
+    if authorize_response.is_authorized:
+        if authorize_response.user:
+            authorize_response.user.access_token = globus_compute_access_token
+        else:
+            return TokenValidationResponse(
+                is_authorized=False,
+                user=None,
+                error_message="No user attached to the token validation response."
+            )
+    
+    # Return token validation response
+    return authorize_response
+
+
+def authorize_client_introspection(
+    introspection: dict[str, Any]
+) -> TokenValidationResponse:
+    """Authorize client based on token introspection and current restrictions."""
+
+    # Refuse access if client not in the list of authorized clients
+    client_username = introspection.get("username", "")
+    if client_username not in ALCF_IDENTITY_MAPPING:
+        return TokenValidationResponse(
+            is_authorized=False,
+            user=None,
+            error_message=f"Client {client_username} not in the list of authorized clients."
+        )
+    
+    # Create user object for the authorized client
+    try:
+        client_user = UserPydantic(
+            id=introspection["sub"],
+            name=introspection["name"] if isinstance(introspection["name"], str) else "",
+            username=introspection["username"],
+            user_group_uuids=[],
+            idp_id=client_username.split("@", 1)[1] if "@" in client_username else "",
+            idp_name=introspection["iss"],
+            auth_service=AuthServices.globus.value
+        )
+    except Exception as e:
+        error_message = generate_error_message(f"Could not create user for {client_username}.", e)
+        return TokenValidationResponse(
+            is_authorized=False,
+            user=None,
+            error_message=error_message
+        )
+    
+    # Authorized user if all checks passed
+    return TokenValidationResponse(
+        is_authorized=True,
+        user=client_user
+    )
+
+
+def authorize_user_introspection(
+    introspection: dict[str, Any],
+    user_groups: List[str]
+) -> TokenValidationResponse:
+    """Authorize user based on token introspection and current restrictions."""
+
     # Gather list of identities from session_info
     session_info_identities, error_message = get_session_info_identities(introspection)
     if error_message:
@@ -299,10 +369,7 @@ def validate_access_token(access_token) -> TokenValidationResponse:
                 error_message=f"User {user.username} not in the authorized Globus Group. Please contact adminstrators."
             )
         
-    # Add Globus Compute access token to the user details
-    user.access_token = globus_compute_access_token
-    
-    # Return the user details
+    # Authorized user if all checks passed
     return TokenValidationResponse(
         is_authorized=True,
         user=user
@@ -321,6 +388,15 @@ def get_alcf_username_from_token(access_token: str) -> Tuple[str, str]:
     globus_introspection, user_groups, _, error_message = introspect_token(access_token)
     if len(error_message) > 0:
         return None, error_message
+    
+    # Use identity mapping if needed
+    if is_service_account_client(globus_introspection):
+        client_username = globus_introspection.get("username", "")
+        if client_username in ALCF_IDENTITY_MAPPING:
+            return ALCF_IDENTITY_MAPPING[client_username]["output_alcf_username"], None # TODO: Make this Pydantic
+        else:
+            return None, f"Client {client_username} not in the list of authorized clients."
+
 
     # Recover Globus username (username@idp_domain) tied to the IdP used during authentication
     session_info_identities, _ = get_session_info_identities(globus_introspection)
@@ -342,3 +418,8 @@ def get_alcf_username_from_token(access_token: str) -> Tuple[str, str]:
 
     # Return ALCF username without error if nothing went wrong
     return alcf_username, None
+
+
+def is_service_account_client(introspection: dict[str, Any]) -> bool:
+    """True is the introspection if from a Globus service account client."""
+    return introspection.get("username", "").endswith("@clients.auth.globus.org")

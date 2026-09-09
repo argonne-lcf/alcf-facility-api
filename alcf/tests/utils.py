@@ -8,6 +8,7 @@ import time
 import json
 import logging
 import requests
+import globus_sdk
 from dotenv import load_dotenv
 
 logging.disable(logging.WARNING)
@@ -17,6 +18,26 @@ logging.disable(logging.NOTSET)
 
 load_dotenv(override=True)
 
+# Facility API Globus scope
+SCOPE_CLIENT_ID = "6be511f6-a071-471f-9bc0-02a0d0836723"
+SCOPE_STRING = f"https://auth.globus.org/scopes/{SCOPE_CLIENT_ID}/filesystem"
+
+# Globus service account
+CLIENT_ID = os.getenv("GLOBUS_CONFIDENTIAL_CLIENT_ID", None)
+CLIENT_SECRET = os.getenv("GLOBUS_CONFIDENTIAL_CLIENT_SECRET", None)
+USE_SERVICE_ACCOUNT = os.getenv("USE_SERVICE_ACCOUNT", "False").lower() in ("true", "1", "t")
+
+# Access token
+if USE_SERVICE_ACCOUNT:
+    if CLIENT_ID is None or CLIENT_SECRET is None:
+        print("No confidential client credentials.")
+        sys.exit(1)
+    client = globus_sdk.ConfidentialAppAuthClient(client_id=CLIENT_ID, client_secret=CLIENT_SECRET)
+    token_response = client.oauth2_client_credentials_tokens(requested_scopes=[SCOPE_STRING])
+    ACCESS_TOKEN = token_response.by_resource_server[SCOPE_CLIENT_ID]["access_token"]
+else:
+    ACCESS_TOKEN = os.getenv("ACCESS_TOKEN")
+    
 
 def get_env(key: str, required: bool = True) -> str:
     value = os.getenv(key)
@@ -29,7 +50,7 @@ def get_env(key: str, required: bool = True) -> str:
 
 def get_headers() -> dict:
     return {
-        "Authorization": f"Bearer {get_env('ACCESS_TOKEN')}",
+        "Authorization": f"Bearer {ACCESS_TOKEN}",
         "Content-Type": "application/json",
     }
 
