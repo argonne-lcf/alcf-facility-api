@@ -1,6 +1,6 @@
 """Compute resource API router"""
 
-from fastapi import Depends, HTTPException, Query, Request, status
+from fastapi import Body, Depends, HTTPException, Query, Request, status
 
 from ...types.http import forbidExtraQueryParams
 from ...types.scalars import StrictHTTPBool
@@ -138,7 +138,7 @@ async def get_job_statuses(
     user: User = Depends(router.current_user),
     offset: int = Query(default=0, ge=0),
     limit: int = Query(default=100, ge=0, le=1000),
-    filters: dict[str, object] | None = None,
+    filters: dict[str, object] | None = Body(None, example={"states": ["active"], "queue": "debug"}),
     historical: StrictHTTPBool | None = Query(default=False, description="Whether to include historical jobs. Defaults to false"),
     include_spec: StrictHTTPBool | None = Query(default=False, description="Whether to include the job specification. Defaults to false"),
     _forbid=Depends(forbidExtraQueryParams("offset", "limit", "filters", "historical", "include_spec")),
