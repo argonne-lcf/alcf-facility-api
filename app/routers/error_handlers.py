@@ -12,6 +12,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse, Response
 from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
+from starlette.routing import Match # [ADDITION] relative to upstream
 
 
 class Problem(BaseModel):
@@ -79,6 +80,28 @@ def problem_response(*, request: Request, status: int, title, detail, problem_ty
     headers = extra_headers or {}
     return JSONResponse(status_code=status, content=Problem(**body).model_dump(), headers=headers, media_type="application/problem+json")
 
+
+# [ADDITION BEGIN] relative to upstream
+# To restore compliancy with IRI spec
+def _get_allowed_methods(app: FastAPI, request: Request) -> str:
+    """Aggregate all HTTP methods registered for the matched path across all routes."""
+    allowed = set()
+    scope = request.scope
+    for route in app.routes:
+        match, _ = route.matches(scope)
+        if match == Match.NONE:
+            continue
+        methods = getattr(route, "methods", None)
+        if methods:
+            allowed.update(methods)
+        for candidate in getattr(route, "_effective_candidates", []):
+            cand_match, _ = candidate.matches(scope)
+            if cand_match != Match.NONE:
+                cand_methods = getattr(candidate, "methods", None)
+                if cand_methods:
+                    allowed.update(cand_methods)
+    return ", ".join(sorted(allowed)) if allowed else "GET, HEAD"
+# [ADDITION BEGIN] relative to upstream
 
 def install_error_handlers(app: FastAPI):
     """Install custom error handlers for the FastAPI app."""
@@ -149,7 +172,7 @@ def install_error_handlers(app: FastAPI):
                 title="Method Not Allowed",
                 detail=err_msg or "HTTP method is not allowed for this resource.",
                 problem_type="method-not-allowed",
-                extra_headers={"Allow": "GET, HEAD"},
+                extra_headers={"Allow": _get_allowed_methods(app, request)},
             )
 
         if exc.status_code == 409:
@@ -193,7 +216,7 @@ def install_error_handlers(app: FastAPI):
                 title="Method Not Allowed",
                 detail=err_msg or "HTTP method is not allowed for this resource.",
                 problem_type="method-not-allowed",
-                extra_headers={"Allow": "GET, HEAD"},
+                extra_headers={"Allow": _get_allowed_methods(app, request)},
             )
 
         return problem_response(
