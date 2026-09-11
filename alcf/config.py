@@ -134,16 +134,6 @@ class AlcfSettings(BaseSettings):
         extra = "ignore"
 
 
-# ALCF endpoints Json configuration
-def _load_endpoints() -> dict:
-    """Load ALCF endpoints from JSON file."""
-    base_dir = Path(__file__).parent.parent
-    endpoints_file = base_dir / "alcf_endpoints.json"
-    if not endpoints_file.exists():
-        raise FileNotFoundError(f"Endpoints JSON file not found: {endpoints_file}")
-    return json.loads(endpoints_file.read_text())
-ALCF_ENDPOINTS = _load_endpoints()
-
 # Load and validate environment variables
 settings = AlcfSettings()
 
@@ -174,3 +164,23 @@ GRAPHQL_HTTPX_TRUST_ENV = settings.graphql_httpx_trust_env
 AUTHORIZED_IDP_DOMAIN = settings.authorized_idp_domain
 TASK_TIMEOUT_SEC = settings.task_timeout_sec
 ENV = settings.env
+
+# ALCF endpoints Json configuration
+def _load_endpoints() -> dict:
+    """Load ALCF endpoints from JSON file."""
+    base_dir = Path(__file__).parent.parent
+    endpoints_file = base_dir / "alcf_endpoints.json"
+    if not endpoints_file.exists():
+        raise FileNotFoundError(f"Endpoints JSON file not found: {endpoints_file}")
+    return json.loads(endpoints_file.read_text())
+ALCF_ENDPOINTS = _load_endpoints()
+
+# ALCF identity mapping Json configuration
+def _load_identity_mapping() -> dict:
+    """Load ALCF identity mapping from JSON file."""
+    base_dir = Path(__file__).parent.parent
+    identity_mapping_file = base_dir / "alcf_identity_mapping.json"
+    if not identity_mapping_file.exists():
+        raise FileNotFoundError(f"Identity mapping JSON file not found: {identity_mapping_file}")
+    return json.loads(identity_mapping_file.read_text())
+ALCF_IDENTITY_MAPPING = _load_identity_mapping()
