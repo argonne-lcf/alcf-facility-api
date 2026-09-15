@@ -9,13 +9,7 @@
 from enum import Enum
 from pydantic import Field, AliasChoices, BaseModel
 
-
-class CompressionType(str, Enum):
-    """Defines the type of compression to be used for compressing or extracting files."""
-    none = "none"
-    bzip2 = "bzip2"
-    gzip = "gzip"
-    xz = "xz"
+from ...types.scalars import CompressionType, CompressionTypeValue
 
 
 class ContentUnit(str, Enum):
@@ -202,7 +196,7 @@ class PostCompressRequest(FilesystemRequestBase):
     target_path: str = Field(..., description="Path to the compressed file", example="/home/user/file.tar.gz")
     match_pattern: str|None = Field(default=None, description="Regex pattern to filter files to compress", example=".*\\.txt$")
     dereference: bool = Field(default=False, description="If set to `true`, it follows symbolic links and archive the files they point to instead of the links themselves.", example=True)
-    compression: CompressionType = Field(default="gzip", description="Defines the type of compression to be used. By default gzip is used.", example="gzip")
+    compression: CompressionTypeValue = Field(default=CompressionType.gzip, description="DOE IRI URN for the compression type (urn:doe-iri:compression:<type>).", example=CompressionType.gzip)
     model_config = {
         "json_schema_extra": {
             "examples": [
@@ -211,7 +205,7 @@ class PostCompressRequest(FilesystemRequestBase):
                     "target_path": "/home/user/file.tar.gz",
                     "match_pattern": "*./[ab].*\\.txt",
                     "dereference": "true",
-                    "compression": "none",
+                    "compression": CompressionType.none,
                 }
             ]
         }
@@ -226,14 +220,14 @@ class PostExtractResponse(BaseModel):
 class PostExtractRequest(FilesystemRequestBase):
     """Represents a request to extract a compressed file."""
     target_path: str = Field(..., description="Path to the directory where to extract the compressed file", example="/home/user/dir")
-    compression: CompressionType = Field(default="gzip", description="Defines the type of compression to be used. By default gzip is used.", example="gzip")
+    compression: CompressionTypeValue = Field(default=CompressionType.gzip, description="DOE IRI URN for the compression type (urn:doe-iri:compression:<type>).", example=CompressionType.gzip)
     model_config = {
         "json_schema_extra": {
             "examples": [
                 {
                     "source_path": "/home/user/dir/file.tar.gz",
                     "target_path": "/home/user/dir",
-                    "compression": "none",
+                    "compression": CompressionType.none,
                 }
             ]
         }
@@ -285,3 +279,70 @@ class PostMoveResponse(BaseModel):
 class RemoveResponse(BaseModel):
     """Represents the response for removing a file or directory."""
     output: str|None = Field(default=None, description="Removal result message")
+
+
+class PostFileRequest(FilesystemRequestBase):
+    """Request body for the file-type endpoint."""
+    path: str = Field(..., description="A file or folder path", example="/home/user/file.txt")
+    model_config = {"json_schema_extra": {"examples": [{"path": "/home/user/file.txt"}]}}
+
+
+class PostChecksumRequest(FilesystemRequestBase):
+    """Request body for the checksum endpoint."""
+    path: str = Field(..., description="Path to the file to checksum", example="/home/user/file.txt")
+    model_config = {"json_schema_extra": {"examples": [{"path": "/home/user/file.txt"}]}}
+
+
+class PostStatRequest(FilesystemRequestBase):
+    """Request body for the stat endpoint."""
+    path: str = Field(..., description="A file or folder path", example="/home/user/file.txt")
+    dereference: bool = Field(default=False, description="Follow symbolic links", example=False)
+    model_config = {"json_schema_extra": {"examples": [{"path": "/home/user/file.txt", "dereference": False}]}}
+
+
+class PostLsRequest(FilesystemRequestBase):
+    """Request body for the ls endpoint."""
+    path: str = Field(..., description="The path to list", example="/home/user")
+    show_hidden: bool = Field(default=False, alias="showHidden", description="Show hidden files", example=False)
+    numeric_uid: bool = Field(default=False, alias="numericUid", description="List numeric user and group IDs", example=False)
+    recursive: bool = Field(default=False, description="Recursively list files and folders", example=False)
+    dereference: bool = Field(default=False, description="Show information for the file the link references", example=False)
+    model_config = {"populate_by_name": True, "json_schema_extra": {"examples": [{"path": "/home/user", "showHidden": False, "numericUid": False, "recursive": False, "dereference": False}]}}
+
+
+class PostHeadRequest(FilesystemRequestBase):
+    """Request body for the head endpoint."""
+    path: str = Field(..., description="File path", example="/home/user/file.txt")
+    file_bytes: int | None = Field(default=None, alias="bytes", description="Return the first NUM bytes of the file", example=1024)
+    lines: int | None = Field(default=None, description="Return the first NUM lines of the file", example=10)
+    skip_trailing: bool = Field(default=False, alias="skipTrailing", description="Return the whole file without the last NUM bytes/lines", example=False)
+    model_config = {"populate_by_name": True, "json_schema_extra": {"examples": [{"path": "/home/user/file.txt", "lines": 10}]}}
+
+
+class PostTailRequest(FilesystemRequestBase):
+    """Request body for the tail endpoint."""
+    path: str = Field(..., description="File path", example="/home/user/file.txt", min_length=1)
+    file_bytes: int | None = Field(default=None, alias="bytes", ge=1, description="Return the last NUM bytes of the file", example=1024)
+    lines: int | None = Field(default=None, ge=1, description="Return the last NUM lines of the file", example=10)
+    skip_heading: bool = Field(default=False, alias="skipHeading", description="Return the whole file without the first NUM bytes/lines", example=False)
+    model_config = {"populate_by_name": True, "json_schema_extra": {"examples": [{"path": "/home/user/file.txt", "lines": 10}]}}
+
+
+class PostViewRequest(FilesystemRequestBase):
+    """Request body for the view endpoint."""
+    path: str = Field(..., description="File path", example="/home/user/file.txt")
+    size: int = Field(default=0, ge=1, description="Number of bytes to retrieve from the file", example=4096)
+    offset: int = Field(default=0, ge=0, description="Byte offset to start reading from", example=0)
+    model_config = {"json_schema_extra": {"examples": [{"path": "/home/user/file.txt", "size": 4096, "offset": 0}]}}
+
+
+class PostRmRequest(FilesystemRequestBase):
+    """Request body for the rm endpoint."""
+    path: str = Field(..., description="The path to delete", example="/home/user/old-file.txt")
+    model_config = {"json_schema_extra": {"examples": [{"path": "/home/user/old-file.txt"}]}}
+
+
+class PostDownloadRequest(FilesystemRequestBase):
+    """Request body for the download endpoint."""
+    path: str = Field(..., description="A file to download", example="/home/user/file.txt")
+    model_config = {"json_schema_extra": {"examples": [{"path": "/home/user/file.txt"}]}}

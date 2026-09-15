@@ -5,7 +5,7 @@ See it live:
 
 - NERSC instance:
    - API docs: https://api.iri.nersc.gov
-   - API requests: https://api.iri.nersc.gov/api/v1/
+   - API requests: https://api.iri.nersc.gov/api/v2/
 - ALCF instance:
    - API docs: https://api.alcf.anl.gov
    - API requests: https://api.alcf.anl.gov/api/v1/
@@ -39,7 +39,7 @@ The IRI API handles the "boilerplate" of setting up the rest API. It delegates t
 
 The specific implementations can be specified via the `IRI_API_ADAPTER_*` environment variables. For example the adapter for the `status` api would be given by setting `IRI_API_ADAPTER_status` to the full python module and class implementing `app.routers.status.facility_adapter.FacilityAdapter`. (eg. `IRI_API_ADAPTER_status=myfacility.MyFacilityStatusAdapter`)
 
-As a default implementation, this project supplies the [demo adapter](app/demo_adapter.py) which implements every facility adapter with fake data.
+A reference implementation that fakes every facility adapter is provided by the separate [`iri-facility-api-demo-adapter`](https://github.com/doe-iri/iri-facility-api-demo-adapter) repo, included here as a git submodule under `examples/demo-adapter`. `make dev` installs it and wires it up automatically. This repo itself ships no adapter -- it is a pure framework.
 
 ### Customizing the API meta-data
 You can optionally override the [FastAPI metadata](https://fastapi.tiangolo.com/tutorial/metadata/), such as `name`, `description`, `terms_of_service`, etc. by providing a valid json object in the `IRI_API_PARAMS` environment variable.
@@ -50,7 +50,7 @@ If using docker (see next section), your dockerfile could extend this reference 
 
 - `API_URL_ROOT`: the base url when constructing links returned by the api (eg.: https://iri.myfacility.com)
 - `API_PREFIX`: the path prefix where the api is hosted. Defaults to `/`. (eg.: `/api`)
-- `API_URL`: the path to the api itself. Defaults to `api/v1`.
+- `API_URL`: the path to the api itself. Defaults to `api/v2`.
 ### OpenTelemetry
 
 The API supports OpenTelemetry for distributed tracing and metrics. Traces and metrics can be independently enabled or disabled.
@@ -86,7 +86,63 @@ Links to data, created by this api, will concatenate these values producing link
 
 - `IRI_API_PARAMS`: as described above, this is a way to customize the API meta-data
 - `IRI_API_ADAPTER_*`: these values specify the business logic for the per-api-group implementation of a facility_adapter. For example: `IRI_API_ADAPTER_status=myfacility.MyFacilityStatusAdapter` would load the implementation of the `app.routers.status.facility_adapter.FacilityAdapter` abstract class to handle the `status` business logic for your facility.
-- `IRI_SHOW_MISSING_ROUTES`: hide api groups that don't have an `IRI_API_ADAPTER_*` environment variable defined, if set to `true`. This way if your facility only wishes to expose some api groups but not others, they can be hidden. (Defaults to `false`.)
+
+  The full list of router adapters and the abstract base class each must implement:
+
+  | Variable | Mounted at | Abstract base class your adapter must subclass |
+  |---|---|---|
+  | `IRI_API_ADAPTER_facility`   | `/facility/...`   | [`app.routers.facility.facility_adapter.FacilityAdapter`](app/routers/facility/facility_adapter.py) |
+  | `IRI_API_ADAPTER_status`     | `/status/...`     | [`app.routers.status.facility_adapter.FacilityAdapter`](app/routers/status/facility_adapter.py) |
+  | `IRI_API_ADAPTER_account`    | `/account/...`    | [`app.routers.account.facility_adapter.FacilityAdapter`](app/routers/account/facility_adapter.py) |
+  | `IRI_API_ADAPTER_compute`    | `/compute/...`    | [`app.routers.compute.facility_adapter.FacilityAdapter`](app/routers/compute/facility_adapter.py) |
+  | `IRI_API_ADAPTER_filesystem` | `/filesystem/...` | [`app.routers.filesystem.facility_adapter.FacilityAdapter`](app/routers/filesystem/facility_adapter.py) |
+  | `IRI_API_ADAPTER_storage`    | `/storage/...`    | [`app.routers.storage.facility_adapter.FacilityAdapter`](app/routers/storage/facility_adapter.py) |
+  | `IRI_API_ADAPTER_task`       | `/task/...`       | [`app.routers.task.facility_adapter.FacilityAdapter`](app/routers/task/facility_adapter.py) |
+
+  Each value is a `module.path.ClassName` string. The demo adapter's `demo_adapter.combined.DemoAdapter` (from the `examples/demo-adapter` submodule) implements all of them and is what `make dev` wires up by default. A router whose `IRI_API_ADAPTER_*` is not set is hidden from the API at startup; if `IRI_SHOW_MISSING_ROUTES=true` an unconfigured router instead fails fast at startup (the framework has no built-in fallback adapter).
+
+- `IRI_SHOW_MISSING_ROUTES`: by default (`false`), api groups without an `IRI_API_ADAPTER_*` environment variable are silently hidden, so a facility can expose only the groups it implements. If set to `true`, an unconfigured group instead makes startup fail fast, surfacing the missing adapter as a configuration error rather than silently dropping the route.
+
+### Facility-specific authentication
+
+Required. Every domain whose `FacilityAdapter` extends `AuthenticatedAdapter` (`account`, `compute`, `filesystem`, `storage`, `task` -- see the base class in [`app/routers/iri_router.py`](app/routers/iri_router.py)) requires callers to send `Authorization: Bearer <token>` on every request; `facility` and `status` are public and need no token.
+
+This framework ships no business logic of its own for Authentication methods. Each adapter must implement:
+
+```python
+class AuthenticatedAdapter(ABC):
+    async def get_current_user(self, api_key: str, client_ip: str | None) -> str:
+        """Validate api_key, return the authenticated user's id (or raise)."""
+
+    async def get_user(self, user_id: str, api_key: str, client_ip: str | None) -> User:
+        """Look up name/email/etc. for the id returned by get_current_user."""
+```
+
+The demo adapter's [`DemoAuthMixin`](https://github.com/doe-iri/iri-facility-api-demo-adapter/blob/main/demo_adapter/common.py) shows the minimal shape (checks a static key, returns a fixed user). Real deployments validate against the facility trusted mechanism -- for example, NERSC and ALCF validate a Globus token in `get_current_user`.
+
+### AmSC authentication
+
+Optional, off by default. When enabled, `IriRouter.current_user` validates an AmSC Keycard bearer token (RIG audience-scopes it to this facility before forwarding it) *before* falling back to the facility-specific auth path above: JWKS signature/issuer/audience/expiry verification, an optional Ping userinfo freshness check, and mapping the tokens active `amsc_project_context` claim to a local facility username via a JSON file. See [`app/amsc_auth.py`](app/amsc_auth.py) for the implementation details
+
+| Variable | Default | Description |
+|---|---|---|
+| `AMSC_TOKEN_ENABLED` | `false` | Enabled/Disable AmSC auth. When `false`, every other `AMSC_*` variable below is ignored. |
+| `AMSC_TOKEN_ISSUER` | _(required when enabled)_ | Expected `iss` claim (the AmSC Identity Provider, Ping). |
+| `AMSC_TOKEN_AUDIENCE` | _(required when enabled)_ | Comma-separated list of accepted `aud` values -- this facility's RIG-scoped audience identifier(s). AmSC uses full url, like `https://api.iri.nersc.gov/`. Match is exact: a token is rejected if its `aud` contains any value outside this list, even if it also contains an accepted one -- a generic AmSC-platform token that merely lists this facility alongside other audiences is not sufficient. |
+| `AMSC_TOKEN_SKIP_AUDIENCE_CHECK` | `false` | **Local-dev only -- never set in a real facility deployment.** Skips `aud` verification entirely; `AMSC_TOKEN_AUDIENCE` becomes optional while this is `true`. Exists because a local/fake IdP (e.g. RIG's Tier-1 audience-scoped exchange in a sandbox) has no real PingAM issuance path for a facility running on localhost, so it can't mint a token whose `aud` matches. Signature, issuer, expiry, `sub`, and `amsc_project_context` are still enforced. |
+| `AMSC_OIDC_DISCOVERY_URL` | _(unset)_ | `.well-known/openid-configuration` URL used to resolve the JWKS and userinfo endpoints. Either this needs to be provided or the explicit `AMSC_JWKS_URL` (and `AMSC_USERINFO_URL` if the userinfo check is enabled) must be set. |
+| `AMSC_JWKS_URL` | _(derived from discovery)_ | Explicit JWKS endpoint, overrides the discovery endpoint. |
+| `AMSC_TOKEN_ALGORITHMS` | _(derived from discovery)_ | Comma-separated list of accepted JWT signing algorithms. If unset, derived from the discovery output `id_token_signing_alg_values_supported`. Falls back to `RS256,ES256,RS384,RS512,ES384,ES512` if discovery is unset, unreachable, or has nothing usable after filtering. |
+| `AMSC_TOKEN_LEEWAY_SECONDS` | `30` | Clock-skew leeway applied to `exp`/`nbf` checks. |
+| `AMSC_TOKEN_JWKS_CACHE_TTL_SECONDS` | `3600` | How long JWKS keys and the discovery endpoint are cached before refetching. |
+| `AMSC_USERINFO_VALIDATION_ENABLED` | `false` | When `true`, every AmSC-authenticated request also calls the userinfo endpoint (Ping) with the caller's token to catch revocation that offline JWT validation cannot see. Fail-closed: if Ping is unreachable or rejects the token, the request is denied. |
+| `AMSC_USERINFO_URL` | _(derived from discovery)_ | Explicit userinfo endpoint, overrides the discovery endpoint. |
+| `AMSC_USERINFO_TIMEOUT_SECONDS` | `5` | Timeout for the discovery endpoint fetch and the userinfo call. |
+| `AMSC_PROJECT_MAPPING_FILE` | _(required when enabled)_ | Path to a JSON file mapping each AmSC `amsc_project_context` this facility has provisioned to a local facility username. See [`examples/demo-adapter/amsc_project_mapping.json`](examples/demo-adapter/amsc_project_mapping.json) for the format. An `amsc_project_context` with no entry is a 401, not a silent fallback. |
+
+Startup fails fast with a clear error if `AMSC_TOKEN_ENABLED=true` but required configuration is missing.
+
+The default `AuthenticatedAdapter.get_current_user_amsc` resolves the mapping file; override possible on facility adapter if needed.
 
 ### Logging
 
@@ -101,6 +157,53 @@ Logs always go to stdout. Optionally, logs can also be written to a rotating fil
 | `LOG_ROTATION_DAYS` | `5` | Fallback retention when `IRI_LOG_ROTATION_DAYS` is not set. |
 
 For local development, `make` writes logs to `runtime-logs.log` by default and keeps `5` daily rotated files. Use `make LOG_FILE=/tmp/iri-api.log`, `make IRI_LOG_FILE=/tmp/iri-api.log`, or `make LOG_ROTATION_DAYS=10` to override those defaults. You can also put the same variables in `local.env`.
+
+## Idempotency
+
+Compute `submit_job` and `update_job` endpoints support an optional `Idempotency-Key` request header. When provided, the server caches the first successful response for that key and returns it on any subsequent request with the same key and body — without calling the facility adapter again. This makes it safe for clients to retry on timeout without risking duplicate job submissions.
+
+### Behaviour
+
+| Scenario | Response |
+|---|---|
+| First request | Calls adapter, caches result. Response header: `Idempotency-Key-Reply: miss` |
+| Retry, same body | Returns cached result. Response header: `Idempotency-Key-Reply: hit` |
+| Retry, different body | `422 Unprocessable Entity` |
+| Concurrent duplicate (in-flight) | `409 Conflict` with `Retry-After: 2` |
+| Adapter raises | Lock released; client may retry safely |
+
+### Backing store
+
+The core library ships no backing store. Configure one with `IRI_IDEMPOTENCY_STORE`;
+if it is unset, a request that sends `Idempotency-Key` returns `501`.
+
+The demo adapter package provides reference stores:
+
+| Store | Configure with | Suitable for |
+|---|---|---|
+| In-process dict | `IRI_IDEMPOTENCY_STORE=demo_adapter.compute.idempotency.InMemoryIdempotencyStore` | Dev / single-instance |
+| Redis | `IRI_IDEMPOTENCY_STORE=demo_adapter.compute.idempotency.RedisIdempotencyStore` plus `REDIS_URL` | Multi-replica production |
+
+For multi-replica deployments, use the Redis store. Run a local Redis instance with `make redis`.
+
+### Environment variables
+
+| Variable | Default | Description |
+|---|---|---|
+| `IRI_IDEMPOTENCY_STORE` | _(unset)_ | Dotted path to an idempotency store class. The demo adapter provides in-memory and Redis reference stores. |
+| `REDIS_URL` | _(unset)_ | Redis connection URL (e.g. `redis://localhost:6379`) when using `RedisIdempotencyStore`. |
+| `IDEMPOTENCY_TTL_SECONDS` | `86400` | How long a cached response is retained after a successful call (24 hours). |
+| `LOCK_TTL_SECONDS` | `60` | Maximum seconds an in-flight request holds the lock. If the IRI process crashes mid-request, the lock auto-expires after this interval so the next retry is treated as a fresh request. Set higher if your facility's scheduler API is known to be slow. |
+
+### Quick start (dev)
+
+```bash
+make redis                          # start Redis container on :6379
+# add to local.env:
+export IRI_IDEMPOTENCY_STORE=demo_adapter.compute.idempotency.RedisIdempotencyStore
+export REDIS_URL=redis://localhost:6379
+make                                # start IRI dev server
+```
 
 ## Docker support
 
@@ -162,20 +265,6 @@ ENV IRI_API_PARAMS='{ \
     } \
 }'
 ```
-
-## Globus auth integration
-
-You can optionally use globus for authorization. Steps to use globus:
-- ask someone to add your globus account to the IRI Resource Server
-- log into globus and make a secret for yourself for the IRI Resource Server
-- if you want to create tokens during developent, also create a separate globus app
-- `cp local-template.env local.env` and fill in the missing values
-- to mint a token, run `make globus`, click the link and copy the code from the browser url bar back into the terminal
-- you can also run `make manage-globus` but be sure to not accidentally delete the `iri-api` scope. (Maybe it's better if you don't run this app)
-- now you can run `make` for the dev server and enjoy using your globus iri access tokens (in the demo adapter they will all resolve to the user `gtorok`)
-- for your facility:
-   - implement the `get_current_user_globus` method (see iri_adapter.py). Here you can look at the linked globus identities and session info to determine what the local username is
-   - make sure the values in `local.env` are available in the deployed app
 
 ## Next steps
 

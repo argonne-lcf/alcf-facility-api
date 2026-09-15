@@ -26,6 +26,9 @@ $(STAMP_DEPS): $(STAMP_VENV) pyproject.toml
 		pylint \
 		bandit \
 		pytest
+	git submodule update --init examples/demo-adapter
+	$(UV) pip install --python $(BIN)/python -e examples/demo-adapter --no-deps
+	$(UV) pip install --python $(BIN)/python 'redis>=7.2.0,<8.0.0'
 	touch $(STAMP_DEPS)
 
 deps: $(STAMP_DEPS)
@@ -33,20 +36,41 @@ deps: $(STAMP_DEPS)
 dev: deps
 	@source $(BIN)/activate && \
 	[ -f local.env ] && source local.env || true && \
-	IRI_API_ADAPTER_facility=app.demo_adapter.DemoAdapter \
-	IRI_API_ADAPTER_status=app.demo_adapter.DemoAdapter \
-	IRI_API_ADAPTER_account=app.demo_adapter.DemoAdapter \
-	IRI_API_ADAPTER_compute=app.demo_adapter.DemoAdapter \
-	IRI_API_ADAPTER_filesystem=app.demo_adapter.DemoAdapter \
-	IRI_API_ADAPTER_task=app.demo_adapter.DemoAdapter \
+	IRI_API_ADAPTER_facility=demo_adapter.combined.DemoAdapter \
+	IRI_API_ADAPTER_status=demo_adapter.combined.DemoAdapter \
+	IRI_API_ADAPTER_account=demo_adapter.combined.DemoAdapter \
+	IRI_API_ADAPTER_compute=demo_adapter.combined.DemoAdapter \
+	IRI_API_ADAPTER_filesystem=demo_adapter.combined.DemoAdapter \
+	IRI_API_ADAPTER_storage=demo_adapter.combined.DemoAdapter \
+	IRI_API_ADAPTER_task=demo_adapter.combined.DemoAdapter \
+	IRI_IDEMPOTENCY_STORE=demo_adapter.compute.idempotency.InMemoryIdempotencyStore \
 	IRI_LOG_FILE="$${IRI_LOG_FILE:-$${LOG_FILE:-$(IRI_LOG_FILE)}}" \
 	IRI_LOG_ROTATION_DAYS="$${IRI_LOG_ROTATION_DAYS:-$${LOG_ROTATION_DAYS:-$(IRI_LOG_ROTATION_DAYS)}}" \
 	DEMO_QUEUE_UPDATE_SECS=2 \
 	OPENTELEMETRY_ENABLED=true \
 	API_URL_ROOT='http://localhost:8000' fastapi dev
 
+REDIS_PORT      ?= 6379
+REDIS_CONTAINER := iri-redis
+
+redis: ## Start a local Redis container for idempotency (dev only)
+	docker run -d --name $(REDIS_CONTAINER) -p $(REDIS_PORT):6379 redis:7-alpine 2>/dev/null || \
+		docker start $(REDIS_CONTAINER) 2>/dev/null || true
+	@echo "Redis running on localhost:$(REDIS_PORT)"
+	@echo "Add to local.env:"
+	@echo "  export REDIS_URL=redis://localhost:$(REDIS_PORT)"
+	@echo "  export IDEMPOTENCY_TTL_SECONDS=86400  # cache TTL (default: 24h)"
+	@echo "  export LOCK_TTL_SECONDS=60            # in-flight lock TTL (default: 60s)"
+
+redis-stop: ## Stop the local Redis container
+	docker stop $(REDIS_CONTAINER) 2>/dev/null || true
+
+redis-clean: ## Stop and remove the local Redis container
+	docker rm -f $(REDIS_CONTAINER) 2>/dev/null || true
+
+
 test: deps ## Run unit tests
-	$(BIN)/python -m pytest --ignore=test/test_filesystem.py test/ -v
+	$(BIN)/python -m pytest test/ -v
 
 .PHONY: clean
 clean:
@@ -76,6 +100,10 @@ audit: deps
 
 bandit: deps
 	$(BIN)/bandit -r app || true
+
+test: deps
+	$(UV) pip install --python $(BIN)/python -e ".[dev]"
+	$(BIN)/python -m pytest test/ -v
 
 # Full validation bundle
 lint: clean format ruff pylint audit bandit

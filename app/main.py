@@ -2,6 +2,8 @@
 """Main API application"""
 
 import logging
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, Request
 from starlette.middleware.base import BaseHTTPMiddleware
 from opentelemetry import trace, metrics
@@ -17,6 +19,7 @@ from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 
 from . import config
 from .apilogger import configure_logging
+from .idempotency import create_store
 from .request_context import set_api_url_base, _api_url_base
 
 from app.routers.error_handlers import install_error_handlers
@@ -25,6 +28,7 @@ from app.routers.status import status
 from app.routers.account import account
 from app.routers.compute import compute
 from app.routers.filesystem import filesystem
+from app.routers.storage import storage
 from app.routers.task import task
 
 configure_logging(config.LOG_LEVEL)
@@ -53,7 +57,14 @@ if config.OPENTELEMETRY_ENABLED:
         metrics.set_meter_provider(MeterProvider(resource=resource, metric_readers=[metric_reader]))
 # ------------------------------------------------------------------
 
-APP = FastAPI(servers=[{"url": config.API_URL_ROOT}], **config.API_CONFIG)
+@asynccontextmanager
+async def _lifespan(app: FastAPI):
+    app.state.idempotency_store = create_store()
+    yield
+    await app.state.idempotency_store.close()
+
+
+APP = FastAPI(servers=[{"url": config.API_URL_ROOT}], lifespan=_lifespan, **config.API_CONFIG)
 
 
 class _ExternalRequestContextMiddleware(BaseHTTPMiddleware):
@@ -81,6 +92,7 @@ APP.include_router(status.router, prefix=api_prefix)
 APP.include_router(account.router, prefix=api_prefix)
 APP.include_router(compute.router, prefix=api_prefix)
 APP.include_router(filesystem.router, prefix=api_prefix)
+APP.include_router(storage.router, prefix=api_prefix)
 APP.include_router(task.router, prefix=api_prefix)
 
 logging.getLogger().info(f"API path: {api_prefix}")
