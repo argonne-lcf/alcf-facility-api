@@ -7,7 +7,12 @@ LOG_LEVEL = os.environ.get("LOG_LEVEL", "DEBUG")
 
 logger = get_stream_logger(__name__, LOG_LEVEL)
 
-API_VERSION = "1.0.0"
+API_VERSION = "2.0.0"
+API_VERSION_SHORT = "v2"
+
+API_URL_ROOT = os.environ.get("API_URL_ROOT", "https://api.iri.nersc.gov")
+API_PREFIX = os.environ.get("API_PREFIX", "/")
+API_URL = os.environ.get("API_URL", f"api/{API_VERSION_SHORT}")
 
 # lines in the description can't have indentation (markup format)
 description = """
@@ -19,12 +24,13 @@ For more information, see: [https://iri.science/](https://iri.science/)
 """
 
 # version is the openapi.json spec version
-# /api/v1 mount point means it's the latest backward-compatible url
+# /api/v2 mount point means it's the latest backward-compatible url
 API_CONFIG = {
     "title": "IRI Facility API reference implementation",
     "description": description,
     "version": API_VERSION,
-    "docs_url": "/",
+    "docs_url": f"/{API_URL}",
+    "openapi_url": f"/{API_URL}/openapi.json",
     "contact": {"name": "Facility API contact", "url": "https://www.somefacility.gov/about/contact-us/"},
     "terms_of_service": "https://www.somefacility.gov/terms-of-service",
 }
@@ -35,11 +41,6 @@ try:
 except Exception as exc:
     logger.error(f"Error parsing IRI_API_PARAMS: {exc}")
 
-
-API_URL_ROOT = os.environ.get("API_URL_ROOT", "https://api.iri.nersc.gov")
-API_PREFIX = os.environ.get("API_PREFIX", "/")
-API_URL = os.environ.get("API_URL", "api/v1")
-
 OPENTELEMETRY_ENABLED = os.environ.get("OPENTELEMETRY_ENABLED", "false").lower() == "true"
 OPENTELEMETRY_DEBUG = os.environ.get("OPENTELEMETRY_DEBUG", "false").lower() == "true"
 OTLP_ENDPOINT = os.environ.get("OTLP_ENDPOINT", "")
@@ -47,6 +48,14 @@ OTEL_SAMPLE_RATE = float(os.environ.get("OTEL_SAMPLE_RATE", "0.2"))
 OTEL_TRACES_ENABLED = os.environ.get("OTEL_TRACES_ENABLED", "true").lower() == "true"
 OTEL_METRICS_ENABLED = os.environ.get("OTEL_METRICS_ENABLED", "true").lower() == "true"
 OTEL_METRIC_EXPORT_INTERVAL = int(os.environ.get("OTEL_METRIC_EXPORT_INTERVAL", "60000"))
+
+# Idempotency store
+# IRI_IDEMPOTENCY_STORE: fully-qualified class to use as the backing store.
+#   Example: IRI_IDEMPOTENCY_STORE=demo_adapter.compute.idempotency.RedisIdempotencyStore
+#   If unset, idempotency is disabled (an Idempotency-Key request returns 501).
+IRI_IDEMPOTENCY_STORE = os.environ.get("IRI_IDEMPOTENCY_STORE", "")
+IDEMPOTENCY_TTL_SECONDS = int(os.environ.get("IDEMPOTENCY_TTL_SECONDS", "86400"))
+LOCK_TTL_SECONDS = int(os.environ.get("LOCK_TTL_SECONDS", "60"))
 
 # Print all startup config for debugging
 logger.info("IRI Facility API starting with config:")
@@ -64,4 +73,7 @@ logger.info(f"OTEL_SAMPLE_RATE={OTEL_SAMPLE_RATE}")
 logger.info(f"OTEL_TRACES_ENABLED={OTEL_TRACES_ENABLED}")
 logger.info(f"OTEL_METRICS_ENABLED={OTEL_METRICS_ENABLED}")
 logger.info(f"OTEL_METRIC_EXPORT_INTERVAL={OTEL_METRIC_EXPORT_INTERVAL}")
+logger.info(f"IRI_IDEMPOTENCY_STORE={IRI_IDEMPOTENCY_STORE if IRI_IDEMPOTENCY_STORE else '(unset, idempotency disabled)'}")
+logger.info(f"IDEMPOTENCY_TTL_SECONDS={IDEMPOTENCY_TTL_SECONDS}")
+logger.info(f"LOCK_TTL_SECONDS={LOCK_TTL_SECONDS}")
 logger.info("="*40)

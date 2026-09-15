@@ -6,6 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field, computed_field, field_validat
 
 from .. import config
 from ..request_context import get_url_prefix
+from .hal import IRI_CURIE, build_hal_link
 from .scalars import StrictDateTime
 
 
@@ -13,6 +14,11 @@ class IRIBaseModel(BaseModel):
     """Base model for IRI models."""
 
     model_config = ConfigDict(extra="allow")
+
+    attributes: dict[str, object] | None = Field(
+        default=None,
+        description=("Optional, type-specific metadata for this object"),
+    )
 
     @model_serializer(mode="wrap")
     def _hide_extra(self, handler, info):
@@ -24,6 +30,11 @@ class IRIBaseModel(BaseModel):
         for k in extra:
             if k not in model_fields and k not in computed_fields:
                 data.pop(k, None)
+
+        # do not put null attributes
+        if "attributes" in model_fields and data.get("attributes") is None:
+            data.pop("attributes", None)
+
         return data
 
     def get_extra(self, key, default=None):
@@ -51,6 +62,16 @@ class NamedObject(IRIBaseModel):
     def _self_path(self) -> str:
         raise NotImplementedError
 
+    def _link_profile(self) -> str | None:
+        """Semantic profile URI advertised on this representation's `self` link.
+        None means no profile is advertised
+        """
+        return None
+
+    def _extra_links(self) -> dict:
+        """Relation-specific HAL links beyond `self`/`curies`. Override per model."""
+        return {}
+
     @field_validator("last_modified", mode="before")
     @classmethod
     def _norm_dt_field(cls, v):
@@ -62,8 +83,18 @@ class NamedObject(IRIBaseModel):
         """Computed self URI property."""
         return f"{get_url_prefix()}{self._self_path()}"
 
-    name: str|None = Field(default=None, description="The long name of the object.", example="Perlmutter GPU")
-    description: str|None = Field(default=None, description="Human-readable description of the object.", example="High-performance GPU compute resource")
+    @computed_field(description="HAL hypermedia links for this representation.")
+    @property
+    def _links(self) -> dict:
+        links: dict = {
+            "self": build_hal_link(self.self_uri, profile=self._link_profile()),
+            "curies": [IRI_CURIE],
+        }
+        links.update(self._extra_links())
+        return links
+
+    name: str|None = Field(default=None, description="The long name of the object.", example="Facility Cluster")
+    description: str|None = Field(default=None, description="Human-readable description of the object.", example="High-performance compute resource")
     last_modified: StrictDateTime = Field(..., description="ISO 8601 timestamp when this object was last modified.", example="2026-02-21T12:00:00Z")
 
     @classmethod

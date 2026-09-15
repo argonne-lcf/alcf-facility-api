@@ -8,8 +8,8 @@ from . import models as status_models
 class FacilityAdapter(ABC):
     """
     Facility-specific code is handled by the implementation of this interface.
-    Use the `IRI_API_ADAPTER` environment variable (defaults to `app.demo_adapter.FacilityAdapter`)
-    to install your facility adapter before the API starts.
+    Use the `IRI_API_ADAPTER_<domain>` environment variable to install your
+    facility adapter before the API starts.
     """
 
     @abstractmethod
@@ -21,9 +21,9 @@ class FacilityAdapter(ABC):
         description: str | None = None,
         group: str | None = None,
         modified_since: datetime.datetime | None = None,
-        resource_type: status_models.ResourceType | None = None,
+        resource_type: status_models.ResourceTypeValue | None = None,
         current_status: status_models.Status | None = None,
-        capability: Capability | None = None,
+        capability: list[str] = [],
         site_id: str | None = None,
     ) -> list[status_models.Resource]:
         pass
