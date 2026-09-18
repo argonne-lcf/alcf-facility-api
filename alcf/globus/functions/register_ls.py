@@ -228,8 +228,8 @@ def ls(params):
 
         # For each entry in the directory ...
         results = []
-        try:
-            for entry in dir_path.iterdir():
+        for entry in dir_path.iterdir():
+            try:
 
                 # Skip hidden entry if necessary
                 if not input_data.show_hidden and entry.name.startswith("."):
@@ -250,9 +250,9 @@ def ls(params):
                 if input_data.recursive and entry_info.type == "directory":
                     results.extend(process_directory(entry, rel_path))
 
-        # Skip directories we can't read
-        except PermissionError:
-            pass
+            # Skip entries we can't read
+            except PermissionError:
+                pass
 
         # Return list of entries
         return results
