@@ -8,6 +8,8 @@ import time
 import json
 import logging
 import requests
+
+API_CALL_DELAY = 0.5
 from dotenv import load_dotenv
 
 logging.disable(logging.WARNING)
@@ -59,6 +61,8 @@ def assert_status(label: str, response: requests.Response, expected: int = 200) 
         body = response.json()
     except Exception:
         body = None
+
+    time.sleep(API_CALL_DELAY)
 
     if response.status_code != expected:
         print(f"  [FAIL] {label}: expected HTTP {expected}, got {response.status_code}")
