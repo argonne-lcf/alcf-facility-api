@@ -68,6 +68,12 @@ class _ExternalRequestContextMiddleware(BaseHTTPMiddleware):
 
 APP.add_middleware(_ExternalRequestContextMiddleware)
 
+# [MODIFICATION begins]
+# Include rate limit into the FastAPI app
+from alcf.rate_limit.middleware import RateLimitMiddleware
+APP.add_middleware(RateLimitMiddleware)
+# [MODIFICATION ends]
+
 if config.OPENTELEMETRY_ENABLED:
     FastAPIInstrumentor.instrument_app(APP)
 
