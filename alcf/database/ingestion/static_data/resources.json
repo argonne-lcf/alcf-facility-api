@@ -88,5 +88,15 @@
         "type": "service",
         "group": "services",
         "site_id": "afb8a6d7-cd5b-4040-8be7-6e917b30af08"
+    },
+    {
+        "id": "13ad4fd0-3986-4fd6-ae05-ed9c9ed1c1ac",
+        "name": "Sunspot",
+        "short_name": "sunspot",
+        "description": "Sunspot is a two-rack test and development system equipped with 128 nodes of the same technologies that powers Aurora.",
+        "last_updated": "2026-09-17T11:00:00.000Z",
+        "type": "compute",
+        "group": "computes",
+        "site_id": "afb8a6d7-cd5b-4040-8be7-6e917b30af08"
     }
 ]
