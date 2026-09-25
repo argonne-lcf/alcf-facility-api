@@ -96,6 +96,20 @@ class RedisSettings(BaseSettings):
         env_prefix = "REDIS_"
 
 
+# Rate limiting
+class RateLimitSettings(BaseSettings):
+    """Rate limiting configuration (req/sec)."""
+
+    # Optional
+    enabled: Optional[bool] = Field(default=True)
+    global_rate: Optional[int] = Field(default=50)
+    user_rate: Optional[int] = Field(default=5)
+
+    # Prefix of environment variables
+    class Config(SettingsConfigDict):
+        env_prefix = "RATE_LIMIT_"
+
+
 # Account
 class AccountSettings(BaseSettings):
     """Account configuration."""
@@ -118,6 +132,7 @@ class AlcfSettings(BaseSettings):
     globus: GlobusSettings = Field(default_factory=GlobusSettings)
     redis: RedisSettings = Field(default_factory=RedisSettings)
     account: AccountSettings = Field(default_factory=AccountSettings)
+    rate_limit: RateLimitSettings = Field(default_factory=RateLimitSettings)
 
     # Other variables without a prefix
     graphql_httpx_trust_env: bool = Field(default=True)
@@ -170,6 +185,9 @@ GLOBUS_AUTHORIZED_USERNAMES = settings.globus.authorized_usernames
 ACCOUNT_REQUEST_TIMEOUT_SEC = settings.account.request_timeout_sec
 REDIS_HOST = settings.redis.host
 REDIS_PORT = settings.redis.port
+RATE_LIMIT_ENABLED = settings.rate_limit.enabled
+RATE_LIMIT_GLOBAL_RATE = settings.rate_limit.global_rate
+RATE_LIMIT_USER_RATE = settings.rate_limit.user_rate
 GRAPHQL_HTTPX_TRUST_ENV = settings.graphql_httpx_trust_env
 AUTHORIZED_IDP_DOMAIN = settings.authorized_idp_domain
 TASK_TIMEOUT_SEC = settings.task_timeout_sec
