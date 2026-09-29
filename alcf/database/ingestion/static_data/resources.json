@@ -88,5 +88,15 @@
         "type": "service",
         "group": "services",
         "site_id": "afb8a6d7-cd5b-4040-8be7-6e917b30af08"
+    },
+    {
+        "id": "154bb3be-5d12-4a76-a16b-898b8e310a4b",
+        "name": "Flare",
+        "short_name": "flare",
+        "description": "Flare is a 91 PB Lustre Filesystem with 160 OSTs, 40 MDTs, and 48 Gateway nodes mounted at /lus/flare/projects/ with a peak theoretical performance of 650 GB/s.",
+        "last_updated": "2026-09-29T11:30:00.000Z",
+        "type": "storage",
+        "group": "storages",
+        "site_id": "afb8a6d7-cd5b-4040-8be7-6e917b30af08"
     }
 ]
