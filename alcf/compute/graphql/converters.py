@@ -11,6 +11,7 @@ DEFAULT_TASK_RESOURCES_SLOTS = {
     "sirius": 64,
     "crux": 256,
     "edith": 1,
+    "aurora": 208,
 }
 
 # Job state mapping
