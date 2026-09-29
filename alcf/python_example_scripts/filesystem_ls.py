@@ -4,9 +4,9 @@ from dotenv import load_dotenv
 load_dotenv(override=True)
 
 # Targeted resource
-#resource_id = "6115bd2c-957a-4543-abff-5fae52992ff2" # Home
+resource_id = "6115bd2c-957a-4543-abff-5fae52992ff2" # Home
 #resource_id = "1c3ad9d4-2e91-42bc-becb-72b1fde1235c" # Eagle
-resource_id = "154bb3be-5d12-4a76-a16b-898b8e310a4b" # Flare
+#resource_id = "154bb3be-5d12-4a76-a16b-898b8e310a4b" # Flare
 
 # Build input data
 data = {
