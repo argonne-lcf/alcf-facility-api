@@ -10,10 +10,13 @@ import json
 import asyncio
 import argparse
 from datetime import datetime, timezone
+from dotenv import load_dotenv
 from sqlalchemy import delete
 from sqlmodel import SQLModel
 from alcf.database.models import Facility, Site, Resource
 from alcf.database.database import get_db_session_context, engine
+
+load_dotenv()
 
 
 # Data ingestion class
@@ -24,7 +27,9 @@ class DataIngestion:
     def __init__(self):
         
         # Path to where the static data is stored
-        data_dir = os.path.join(os.path.dirname(__file__), "static_data")
+        data_dir = os.environ.get("V1_STATIC_DATA_PATH")
+        if not data_dir:
+            raise ValueError("V1_STATIC_DATA_PATH environment variable is not set in .env")
         
         # Define datetime fields that need parsing
         self.__datetime_fields = ["last_updated", "last_verified"]
