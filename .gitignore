@@ -5,3 +5,10 @@ docker-build.sh
 iri_sandbox
 .env
 local.env
+
+# [Additions]
+logs/
+.DS_Store
+venv/
+alcf_endpoints.json
+alcf_identity_mapping.json
