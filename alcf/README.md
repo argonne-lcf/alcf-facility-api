@@ -1,0 +1,215 @@
+# ALCF Facility API Deployment
+
+## Install application
+
+Look at the main README to install your python environment with `make`. Make sure pip is installed:
+```bash
+source .venv/bin/activate
+python -m ensurepip --upgrade
+cd .venv/bin
+ln -s pip3 pip
+deactivate
+cd ../../
+source .venv/bin/activate
+which pip
+```
+
+In the root folder of the project, activate your python environment and update required packages:
+```bash
+uv pip install -r alcf/requirements.txt
+```
+
+Create and load database
+```bash
+python alcf/database/ingestion/ingest_static_data.py
+python alcf/database/ingestion/ingest_activity_data.py
+```
+
+If you have issues with `no module named 'alcf'`, you might have to type:
+```bash
+pip uninstall -y iri-api-python
+pip install -e .
+python -m alcf.database.ingestion.ingest_static_data
+python -m alcf.database.ingestion.ingest_activity_data
+```
+
+
+Test FastAPI service in development mode (served at http://localhost:8000):
+
+```bash
+fastapi dev app/main.py
+```
+
+Test FastAPI with Uvicorn:
+```bash
+uvicorn app.main:APP
+```
+
+Test FastAPI with Gunicorn with Uvicorn workers with configuration file:
+```bash
+gunicorn -c gunicorn.config.production.py app.main:APP
+```
+
+To properly split logs:
+```bash
+gunicorn -c gunicorn.config.production.py app.main:APP >> logs/log.out 2>> logs/log.err
+```
+
+## Run application in a container
+
+Define variable names:
+```bash
+IMAGE_NAME="your_image_name"
+IMAGE_TAG="your_image_tag"
+```
+
+Build image:
+```bash
+podman build -f Dockerfile.production -t $IMAGE_NAME:$IMAGE_TAG .
+```
+
+Start the container in the background (served at http://localhost:8000):
+```bash
+podman run --rm -d -p 8000:8000 --env-file .env $IMAGE_NAME:$IMAGE_TAG
+```
+
+Check running container ID:
+```bash
+podman container list
+```
+
+Stop container:
+```bash
+podman container stop <CONTAINER-ID>
+```
+
+## Build image and push it to GoHarbor
+
+Define variable names:
+```bash
+IMAGE_NAME="your_image_name"
+IMAGE_TAG="your_image_tag"
+GOHARBOR_PROJECT="alcf-facility-api"
+```
+
+Authenticate to your ALCF GoHarbor project (need to be on the VPN, need to use a robot-account):
+```bash
+podman login goharbor.alcf.anl.gov/$GOHARBOR_PROJECT
+```
+
+If you have credential issues, you may need to logout and log back in
+```bash
+podman logout goharbor.alcf.anl.gov
+podman login goharbor.alcf.anl.gov/$GOHARBOR_PROJECT
+```
+
+Build multi-architectures image (useful when building images from MacOS):
+```bash
+podman manifest create goharbor.alcf.anl.gov/$GOHARBOR_PROJECT/$IMAGE_NAME:$IMAGE_TAG
+podman build -f Dockerfile.production . --platform linux/arm64,linux/amd64 --manifest goharbor.alcf.anl.gov/$GOHARBOR_PROJECT/$IMAGE_NAME:$IMAGE_TAG
+```
+
+Push to GoHarbor
+```bash
+podman manifest push --all goharbor.alcf.anl.gov/$GOHARBOR_PROJECT/$IMAGE_NAME:$IMAGE_TAG docker://goharbor.alcf.anl.gov/$GOHARBOR_PROJECT/$IMAGE_NAME:$IMAGE_TAG
+```
+
+To deploy on Kubernetes, please see [https://gitlab-ci.alcf.anl.gov/anl/artemis/showcase/facility-api](https://gitlab-ci.alcf.anl.gov/anl/artemis/showcase/facility-api)
+
+## Run test suite
+
+Launch the following command to trigger the tests (using pytest and coverage):
+```bash
+pytest --cov=app app/tests/
+```
+
+## Generate specs from Pydantic models
+
+```python
+import json
+from app.utils_classes import Facility
+facility_model_schema = Facility.model_json_schema()
+print(json.dumps(facility_model_schema, indent=2))
+```
+
+## Environment File
+
+Create an environment variable file (`.env`) with the following:
+```bash
+API_URL_ROOT="http://localhost:8000"
+API_URL="api/current"
+
+# Gunicorn og levels
+LOG_LEVEL=DEBUG
+
+# SQLAlchemy echo (False reduces what goes in the error log)
+DATABASE_SQL_ECHO=False
+
+DATABASE_URL="sqlite+aiosqlite:///alcf/facilityapi.db"
+
+# Adaptors
+IRI_API_ADAPTER_facility=alcf.facility.alcf_adapter.AlcfAdapter
+IRI_API_ADAPTER_status="alcf.status.alcf_adapter.AlcfAdapter"
+IRI_API_ADAPTER_compute="alcf.compute.alcf_adapter.AlcfAdapter"
+IRI_API_ADAPTER_filesystem=alcf.filesystem.alcf_adapter.AlcfAdapter
+IRI_API_ADAPTER_task=alcf.task.alcf_adapter.AlcfAdapter
+IRI_API_ADAPTER_account=alcf.account.alcf_adapter.AlcfAdapter
+IRI_API_PARAMS='{
+    "title": "ALCF implementation of the IRI Facility API",
+    "description": "IRI facility API for ALCF.\n\nFor more information, see: [https://iri.science/](https://iri.science/)\n\n<img src=\"https://iri.science/images/doe-icon-old.png\" height=50 />",
+    "docs_url": "/",
+    "contact": {
+        "name": "ALCF API contact",
+        "url": "https://www.alcf.anl.gov/"
+    }
+}'
+
+IRI_SHOW_MISSING_ROUTES=False
+
+# Token introspection
+KEYCLOAK_CLIENT_ID="<your-client-id>"
+KEYCLOAK_CLIENT_SECRET="your-keycloak-secret"
+KEYCLOAK_REALM_NAME="<your-realm>"
+KEYCLOAK_SERVER_URL="https://<your-domain>/realms/<your-realm>"
+
+# Manual authorization layer
+KEYCLOAK_AUTHORIZED_USERNAMES=["the-user", ...]
+GLOBUS_AUTHORIZED_USERNAMES=["the-user@the-domain", ...]
+GLOBUS_AMSC_AUTHORIZED_USERNAMES=["the-user@the-domain", ...]
+```
+
+Create a `alcf_endpoints.json` file with the following structure:
+```json
+{
+    "compute": {
+        "polaris": {
+            "endpoint_type": "pbs_graphql",
+            "config": {
+                "url": "https://.../polaris/graphql"
+            }
+        }
+    },
+    "filesystem": {
+        "eagle": {
+            "chmod": {
+                "endpoint_type": "globus_multi_user_endpoint",
+                "config": {
+                    "location": "sophia",
+                    "endpoint_id": "...",
+                    "function_id": "..."
+                }
+            }
+        }
+    },
+    "account": {
+        "all": {
+            "all": {
+                "endpoint_type": "ni_rest_api",
+                "config": {
+                    "url": "https://...."
+                }
+            }
+        }
+    }
+}
+```
