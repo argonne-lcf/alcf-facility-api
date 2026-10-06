@@ -1,0 +1,19 @@
+{
+  "scope": {
+    "name": "ALCF Facility API Filesystem Scope",
+    "description": "Permission to send filesystem tasks to ALCF.",
+    "scope_suffix": "filesystem",
+    "dependent_scopes": [
+      {
+        "scope": "73320ffe-4cb4-4b25-a0a3-83d53d59ce4f",
+        "optional": false,
+        "requires_refresh_token": true
+      },
+      {
+        "scope": "58ce1893-b1fe-4753-a697-7138ceb95adb",
+        "optional": false,
+        "requires_refresh_token": true
+      }
+    ]
+  }
+}
