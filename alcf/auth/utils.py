@@ -1,0 +1,344 @@
+from enum import Enum
+from uuid import uuid4
+import globus_sdk
+from alcf.config import (
+    GLOBUS_SERVICE_API_CLIENT_ID, 
+    GLOBUS_SERVICE_API_CLIENT_SECRET, 
+    GLOBUS_HA_POLICY,
+    GLOBUS_GROUP,
+    AUTHORIZED_IDP_DOMAIN,
+    CACHE_TTL_TOKEN_INTROSPECTION
+)
+import json
+import hashlib
+from pydantic import BaseModel, Field
+from typing import Optional, List, Tuple
+import globus_sdk
+import time
+
+from alcf.cache.manager import cache_manager
+
+# Tool to log access requests
+import logging
+log = logging.getLogger(__name__)
+
+# Auth services
+class AuthServices(Enum):
+    globus = "Globus"
+    keycloak = "Keycloak"
+
+# Keycloak input token flag
+KEYCLOAK_FLAG = "keycloak_flag_"
+
+# Helper allowed domain error message
+ALLOWED_DOMAIN_STR = f"Make sure you authenticate with {AUTHORIZED_IDP_DOMAIN}."
+
+# Helper logout error message
+LOGOUT_MESSAGE_STR = ""
+LOGOUT_MESSAGE_STR += "Please logout by visiting https://app.globus.org/logout "
+LOGOUT_MESSAGE_STR += "and re-authenticate. Use an incognito browser or clear "
+LOGOUT_MESSAGE_STR += "browser cache to make sure you can enter your credentials."
+ 
+class UserPydantic(BaseModel):
+    id: str
+    name: str
+    username: str
+    user_group_uuids: List[str] = Field(default_factory=lambda: [])
+    idp_id: str
+    idp_name: str
+    auth_service: str
+    access_token: str = None
+
+class TokenValidationResponse(BaseModel):
+    is_authorized: bool = False
+    user: Optional[UserPydantic] = None
+    error_message: Optional[str] = None
+
+
+# Generate error messages
+def generate_error_message(error_message: str, e: Exception) -> str:
+    """Generate error ID, log more complete error message, and return user error message with error ID."""
+    error_id = str(uuid4())
+    log.error(f"Error ID: {error_id} - {error_message}: {e.__class__.__name__} {e}")
+    return f"{error_message} (Error ID: {error_id})"
+
+
+# Get Globus SDK confidential client
+def get_globus_service_api_client():
+    return globus_sdk.ConfidentialAppAuthClient(
+        GLOBUS_SERVICE_API_CLIENT_ID, 
+        GLOBUS_SERVICE_API_CLIENT_SECRET
+    )
+
+
+# Perform token introspection
+@cache_manager.cached(ttl=CACHE_TTL_TOKEN_INTROSPECTION)
+def introspect_token(access_token: str):
+    """Perform token introspection and return serializable data."""
+
+    # Create Globus SDK confidential client
+    try:
+        client = get_globus_service_api_client()
+    except Exception as e:
+        error_message = generate_error_message("Could not create Globus confidential client.", e)
+        return None, [], None, error_message
+
+    # Prepare the introspection data
+    introspect_body = {
+        "token": access_token,
+        "authentication_policies": GLOBUS_HA_POLICY,
+        "include": "session_info,identity_set_detail"
+    }
+
+    # Introspect token and convert response into a serializable dictionary for caching
+    try: 
+        introspection = client.post("/v2/oauth2/token/introspect", data=introspect_body, encoding="form")
+        introspection_data = dict(introspection.data) if hasattr(introspection, 'data') else dict(introspection)
+    except Exception as e:
+        error_message = ""
+        error_message += "Could not introspect Globus token. "
+        error_message += "This could be due to a client ID mismatch during the authentication flow. "
+        error_message += "Make sure to authenticate using the client ID 8b84fc2d-49e9-49ea-b54d-b3a29a70cf31, "
+        error_message += "or follow the instruction at https://github.com/argonne-lcf/alcf-facility-api-token."
+        error_message = generate_error_message(error_message, e)
+        return None, [], None, error_message
+    
+    # Make sure the token is valid/active
+    if introspection.get("active", False) is False:
+        error_message = f"Globus token not active. {LOGOUT_MESSAGE_STR}"
+        log.warning(error_message)
+        return None, [], None, error_message
+    
+    # Get dependent access token to view group membership and use Globus Compute
+    try:
+        dependent_tokens = client.oauth2_get_dependent_tokens(access_token)
+        access_token = dependent_tokens.by_resource_server["groups.api.globus.org"]["access_token"]
+        globus_compute_access_token = dependent_tokens.by_resource_server["funcx_service"]["access_token"]
+    except Exception as e:
+        error_message = generate_error_message("Could not recover dependent access tokens.", e)
+        return None, [], None, error_message
+
+    # Create a Globus Group Client using the access token sent by the user
+    try:
+        authorizer = globus_sdk.AccessTokenAuthorizer(access_token)
+        groups_client = globus_sdk.GroupsClient(authorizer=authorizer)
+    except Exception as e:
+        error_message = generate_error_message("Could not create GroupsClient.", e)
+        return None, [], None, error_message
+
+    # Get the list of user's group memberships
+    try:
+        user_groups_response = groups_client.get_my_groups()
+        user_groups = [group["id"] for group in user_groups_response]
+    except Exception as e:
+        error_message = generate_error_message("Could not recover user group memberships.", e)
+        return None, [], None, error_message
+        
+    # Return the introspection data along with the group and compute token (with empty error message)
+    return introspection_data, user_groups, globus_compute_access_token, ""
+
+
+# Get session info identities
+def get_session_info_identities(introspection) -> Tuple[List[dict], str]:
+    """
+    Look into the session_info field of the token introspection
+    and collect the identities that are present. 
+    Returns list of identities and error message if any.
+    """
+
+    # Return nothing if no authentication is found
+    if "authentications" not in introspection["session_info"]:
+        return [], ""
+
+    # Initialize list of identities present in the session_info introspection field
+    session_info_identities = []
+
+    # Attempt to collect identities
+    try:
+
+        # For each active authentication session ...
+        for session_idp in [auth["idp"] for auth in introspection["session_info"]["authentications"].values()]:
+
+            # Recover the identity data tied to the active session
+            identity = next((i for i in introspection["identity_set_detail"] if i["identity_provider"] == session_idp))
+            session_info_identities.append(identity)
+            
+    # Error message if identities could not be recovered
+    except Exception as e:
+        error_message = generate_error_message("Could not recover list of identities from session_info.", e)
+        return [], error_message
+    
+    # Return list of identities without any error
+    return session_info_identities, ""
+
+
+# Get user details
+def get_user_details(session_info_identities, user_groups) -> Tuple[UserPydantic, str]:
+    """
+    Look at session_info_identities and check whether the
+    authentication was made through one of the authorized identity providers.
+    Collect and return the User details if possible along with error message if any.
+    """
+
+    # Attempt to find an authorized identity
+    try:
+
+        # For each identity tied to the session info ...
+        for identity in session_info_identities:
+
+            # Collect identity domain (e.g, alcf.anl.gov)
+            session_username = identity["username"]
+            session_domain = session_username.split("@")[1]
+
+            # If the domain is authorized by the service ...
+            if session_domain == AUTHORIZED_IDP_DOMAIN:
+
+                # Create and return the User object from the Globus introspection
+                try:
+                    return UserPydantic(
+                        id=identity["sub"],
+                        name=identity["name"] if isinstance(identity["name"], str) else "",
+                        username=identity["username"],
+                        user_group_uuids=user_groups,
+                        idp_id=identity["identity_provider"],
+                        idp_name=identity["identity_provider_display_name"],
+                        auth_service=AuthServices.globus.value
+                    ), ""
+                except Exception as e:
+                    error_message = generate_error_message(f"Could not create UserPydantic instance for {session_username}.", e)
+                    return None, error_message
+            
+    # Error if something went wrong
+    except Exception as e:
+        error_message = generate_error_message("Could not scan through list of identities tied to session_info.", e)
+        return None, error_message
+    
+    # Build list of session_info usernames that are not authorized (in string form)
+    try:
+        user_str = []
+        for identity in session_info_identities:
+            user_str.append(f"{identity['name']} ({identity['username']})")
+        user_str = ", ".join(user_str)
+        if len(user_str) == 0:
+            user_str = "Unknown (no active session found)"
+    except Exception as e:
+        error_message = generate_error_message("Could not gather user_str for unauthorized identities.", e)
+        return None, error_message
+
+    # Error message if no authorized identity were found
+    error_message = ""
+    error_message += f"{ALLOWED_DOMAIN_STR} "
+    error_message += f"Currently authenticated as {user_str}."
+    return None, error_message
+
+
+# Validate access token sent by user
+def validate_access_token(access_token) -> TokenValidationResponse:
+    """This function returns an instance of the TokenValidationResponse pydantic data structure."""
+
+    # Introspect the access token
+    introspection, user_groups, globus_compute_access_token, error_message = introspect_token(access_token)
+    if len(error_message) > 0:
+        return TokenValidationResponse(
+            is_authorized=False,
+            user=None,
+            error_message=error_message
+        )
+    
+    # Make sure the token is not expired
+    expires_in = introspection["exp"] - time.time()
+    if expires_in <= 0:
+        return TokenValidationResponse(
+            is_authorized=False,
+            user=None,
+            error_message=f"Globus token expired. {LOGOUT_MESSAGE_STR}"
+        )
+    
+    # Gather list of identities from session_info
+    session_info_identities, error_message = get_session_info_identities(introspection)
+    if error_message:
+        return TokenValidationResponse(
+            is_authorized=False,
+            user=None,
+            error_message=error_message
+        )
+    if len(session_info_identities) == 0:
+        return TokenValidationResponse(
+            is_authorized=False,
+            user=None,
+            error_message=f"No identity found in the session info. {LOGOUT_MESSAGE_STR}"
+        )
+
+    # Gather the user details
+    user, error_message = get_user_details(session_info_identities, user_groups)
+    if error_message:
+        return TokenValidationResponse(
+            is_authorized=False,
+            user=None,
+            error_message=f"{error_message}"
+        )
+    
+    # Make sure the Globus high-assurance policy is respected
+    for policies in introspection["policy_evaluations"].values():
+        if policies.get("evaluation", False) == False:
+            error_message = ""
+            error_message += "Authentication not compliant with Globus policy, "
+            error_message += f"likely due to a high-assurance timeout. {LOGOUT_MESSAGE_STR} {ALLOWED_DOMAIN_STR}"
+            return TokenValidationResponse(
+                is_authorized=False,
+                user=None,
+                error_message=error_message
+            )
+        
+    # Make sure the user is part of the Globus Group
+    if GLOBUS_GROUP:
+        if GLOBUS_GROUP not in user_groups:
+            return TokenValidationResponse(
+                is_authorized=False,
+                user=None,
+                error_message=f"User {user.username} not in the authorized Globus Group. Please contact adminstrators."
+            )
+        
+    # Add Globus Compute access token to the user details
+    user.access_token = globus_compute_access_token
+    
+    # Return the user details
+    return TokenValidationResponse(
+        is_authorized=True,
+        user=user
+    )
+
+
+@cache_manager.cached(ttl=CACHE_TTL_TOKEN_INTROSPECTION)
+def get_alcf_username_from_token(access_token: str) -> Tuple[str, str]:
+    """
+    Use a token introspection response (which should be cached at this state)
+    to recover the alcf usernamne of the authenticated user.
+    Returns alcf_username | None, error_message | None
+    """
+
+    # Recover the Globus token introspection from cache
+    globus_introspection, user_groups, _, error_message = introspect_token(access_token)
+    if len(error_message) > 0:
+        return None, error_message
+
+    # Recover Globus username (username@idp_domain) tied to the IdP used during authentication
+    session_info_identities, _ = get_session_info_identities(globus_introspection)
+    globus_user, _ = get_user_details(session_info_identities, user_groups)
+
+    # TODO: In the future, this is where we could recover the ALCF username
+    #.      from the identities without using the get_user_details function.
+    #.      If we open to other labs, it would allow users to authenticate with
+    #.      non-ALCF credentials while still ensuring that jobs run as their ALCF username.
+    
+    # Recover the ALCF username from the Globus introspection
+    try:
+        alcf_username, idp_domain = globus_user.username.split("@")
+        if idp_domain != AUTHORIZED_IDP_DOMAIN:
+            return None, f"Globus username does not have the authorized {AUTHORIZED_IDP_DOMAIN}  domain."
+    except Exception as e:
+        error_message = generate_error_message("Could not recover ALCF username from Globus introspection.", e)
+        return None, error_message
+
+    # Return ALCF username without error if nothing went wrong
+    return alcf_username, None
