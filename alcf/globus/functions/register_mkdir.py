@@ -34,6 +34,8 @@ def mkdir(params):
         Path(f"/home/{CURRENT_USERNAME}"),
         Path("/eagle"),
         Path("/lus/eagle"),
+        Path("/flare"),
+        Path("/lus/flare/projects"),
     )
     ALLOWED_PATHS_TEXT = ", ".join(str(p) for p in ALLOWED_PATH_BASES)
     def is_allowed_path(path: Path) -> bool:
