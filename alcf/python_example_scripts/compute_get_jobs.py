@@ -1,0 +1,37 @@
+import json
+import os
+import requests
+from dotenv import load_dotenv
+load_dotenv(override=True)
+
+# Targeted resource
+resource_id = "55c1c993-1124-47f9-b823-514ba3849a9a" # Polaris
+
+# Request data
+historical = False
+limit = 10
+offset = 0
+
+# Filters
+filters = {
+    #"owner": "bcote",
+    #"states": ["active", "queued"],
+    #"jobIds": ["7299126", "7246872"],
+    #"queue": "debug",
+    "accountingId": "AuroraGPT",
+}
+
+# Build headers
+headers = {
+    "Authorization": f"Bearer {os.getenv('ACCESS_TOKEN', None)}",
+    "Content-Type": "application/json"
+}
+
+# Build URL
+historical = "true" if historical else "false"
+url = f"{os.getenv('BASE_URL')}/compute/status/{resource_id}?historical={historical}&limit={limit}&offset={offset}"
+
+# Send request to Facility API
+response = requests.post(url, headers=headers, json=filters)
+print(response.status_code)
+print(json.dumps(response.json(), indent=2))

@@ -1,0 +1,31 @@
+import os
+import requests
+from dotenv import load_dotenv
+load_dotenv(override=True)
+
+# Targeted resource
+#resource_id = "6115bd2c-957a-4543-abff-5fae52992ff2" # Home
+#resource_id = "1c3ad9d4-2e91-42bc-becb-72b1fde1235c" # Eagle
+resource_id = "154bb3be-5d12-4a76-a16b-898b8e310a4b" # Flare /flare/AmSC_Demos
+
+# Build input data
+data = {
+    #"path": "/home/bcote"
+    "path": "/flare/AmSC_Demos"
+}
+
+# Build headers
+headers = {
+    "Authorization": f"Bearer {os.getenv('ACCESS_TOKEN', None)}",
+    "Content-Type": "application/json"
+}
+
+# Build URL
+url = f"{os.getenv('BASE_URL')}/filesystem/ls/{resource_id}"
+
+# Send request to Facility API
+response = requests.post(url, json=data, headers=headers)
+
+# Print response
+print(response.status_code)
+print(response.json())
