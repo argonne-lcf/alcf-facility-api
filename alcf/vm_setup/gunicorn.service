@@ -5,10 +5,10 @@ After=network.target
 [Service]
 User=apiuser
 Group=apiuser
-WorkingDirectory=/home/apiuser/alcf-facility-api
-Environment=PATH=/home/apiuser/alcf-facility-api/.venv/bin/
+WorkingDirectory=/home/apiuser/v1/alcf-facility-api
+Environment=PATH=/home/apiuser/v1/alcf-facility-api/.venv/bin/
 Environment="PYTHONUNBUFFERED=1"
-ExecStart=/bin/sh -c '/home/apiuser/alcf-facility-api/.venv/bin/gunicorn -c gunicorn.config.production.py app.main:APP 2>>/var/log/alcf-facility-api/v1/error.log | /usr/bin/rotatelogs -c -f -L /var/log/alcf-facility-api/v1/out.log /var/log/alcf-facility-api/v1/out.log.%%Y-%%m-%%d 86400'
+ExecStart=/bin/sh -c '/home/apiuser/v1/alcf-facility-api/.venv/bin/gunicorn -c gunicorn.config.production.py app.main:APP 2>>/var/log/alcf-facility-api/v1/error.log | /usr/bin/rotatelogs -c -f -L /var/log/alcf-facility-api/v1/out.log /var/log/alcf-facility-api/v1/out.log.%%Y-%%m-%%d 86400'
 ExecReload=/bin/kill -s HUP $MAINPID
 KillMode=mixed
 TimeoutStopSec=5
