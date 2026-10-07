@@ -4,11 +4,10 @@
 
 import sys
 import os
+import argparse
 import requests
 from uuid import uuid4
 from dotenv import load_dotenv
-
-load_dotenv(override=True)
 
 from utils import (
     get_env,
@@ -21,19 +20,18 @@ from utils import (
     result_summary,
 )
 
-BASE_URL = get_base_url()
-HEADERS = get_headers()
-FILESYSTEM_RESOURCE_ID = get_env("FILESYSTEM_RESOURCE_ID")
-COMPUTE_RESOURCE_ID = get_env("COMPUTE_RESOURCE_ID")
-ACCOUNT = get_env("COMPUTE_ACCOUNT")
-QUEUE = get_env("COMPUTE_QUEUE")
-BASE_PATH = get_env("FILESYSTEM_BASE_PATH").rstrip("/")
-
-TEST_DIR = f"{BASE_PATH}/alcf_test_run-{str(uuid4())[:8]}"
-TEST_SUBDIR = f"{TEST_DIR}/subdir"
-TEST_SUBDIR_FILE = f"{TEST_SUBDIR}/test.txt"
-TEST_JSON_FILE = f"{TEST_DIR}/data.json"
-TEST_TEXT_FILE = f"{TEST_DIR}/notes.txt"
+BASE_URL = None
+HEADERS = None
+FILESYSTEM_RESOURCE_ID = None
+COMPUTE_RESOURCE_ID = None
+ACCOUNT = None
+QUEUE = None
+BASE_PATH = None
+TEST_DIR = None
+TEST_SUBDIR = None
+TEST_SUBDIR_FILE = None
+TEST_JSON_FILE = None
+TEST_TEXT_FILE = None
 
 passed: list[str] = []
 failed: list[str] = []
@@ -278,6 +276,23 @@ def test_rm() -> bool:
 # ── Main ───────────────────────────────────────────────────────────────────────
 
 def main() -> None:
+    global BASE_URL, HEADERS, FILESYSTEM_RESOURCE_ID, COMPUTE_RESOURCE_ID
+    global ACCOUNT, QUEUE, BASE_PATH, TEST_DIR, TEST_SUBDIR, TEST_SUBDIR_FILE
+    global TEST_JSON_FILE, TEST_TEXT_FILE
+
+    BASE_URL = get_base_url()
+    HEADERS = get_headers()
+    FILESYSTEM_RESOURCE_ID = get_env("FILESYSTEM_RESOURCE_ID")
+    COMPUTE_RESOURCE_ID = get_env("COMPUTE_RESOURCE_ID")
+    ACCOUNT = get_env("COMPUTE_ACCOUNT")
+    QUEUE = get_env("COMPUTE_QUEUE")
+    BASE_PATH = get_env("FILESYSTEM_BASE_PATH").rstrip("/")
+    TEST_DIR = f"{BASE_PATH}/alcf_test_run-{str(uuid4())[:8]}"
+    TEST_SUBDIR = f"{TEST_DIR}/subdir"
+    TEST_SUBDIR_FILE = f"{TEST_SUBDIR}/test.txt"
+    TEST_JSON_FILE = f"{TEST_DIR}/data.json"
+    TEST_TEXT_FILE = f"{TEST_DIR}/notes.txt"
+
     print("\nFilesystem Test Suite")
     print(f"  BASE_URL               : {BASE_URL}")
     print(f"  FILESYSTEM_RESOURCE_ID : {FILESYSTEM_RESOURCE_ID}")
@@ -304,4 +319,9 @@ def main() -> None:
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--env", default=".env", help="Path to env file (default: .env)")
+    args = parser.parse_args()
+    load_dotenv(dotenv_path=".env", override=False)
+    load_dotenv(dotenv_path=args.env, override=True)
     main()
