@@ -9,6 +9,11 @@ Make sure the VM has access to the latest packages
 sudo apt update && sudo apt upgrade -y
 ```
 
+Install `rotatelogs` (part of `apache2-utils`):
+```bash
+sudo apt install apache2-utils
+```
+
 Add packages
 ```bash
 sudo apt install make
@@ -194,6 +199,11 @@ psql -U apiuser -d facilityapi_db -c "ALTER TABLE task ADD COLUMN globus_endpoin
 psql -U apiuser -d facilityapi_db -c "ALTER TABLE task ADD COLUMN globus_function_id TEXT;"
 ```
 
+Add `type_urn` in resources:
+```bash
+psql -U apiuser -d facilityapi_db -c "ALTER TABLE resource ADD COLUMN type_urn TEXT;"
+```
+
 ## Redis cache
 
 Install redis
@@ -224,7 +234,8 @@ cd ~
 
 Create directory for the gunicorn logs:
 ```bash
-mkdir /home/apiuser/alcf-facility-api/logs
+mkdir /var/log/alcf-facility-api/v1
+mkdir /var/log/alcf-facility-api/v2
 ```
 
 Install `uv`:
@@ -233,11 +244,25 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 # You may need to exit the shell and come back to see the uv package
 ```
 
+Prepare folders:
+```bash
+mkdir /home/apiuser/v1
+mkdir /home/apiuser/v2
+```
+
 Clone the alcf-facility-api code, and follow the instructions in the previous README file to install the application:
 ```bash
+# v1
+cd /home/apiuser/v1
 git clone https://github.com/argonne-lcf/alcf-facility-api
 cd alcf-facility-api
-git checkout -b alcf-deployment --track origin/alcf-deployment
+git checkout -b alcf-v1 --track origin/alcf-v1
+
+# v2
+cd /home/apiuser/v2
+git clone https://github.com/argonne-lcf/alcf-facility-api
+cd alcf-facility-api
+git checkout -b alcf-v2 --track origin/alcf-v2
 ```
 
 Installation instructions can be found in the main README file of this Git repository. Make sure you install miniconda in the home directory of the `apiuser`.
@@ -246,26 +271,31 @@ Installation instructions can be found in the main README file of this Git repos
 
 As a privileged user (not `apiuser`), add the Gunicorn service file to the `systemd/system/` folder, and give the ownership to `apiuser`:
 ```bash
-sudo cp /home/apiuser/alcf-facility-api/alcf/vm_setup/gunicorn.service /etc/systemd/system/gunicorn.service
+sudo cp /home/apiuser/v2/alcf-facility-api/alcf/vm_setup/gunicorn.service /etc/systemd/system/gunicorn.service
 sudo chown apiuser:apiuser /etc/systemd/system/gunicorn.service
+
+sudo cp /home/apiuser/v2/alcf-facility-api/alcf/vm_setup/gunicorn-v2.service /etc/systemd/system/gunicorn-v2.service
+sudo chown apiuser:apiuser /etc/systemd/system/gunicorn-v2.service
 ```
 
 Enable the service with `systemctl`:
 ```bash
 sudo systemctl daemon-reload
 sudo systemctl enable gunicorn
+sudo systemctl enable gunicorn-v2
 ```
 
 Start, stop, and restart Gunicorn with:
 ```bash
 sudo systemctl start gunicorn
+sudo systemctl status gunicorn
 sudo systemctl stop gunicorn
 sudo systemctl restart gunicorn
-```
 
-Check the current status of Gunicorn:
-```bash
-sudo systemctl status gunicorn
+sudo systemctl start gunicorn-v2
+sudo systemctl status gunicorn-v2
+sudo systemctl stop gunicorn-v2
+sudo systemctl restart gunicorn-v2
 ```
 
 Follow the gunicorn logs with:
@@ -274,14 +304,27 @@ sudo tail -f -n 1000 /var/logs/alcf-facility-api/logs/fastapi.access.log
 sudo tail -f -n 1000 /var/logs/alcf-facility-api/logs/fastapi.error.log
 ```
 
+```bash
+# v1
+tail -f -n 1000 /var/log/alcf-facility-api/v1/log.out
+tail -f -n 1000 /var/log/alcf-facility-api/v1/log.err 
+
+# v2
+tail -f -n 1000 /var/log/alcf-facility-api/v2/log.out
+tail -f -n 1000 /var/log/alcf-facility-api/v2/log.err 
+```
+
 Stdout activity logs can be monitored with filters using `jq`:
 
 ```bash
 # Filter logs by API component
-tail -f -n 1000 /var/logs/alcf-facility-api/log.out | jq 'select (.stream=="compute")'
+tail -f -n 1000 /var/log/alcf-facility-api/v2/log.out | jq 'select (.stream=="compute")'
 
 # Filter logs by API component and only show a subset of fields
-tail -f -n 1000 /var/logs/alcf-facility-api/log.out | jq 'select (.stream=="compute") | {api_function, status_code, alcf_username}'
+tail -f -n 1000 /var/log/alcf-facility-api/v2/log.out | jq 'select (.stream=="compute") | {api_function, status_code, alcf_username}'
+
+# Regular monitoring
+tail -f -n 1000 /var/log/alcf-facility-api/v2/log.out | jq {'stream,api_function,status_code,user_name,error'}
 
 # See error logs
 tail -f -n 1000 /var/logs/alcf-facility-api/err.out
@@ -296,7 +339,7 @@ sudo cp /etc/nginx/sites-enabled/default /etc/nginx/default_original_backup
 
 Overwrite the Nginx configuration file:
 ```bash
-sudo cp /home/apiuser/alcf-facility-api/vm_setup/default /etc/nginx/sites-enabled/default
+sudo cp /home/apiuser/v2/alcf-facility-api/alcf/vm_setup/default /etc/nginx/sites-enabled/default
 ```
 
 This assumes you already have a self-signed SSL certificate defined in the `/etc/nginx/snippets/snakeoil.conf` file:
