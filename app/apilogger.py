@@ -66,11 +66,21 @@ def configure_logging(level: str | int | None = None) -> None:
             root.removeHandler(handler)
             handler.close()
 
-    stdout_handler = logging.StreamHandler(sys.stdout)
-    stdout_handler.setLevel(log_level)
-    stdout_handler.setFormatter(formatter)
-    setattr(stdout_handler, IRI_HANDLER_ATTR, True)
-    root.addHandler(stdout_handler)
+    # [ALCF MODIFICATION begins]
+    # [IMPORTANT]
+    # Funnel all logs that are not ALCF JSON-structured logs to stderr
+    # That way, stdout stays clean and parsable with | jq
+    #stdout_handler = logging.StreamHandler(sys.stdout)
+    #stdout_handler.setLevel(log_level)
+    #stdout_handler.setFormatter(formatter)
+    #setattr(stdout_handler, IRI_HANDLER_ATTR, True)
+    #root.addHandler(stdout_handler)
+    stderr_handler = logging.StreamHandler(sys.stderr)
+    stderr_handler.setLevel(log_level)
+    stderr_handler.setFormatter(formatter)
+    setattr(stderr_handler, IRI_HANDLER_ATTR, True)
+    root.addHandler(stderr_handler)
+    # [ALCF MODIFICATION ends]
 
     log_file = _log_file_path()
     if log_file:
