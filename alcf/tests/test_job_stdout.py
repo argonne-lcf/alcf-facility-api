@@ -15,6 +15,7 @@ from utils import (
     wait_for_job,
     wait_for_task,
     extract_job_state,
+    set_current_test,
     section,
     result_summary,
     JobState,
@@ -28,6 +29,7 @@ FILESYSTEM_RESOURCE_ID = None
 OUTPUT_PATH = None
 ACCOUNT = None
 QUEUE = None
+FILESYSTEM = None
 
 SENTINEL = "ALCF_TEST_STDOUT_OK_12345"
 
@@ -35,7 +37,10 @@ passed: list[str] = []
 failed: list[str] = []
 
 
-def record(name: str, ok: bool) -> None:
+def record(name: str, fn) -> None:
+    set_current_test(name)
+    ok = fn()
+    set_current_test(None)
     (passed if ok else failed).append(name)
 
 
@@ -61,7 +66,7 @@ echo 'Job done'
             "duration": 300,
             "queue_name": QUEUE,
             "account": ACCOUNT,
-            "custom_attributes": {"filesystems": "eagle"},
+            "custom_attributes": {"filesystems": FILESYSTEM},
         },
     }
     response = requests.post(url, json=data, headers=HEADERS)
@@ -145,7 +150,7 @@ def test_submit_and_read_stdout() -> bool:
 # ── Main ───────────────────────────────────────────────────────────────────────
 
 def main() -> None:
-    global BASE_URL, HEADERS, COMPUTE_RESOURCE_ID, FILESYSTEM_RESOURCE_ID, OUTPUT_PATH, ACCOUNT, QUEUE
+    global BASE_URL, HEADERS, COMPUTE_RESOURCE_ID, FILESYSTEM_RESOURCE_ID, OUTPUT_PATH, ACCOUNT, QUEUE, FILESYSTEM
     BASE_URL = get_base_url()
     HEADERS = get_headers()
     COMPUTE_RESOURCE_ID = get_env("COMPUTE_RESOURCE_ID")
@@ -153,6 +158,7 @@ def main() -> None:
     OUTPUT_PATH = get_env("COMPUTE_OUTPUT_PATH").rstrip("/")
     ACCOUNT = get_env("COMPUTE_ACCOUNT")
     QUEUE = get_env("COMPUTE_QUEUE")
+    FILESYSTEM = get_env("COMPUTE_FILESYSTEM")
 
     print("\nJob Stdout Test Suite")
     print(f"  BASE_URL               : {BASE_URL}")
@@ -163,7 +169,7 @@ def main() -> None:
     print(f"  OUTPUT_PATH            : {OUTPUT_PATH}")
     print(f"  SENTINEL               : {SENTINEL}")
 
-    record("submit_and_read_stdout", test_submit_and_read_stdout())
+    record("submit_and_read_stdout", test_submit_and_read_stdout)
 
     result_summary(passed, failed)
 
