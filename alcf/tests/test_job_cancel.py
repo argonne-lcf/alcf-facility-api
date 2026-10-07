@@ -3,10 +3,9 @@
 #
 
 import time
+import argparse
 import requests
 from dotenv import load_dotenv
-
-load_dotenv(override=True)
 
 from utils import (
     get_env,
@@ -20,12 +19,12 @@ from utils import (
     JobState,
 )
 
-BASE_URL = get_base_url()
-HEADERS = get_headers()
-RESOURCE_ID = get_env("COMPUTE_RESOURCE_ID")
-OUTPUT_PATH = get_env("COMPUTE_OUTPUT_PATH")
-ACCOUNT = get_env("COMPUTE_ACCOUNT")
-QUEUE = get_env("COMPUTE_QUEUE")
+BASE_URL = None
+HEADERS = None
+RESOURCE_ID = None
+OUTPUT_PATH = None
+ACCOUNT = None
+QUEUE = None
 
 passed: list[str] = []
 failed: list[str] = []
@@ -113,6 +112,14 @@ def test_submit_and_cancel() -> bool:
 # ── Main ───────────────────────────────────────────────────────────────────────
 
 def main() -> None:
+    global BASE_URL, HEADERS, RESOURCE_ID, OUTPUT_PATH, ACCOUNT, QUEUE
+    BASE_URL = get_base_url()
+    HEADERS = get_headers()
+    RESOURCE_ID = get_env("COMPUTE_RESOURCE_ID")
+    OUTPUT_PATH = get_env("COMPUTE_OUTPUT_PATH")
+    ACCOUNT = get_env("COMPUTE_ACCOUNT")
+    QUEUE = get_env("COMPUTE_QUEUE")
+
     print("\nJob Cancel Test Suite")
     print(f"  BASE_URL    : {BASE_URL}")
     print(f"  RESOURCE_ID : {RESOURCE_ID}")
@@ -126,4 +133,9 @@ def main() -> None:
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--env", default=".env", help="Path to env file (default: .env)")
+    args = parser.parse_args()
+    load_dotenv(dotenv_path=".env", override=False)
+    load_dotenv(dotenv_path=args.env, override=True)
     main()
