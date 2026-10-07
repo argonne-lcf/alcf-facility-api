@@ -2,7 +2,6 @@
 # AI generated
 #
 
-import sys
 import argparse
 import requests
 from dotenv import load_dotenv
