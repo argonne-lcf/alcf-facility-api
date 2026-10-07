@@ -14,6 +14,7 @@ from utils import (
     assert_status,
     wait_for_job,
     extract_job_state,
+    set_current_test,
     section,
     result_summary,
     JobState,
@@ -25,12 +26,16 @@ RESOURCE_ID = None
 OUTPUT_PATH = None
 ACCOUNT = None
 QUEUE = None
+FILESYSTEM = None
 
 passed: list[str] = []
 failed: list[str] = []
 
 
-def record(name: str, ok: bool) -> None:
+def record(name: str, fn) -> None:
+    set_current_test(name)
+    ok = fn()
+    set_current_test(None)
     (passed if ok else failed).append(name)
 
 
@@ -51,7 +56,7 @@ def submit_job(commands: str, name: str = "TEST_CANCEL") -> dict:
             "duration": 300,
             "queue_name": QUEUE,
             "account": ACCOUNT,
-            "custom_attributes": {"filesystems": "eagle"},
+            "custom_attributes": {"filesystems": FILESYSTEM},
         },
     }
     response = requests.post(url, json=data, headers=HEADERS)
@@ -112,13 +117,14 @@ def test_submit_and_cancel() -> bool:
 # ── Main ───────────────────────────────────────────────────────────────────────
 
 def main() -> None:
-    global BASE_URL, HEADERS, RESOURCE_ID, OUTPUT_PATH, ACCOUNT, QUEUE
+    global BASE_URL, HEADERS, RESOURCE_ID, OUTPUT_PATH, ACCOUNT, QUEUE, FILESYSTEM
     BASE_URL = get_base_url()
     HEADERS = get_headers()
     RESOURCE_ID = get_env("COMPUTE_RESOURCE_ID")
     OUTPUT_PATH = get_env("COMPUTE_OUTPUT_PATH")
     ACCOUNT = get_env("COMPUTE_ACCOUNT")
     QUEUE = get_env("COMPUTE_QUEUE")
+    FILESYSTEM = get_env("COMPUTE_FILESYSTEM")
 
     print("\nJob Cancel Test Suite")
     print(f"  BASE_URL    : {BASE_URL}")
@@ -127,7 +133,7 @@ def main() -> None:
     print(f"  ACCOUNT     : {ACCOUNT}")
     print(f"  OUTPUT_PATH : {OUTPUT_PATH}")
 
-    record("submit_and_cancel", test_submit_and_cancel())
+    record("submit_and_cancel", test_submit_and_cancel)
 
     result_summary(passed, failed)
 
