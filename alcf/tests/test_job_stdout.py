@@ -3,10 +3,9 @@
 #
 
 import sys
+import argparse
 import requests
 from dotenv import load_dotenv
-
-load_dotenv(override=True)
 
 from utils import (
     get_env,
@@ -22,13 +21,13 @@ from utils import (
     Task,
 )
 
-BASE_URL = get_base_url()
-HEADERS = get_headers()
-COMPUTE_RESOURCE_ID = get_env("COMPUTE_RESOURCE_ID")
-FILESYSTEM_RESOURCE_ID = get_env("FILESYSTEM_RESOURCE_ID")
-OUTPUT_PATH = get_env("COMPUTE_OUTPUT_PATH").rstrip("/")
-ACCOUNT = get_env("COMPUTE_ACCOUNT")
-QUEUE = get_env("COMPUTE_QUEUE")
+BASE_URL = None
+HEADERS = None
+COMPUTE_RESOURCE_ID = None
+FILESYSTEM_RESOURCE_ID = None
+OUTPUT_PATH = None
+ACCOUNT = None
+QUEUE = None
 
 SENTINEL = "ALCF_TEST_STDOUT_OK_12345"
 
@@ -146,6 +145,15 @@ def test_submit_and_read_stdout() -> bool:
 # ── Main ───────────────────────────────────────────────────────────────────────
 
 def main() -> None:
+    global BASE_URL, HEADERS, COMPUTE_RESOURCE_ID, FILESYSTEM_RESOURCE_ID, OUTPUT_PATH, ACCOUNT, QUEUE
+    BASE_URL = get_base_url()
+    HEADERS = get_headers()
+    COMPUTE_RESOURCE_ID = get_env("COMPUTE_RESOURCE_ID")
+    FILESYSTEM_RESOURCE_ID = get_env("FILESYSTEM_RESOURCE_ID")
+    OUTPUT_PATH = get_env("COMPUTE_OUTPUT_PATH").rstrip("/")
+    ACCOUNT = get_env("COMPUTE_ACCOUNT")
+    QUEUE = get_env("COMPUTE_QUEUE")
+
     print("\nJob Stdout Test Suite")
     print(f"  BASE_URL               : {BASE_URL}")
     print(f"  COMPUTE_RESOURCE_ID    : {COMPUTE_RESOURCE_ID}")
@@ -161,4 +169,9 @@ def main() -> None:
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--env", default=".env", help="Path to env file (default: .env)")
+    args = parser.parse_args()
+    load_dotenv(dotenv_path=".env", override=False)
+    load_dotenv(dotenv_path=args.env, override=True)
     main()
