@@ -7,8 +7,7 @@ import argparse
 import importlib
 import traceback
 from dotenv import load_dotenv
-
-load_dotenv(override=True)
+import utils
 
 SUITES = [
     ("account",    "test_account"),
@@ -37,12 +36,16 @@ def run_suite(module_name: str) -> bool:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run ALCF Facility API test suites")
+    parser.add_argument("--env",        default=".env", help="Path to env file (default: .env)")
     parser.add_argument("--account",    action="store_true", help="Run account tests")
     parser.add_argument("--filesystem", action="store_true", help="Run filesystem tests")
     parser.add_argument("--cancel",     action="store_true", help="Run job cancel tests")
     parser.add_argument("--stdout",     action="store_true", help="Run job stdout tests")
     parser.add_argument("--listjobs",   action="store_true", help="Run compute list jobs tests")
     args = parser.parse_args()
+
+    load_dotenv(dotenv_path=".env", override=False)
+    load_dotenv(dotenv_path=args.env, override=True)
 
     run_all = not any([args.account, args.filesystem, args.cancel, args.stdout, args.listjobs])
 
@@ -66,6 +69,15 @@ def main() -> None:
         print(f"{'#' * 60}")
         ok = run_suite(mod)
         (overall_passed if ok else overall_failed).append(mod)
+
+    if overall_failed and utils._failed_test_logs:
+        print(f"\n{'=' * 60}")
+        print("  FAILURE DETAILS")
+        print("=" * 60)
+        for name, lines in utils._failed_test_logs.items():
+            print(f"\n  -- {name} --")
+            for line in lines:
+                print(line)
 
     print(f"\n{'=' * 60}")
     print("  OVERALL RESULT")

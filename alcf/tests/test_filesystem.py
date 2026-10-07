@@ -3,12 +3,10 @@
 #
 
 import sys
-import os
+import argparse
 import requests
 from uuid import uuid4
 from dotenv import load_dotenv
-
-load_dotenv(override=True)
 
 from utils import (
     get_env,
@@ -17,29 +15,34 @@ from utils import (
     assert_status,
     wait_for_task,
     wait_for_job,
+    set_current_test,
     section,
     result_summary,
 )
 
-BASE_URL = get_base_url()
-HEADERS = get_headers()
-FILESYSTEM_RESOURCE_ID = get_env("FILESYSTEM_RESOURCE_ID")
-COMPUTE_RESOURCE_ID = get_env("COMPUTE_RESOURCE_ID")
-ACCOUNT = get_env("COMPUTE_ACCOUNT")
-QUEUE = get_env("COMPUTE_QUEUE")
-BASE_PATH = get_env("FILESYSTEM_BASE_PATH").rstrip("/")
-
-TEST_DIR = f"{BASE_PATH}/alcf_test_run-{str(uuid4())[:8]}"
-TEST_SUBDIR = f"{TEST_DIR}/subdir"
-TEST_SUBDIR_FILE = f"{TEST_SUBDIR}/test.txt"
-TEST_JSON_FILE = f"{TEST_DIR}/data.json"
-TEST_TEXT_FILE = f"{TEST_DIR}/notes.txt"
+BASE_URL = None
+HEADERS = None
+FILESYSTEM_RESOURCE_ID = None
+COMPUTE_RESOURCE_ID = None
+ACCOUNT = None
+QUEUE = None
+FILESYSTEM = None
+OWNER = None
+BASE_PATH = None
+TEST_DIR = None
+TEST_SUBDIR = None
+TEST_SUBDIR_FILE = None
+TEST_JSON_FILE = None
+TEST_TEXT_FILE = None
 
 passed: list[str] = []
 failed: list[str] = []
 
 
-def record(name: str, ok: bool) -> None:
+def record(name: str, fn) -> None:
+    set_current_test(name)
+    ok = fn()
+    set_current_test(None)
     (passed if ok else failed).append(name)
 
 
@@ -91,7 +94,6 @@ def test_mkdir() -> bool:
 
 def test_populate() -> bool:
     section("TEST: populate (submit job to create files)")
-    username = os.path.basename(BASE_PATH)
     commands = f"""
         mkdir -p {TEST_SUBDIR}
         echo "Hello from the test suite" > {TEST_SUBDIR_FILE}
@@ -112,7 +114,7 @@ def test_populate() -> bool:
             "duration": 300,
             "queue_name": QUEUE,
             "account": ACCOUNT,
-            "custom_attributes": {"filesystems": "home"},
+            "custom_attributes": {"filesystems": FILESYSTEM},
         },
     }
     try:
@@ -166,19 +168,18 @@ def test_chmod() -> bool:
 
 def test_chown() -> bool:
     section("TEST: chown")
-    username = os.path.basename(BASE_PATH)
     try:
         submit_and_wait(
             "chown (set notes.txt owner)",
             "PUT",
             "chown",
-            payload={"path": TEST_TEXT_FILE, "owner": username, "group": "users"},
+            payload={"path": TEST_TEXT_FILE, "owner": OWNER, "group": "users"},
         )
         submit_and_wait(
             "chown (set subdir owner)",
             "PUT",
             "chown",
-            payload={"path": TEST_SUBDIR, "owner": username, "group": "users"},
+            payload={"path": TEST_SUBDIR, "owner": OWNER, "group": "users"},
         )
         return True
     except SystemExit:
@@ -278,6 +279,25 @@ def test_rm() -> bool:
 # ── Main ───────────────────────────────────────────────────────────────────────
 
 def main() -> None:
+    global BASE_URL, HEADERS, FILESYSTEM_RESOURCE_ID, COMPUTE_RESOURCE_ID
+    global ACCOUNT, QUEUE, FILESYSTEM, OWNER, BASE_PATH, TEST_DIR, TEST_SUBDIR, TEST_SUBDIR_FILE
+    global TEST_JSON_FILE, TEST_TEXT_FILE
+
+    BASE_URL = get_base_url()
+    HEADERS = get_headers()
+    FILESYSTEM_RESOURCE_ID = get_env("FILESYSTEM_RESOURCE_ID")
+    COMPUTE_RESOURCE_ID = get_env("COMPUTE_RESOURCE_ID")
+    ACCOUNT = get_env("COMPUTE_ACCOUNT")
+    QUEUE = get_env("COMPUTE_QUEUE")
+    FILESYSTEM = get_env("COMPUTE_FILESYSTEM")
+    OWNER = get_env("COMPUTE_OWNER")
+    BASE_PATH = get_env("FILESYSTEM_BASE_PATH").rstrip("/")
+    TEST_DIR = f"{BASE_PATH}/alcf_test_run-{str(uuid4())[:8]}"
+    TEST_SUBDIR = f"{TEST_DIR}/subdir"
+    TEST_SUBDIR_FILE = f"{TEST_SUBDIR}/test.txt"
+    TEST_JSON_FILE = f"{TEST_DIR}/data.json"
+    TEST_TEXT_FILE = f"{TEST_DIR}/notes.txt"
+
     print("\nFilesystem Test Suite")
     print(f"  BASE_URL               : {BASE_URL}")
     print(f"  FILESYSTEM_RESOURCE_ID : {FILESYSTEM_RESOURCE_ID}")
@@ -288,20 +308,25 @@ def main() -> None:
     print(f"  TEST_TEXT_FILE         : {TEST_TEXT_FILE}")
     print(f"  TEST_JSON_FILE         : {TEST_JSON_FILE}")
 
-    record("mkdir", test_mkdir())
-    record("populate", test_populate())
-    record("ls", test_ls_dir())
-    record("chmod", test_chmod())
-    record("chown", test_chown())
-    record("head", test_head())
-    record("tail", test_tail())
-    record("view", test_view())
-    record("checksum", test_checksum())
-    record("file", test_file())
-    record("rm", test_rm())
+    record("mkdir", test_mkdir)
+    record("populate", test_populate)
+    record("ls", test_ls_dir)
+    record("chmod", test_chmod)
+    record("chown", test_chown)
+    record("head", test_head)
+    record("tail", test_tail)
+    record("view", test_view)
+    record("checksum", test_checksum)
+    record("file", test_file)
+    record("rm", test_rm)
 
     result_summary(passed, failed)
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--env", default=".env", help="Path to env file (default: .env)")
+    args = parser.parse_args()
+    load_dotenv(dotenv_path=".env", override=False)
+    load_dotenv(dotenv_path=args.env, override=True)
     main()

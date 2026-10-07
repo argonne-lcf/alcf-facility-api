@@ -2,28 +2,30 @@
 # AI generated
 #
 
-import sys
+import argparse
 import requests
 from dotenv import load_dotenv
-
-load_dotenv(override=True)
 
 from utils import (
     get_headers,
     get_base_url,
     assert_status,
+    set_current_test,
     section,
     result_summary,
 )
 
-BASE_URL = get_base_url()
-HEADERS = get_headers()
+BASE_URL = None
+HEADERS = None
 
 passed: list[str] = []
 failed: list[str] = []
 
 
-def record(name: str, ok: bool) -> None:
+def record(name: str, fn) -> None:
+    set_current_test(name)
+    ok = fn()
+    set_current_test(None)
     (passed if ok else failed).append(name)
 
 
@@ -196,20 +198,29 @@ def test_get_user_allocation() -> bool:
 # ── Main ───────────────────────────────────────────────────────────────────────
 
 def main() -> None:
+    global BASE_URL, HEADERS
+    BASE_URL = get_base_url()
+    HEADERS = get_headers()
+
     print("\nAccount Test Suite")
     print(f"  BASE_URL : {BASE_URL}")
 
-    record("get_capabilities",      test_get_capabilities())
-    record("get_capability",        test_get_capability())
-    record("get_projects",          test_get_projects())
-    record("get_project",           test_get_project())
-    record("get_project_allocations", test_get_project_allocations())
-    record("get_project_allocation",  test_get_project_allocation())
-    record("get_user_allocations",  test_get_user_allocations())
-    record("get_user_allocation",   test_get_user_allocation())
+    record("get_capabilities",      test_get_capabilities)
+    record("get_capability",        test_get_capability)
+    record("get_projects",          test_get_projects)
+    record("get_project",           test_get_project)
+    record("get_project_allocations", test_get_project_allocations)
+    record("get_project_allocation",  test_get_project_allocation)
+    record("get_user_allocations",  test_get_user_allocations)
+    record("get_user_allocation",   test_get_user_allocation)
 
     result_summary(passed, failed)
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--env", default=".env", help="Path to env file (default: .env)")
+    args = parser.parse_args()
+    load_dotenv(dotenv_path=".env", override=False)
+    load_dotenv(dotenv_path=args.env, override=True)
     main()
