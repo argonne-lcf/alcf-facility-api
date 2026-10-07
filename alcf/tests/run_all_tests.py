@@ -7,7 +7,7 @@ import argparse
 import importlib
 import traceback
 from dotenv import load_dotenv
-
+import utils
 
 SUITES = [
     ("account",    "test_account"),
@@ -69,6 +69,15 @@ def main() -> None:
         print(f"{'#' * 60}")
         ok = run_suite(mod)
         (overall_passed if ok else overall_failed).append(mod)
+
+    if overall_failed and utils._failed_test_logs:
+        print(f"\n{'=' * 60}")
+        print("  FAILURE DETAILS")
+        print("=" * 60)
+        for name, lines in utils._failed_test_logs.items():
+            print(f"\n  -- {name} --")
+            for line in lines:
+                print(line)
 
     print(f"\n{'=' * 60}")
     print("  OVERALL RESULT")

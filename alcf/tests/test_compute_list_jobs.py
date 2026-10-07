@@ -11,6 +11,7 @@ from utils import (
     get_headers,
     get_base_url,
     assert_status,
+    set_current_test,
     section,
     result_summary,
 )
@@ -24,7 +25,10 @@ passed: list[str] = []
 failed: list[str] = []
 
 
-def record(name: str, ok: bool) -> None:
+def record(name: str, fn) -> None:
+    set_current_test(name)
+    ok = fn()
+    set_current_test(None)
     (passed if ok else failed).append(name)
 
 
@@ -278,7 +282,6 @@ def test_list_jobs_filter_by_job_ids() -> bool:
 # ── Main ───────────────────────────────────────────────────────────────────────
 
 def main() -> None:
-    
     global BASE_URL, HEADERS, RESOURCE_ID, ACCOUNT
     BASE_URL = get_base_url()
     HEADERS = get_headers()
@@ -290,15 +293,15 @@ def main() -> None:
     print(f"  RESOURCE_ID : {RESOURCE_ID}")
     print(f"  ACCOUNT     : {ACCOUNT}")
 
-    record("list_jobs_no_filter",             test_list_jobs_no_filter())
-    record("list_jobs_historical_no_filter",  test_list_jobs_historical_no_filter())
-    record("list_jobs_filter_by_state",       test_list_jobs_filter_by_state())
-    record("list_jobs_filter_by_owner",       test_list_jobs_filter_by_owner())
-    record("list_jobs_filter_by_queue",       test_list_jobs_filter_by_queue())
-    record("list_jobs_filter_by_accounting_id", test_list_jobs_filter_by_accounting_id())
-    record("list_jobs_combined_filters",      test_list_jobs_combined_filters())
-    record("list_jobs_pagination",            test_list_jobs_pagination())
-    record("list_jobs_filter_by_job_ids",     test_list_jobs_filter_by_job_ids())
+    record("list_jobs_no_filter",             test_list_jobs_no_filter)
+    record("list_jobs_historical_no_filter",  test_list_jobs_historical_no_filter)
+    record("list_jobs_filter_by_state",       test_list_jobs_filter_by_state)
+    record("list_jobs_filter_by_owner",       test_list_jobs_filter_by_owner)
+    record("list_jobs_filter_by_queue",       test_list_jobs_filter_by_queue)
+    record("list_jobs_filter_by_accounting_id", test_list_jobs_filter_by_accounting_id)
+    record("list_jobs_combined_filters",      test_list_jobs_combined_filters)
+    record("list_jobs_pagination",            test_list_jobs_pagination)
+    record("list_jobs_filter_by_job_ids",     test_list_jobs_filter_by_job_ids)
 
     result_summary(passed, failed)
 
