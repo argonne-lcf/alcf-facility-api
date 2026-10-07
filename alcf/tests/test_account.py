@@ -2,11 +2,9 @@
 # AI generated
 #
 
-import sys
 import requests
+import argparse
 from dotenv import load_dotenv
-
-load_dotenv(override=True)
 
 from utils import (
     get_headers,
@@ -16,8 +14,8 @@ from utils import (
     result_summary,
 )
 
-BASE_URL = get_base_url()
-HEADERS = get_headers()
+BASE_URL = None
+HEADERS = None
 
 passed: list[str] = []
 failed: list[str] = []
@@ -196,6 +194,11 @@ def test_get_user_allocation() -> bool:
 # ── Main ───────────────────────────────────────────────────────────────────────
 
 def main() -> None:
+
+    global BASE_URL, HEADERS
+    BASE_URL = get_base_url()
+    HEADERS = get_headers()
+
     print("\nAccount Test Suite")
     print(f"  BASE_URL : {BASE_URL}")
 
@@ -212,4 +215,9 @@ def main() -> None:
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--env", default=".env", help="Path to env file (default: .env)")
+    args = parser.parse_args()
+    load_dotenv(dotenv_path=".env", override=False)
+    load_dotenv(dotenv_path=args.env, override=True)
     main()
