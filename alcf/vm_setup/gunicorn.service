@@ -1,5 +1,5 @@
 [Unit]
-Description=Gunicorn async asgi instance of the ALCF Facility API
+Description=Gunicorn async asgi instance of the ALCF Facility API (v1)
 After=network.target
 
 [Service]
@@ -7,14 +7,12 @@ User=apiuser
 Group=apiuser
 WorkingDirectory=/home/apiuser/alcf-facility-api
 Environment=PATH=/home/apiuser/alcf-facility-api/.venv/bin/
-Enivonment="PYTHONUNBUFFERED=1"
-ExecStart=/home/apiuser/alcf-facility-api/.venv/bin/gunicorn -c gunicorn.config.production.py app.main:APP
+Environment="PYTHONUNBUFFERED=1"
+ExecStart=/bin/sh -c '/home/apiuser/alcf-facility-api/.venv/bin/gunicorn -c gunicorn.config.production.py app.main:APP 2>>/var/log/alcf-facility-api/v1/error.log | /usr/bin/rotatelogs -c -f -L /var/log/alcf-facility-api/v1/out.log /var/log/alcf-facility-api/v1/out.log.%%Y-%%m-%%d 86400'
 ExecReload=/bin/kill -s HUP $MAINPID
 KillMode=mixed
 TimeoutStopSec=5
 PrivateTmp=true
-StandardOutput=append:/var/log/alcf-facility-api/log.out
-StandardError=append:/var/log/alcf-facility-api/log.err
 
 [Install]
 WantedBy=multi-user.target
