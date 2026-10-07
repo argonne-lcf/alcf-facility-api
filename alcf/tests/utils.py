@@ -10,6 +10,11 @@ import logging
 import requests
 
 API_CALL_DELAY = 0.5
+
+_current_test: str | None = None
+_current_test_log: list[str] = []
+_failed_test_logs: dict[str, list[str]] = {}
+
 from dotenv import load_dotenv
 
 logging.disable(logging.WARNING)
@@ -18,6 +23,23 @@ from app.routers.task.models import Task, TaskStatus
 logging.disable(logging.NOTSET)
 
 load_dotenv(override=True)
+
+
+def set_current_test(name: str | None) -> None:
+    global _current_test, _current_test_log
+    _current_test = name
+    _current_test_log = []
+
+
+def _log(line: str) -> None:
+    print(line)
+    if _current_test is not None:
+        _current_test_log.append(line)
+
+
+def _save_failed_log() -> None:
+    if _current_test is not None and _current_test_log:
+        _failed_test_logs[_current_test] = list(_current_test_log)
 
 
 def get_env(key: str, required: bool = True) -> str:
@@ -65,13 +87,14 @@ def assert_status(label: str, response: requests.Response, expected: int = 200) 
     time.sleep(API_CALL_DELAY)
 
     if response.status_code != expected:
-        print(f"  [FAIL] {label}: expected HTTP {expected}, got {response.status_code}")
-        print(pretty(body) if body is not None else response.text)
+        _log(f"  [FAIL] {label}: expected HTTP {expected}, got {response.status_code}")
+        _log(pretty(body) if body is not None else response.text)
+        _save_failed_log()
         sys.exit(1)
 
-    print(f"  [OK]   {label} -> HTTP {response.status_code}")
+    _log(f"  [OK]   {label} -> HTTP {response.status_code}")
     if body is not None:
-        print(pretty(body))
+        _log(pretty(body))
     return body or {}
 
 
@@ -92,26 +115,28 @@ def wait_for_task(
     while time.time() < deadline:
         response = requests.get(url, headers=headers)
         if response.status_code != 200:
-            print(f"  [WARN] Task poll HTTP {response.status_code}")
+            _log(f"  [WARN] Task poll HTTP {response.status_code}")
             time.sleep(poll_interval)
             continue
 
         task = Task.model_validate(response.json())
 
         if verbose:
-            print(f"  [POLL] Task {task.id} status: {task.status.value}")
+            _log(f"  [POLL] Task {task.id} status: {task.status.value}")
 
         if task.status == TaskStatus.completed:
-            print(pretty(task.model_dump()))
+            _log(pretty(task.model_dump()))
             return task
         if task.status == TaskStatus.failed:
-            print(f"  [FAIL] Task {task.id} ended with status: {task.status.value}")
-            print(pretty(task.model_dump()))
+            _log(f"  [FAIL] Task {task.id} ended with status: {task.status.value}")
+            _log(pretty(task.model_dump()))
+            _save_failed_log()
             sys.exit(1)
 
         time.sleep(poll_interval)
 
-    print(f"  [FAIL] Task {task_id} did not complete within {timeout}s")
+    _log(f"  [FAIL] Task {task_id} did not complete within {timeout}s")
+    _save_failed_log()
     sys.exit(1)
 
 
@@ -158,18 +183,19 @@ def wait_for_job(
                 data = response.json()
                 state = extract_job_state(data)
                 if verbose:
-                    print(f"  [POLL] Job {job_id} state: {state}")
+                    _log(f"  [POLL] Job {job_id} state: {state}")
                 if state in terminal_states:
-                    print(pretty(data))
+                    _log(pretty(data))
                     return data
                 break
             elif historical == "true":
                 if verbose:
-                    print(f"  [WARN] Job poll attempt {attempt}: HTTP {response.status_code}")
+                    _log(f"  [WARN] Job poll attempt {attempt}: HTTP {response.status_code}")
 
         time.sleep(poll_interval)
 
-    print(f"  [FAIL] Job {job_id} did not reach terminal state within {timeout}s")
+    _log(f"  [FAIL] Job {job_id} did not reach terminal state within {timeout}s")
+    _save_failed_log()
     sys.exit(1)
 
 
@@ -180,6 +206,15 @@ def section(title: str) -> None:
 
 
 def result_summary(passed: list[str], failed: list[str]) -> None:
+    if failed and _failed_test_logs:
+        print(f"\n{'=' * 60}")
+        print("  FAILURE DETAILS")
+        print("=" * 60)
+        for name, lines in _failed_test_logs.items():
+            print(f"\n  -- {name} --")
+            for line in lines:
+                print(line)
+
     print(f"\n{'=' * 60}")
     print("  TEST SUMMARY")
     print("=" * 60)
