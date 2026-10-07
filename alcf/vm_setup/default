@@ -9,9 +9,14 @@ set_real_ip_from 140.221.25.28;
 set_real_ip_from 140.221.25.29;
 real_ip_header X-Forwarded-For;
 
-# Gunicorn service
-upstream gunicorn {
+# Gunicorn v1 service (port 8000)
+upstream gunicorn_v1 {
     server 127.0.0.1:8000;
+}
+
+# Gunicorn v2 service (port 8001)
+upstream gunicorn_v2 {
+    server 127.0.0.1:8001;
 }
 
 # HTTPS server
@@ -20,7 +25,7 @@ server {
     # Port 443 for encrypted traffic
     listen 443 ssl default_server;
     listen [::]:443 ssl default_server;
-    
+
     # Note: You should disable gzip for SSL traffic.
     # See: https://bugs.debian.org/773332
 
@@ -31,43 +36,29 @@ server {
     # Don't use them in a production server!
     include snippets/snakeoil.conf;
 
-    # Location of frontend files
-    # root /var/www/html;
-    
-    # Add index.php to the list if you are using PHP
-    # index index.html index.htm index.nginx-debian.html;
-
     server_name _;
 
-    # Base URL of the API
-    location / {
-        proxy_pass http://gunicorn;
+    # API v1 - port 8000
+    location /api/v1 {
+        proxy_pass http://gunicorn_v1;
         include proxy_params;
-        proxy_set_header SCRIPT_NAME /gunicorn;
+        proxy_set_header SCRIPT_NAME /api/v1;
 
-        # API logs
-        access_log /var/log/nginx/api.access.log;
-        error_log /var/log/nginx/api.error.log info;
+        access_log /var/log/nginx/api.v1.access.log;
+        error_log /var/log/nginx/api.v1.error.log info;
+    }
+
+    # API v2 - port 8001
+    location /api/v2 {
+        proxy_pass http://gunicorn_v2;
+        include proxy_params;
+        proxy_set_header SCRIPT_NAME /api/v2;
+
+        access_log /var/log/nginx/api.v2.access.log;
+        error_log /var/log/nginx/api.v2.error.log info;
     }
 
     # Nginx logs
-	access_log /var/log/nginx/access.log;
-	error_log /var/log/nginx/error.log warn;
-
-    # pass PHP scripts to FastCGI server
-    #location ~ \.php$ {
-    #    include snippets/fastcgi-php.conf;
-    #
-    #    # With php-fpm (or other unix sockets):
-    #    fastcgi_pass unix:/run/php/php7.4-fpm.sock;
-    #    # With php-cgi (or other tcp sockets):
-    #    fastcgi_pass 127.0.0.1:9000;
-    #}
-
-    # deny access to .htaccess files, if Apache's document root
-    # concurs with nginx's one
-    #
-    #location ~ /\.ht {
-    #    deny all;
-    #}
+    access_log /var/log/nginx/access.log;
+    error_log /var/log/nginx/error.log warn;
 }
