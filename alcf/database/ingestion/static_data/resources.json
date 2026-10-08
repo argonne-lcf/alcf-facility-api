@@ -6,6 +6,7 @@
         "description": "Polaris is an AMD+NVIDIA GPU-based system with 560 nodes and 4 A100 GPUs per node.",
         "last_updated": "2025-07-10T11:28:40.969Z",
         "type": "compute",
+        "type_urn": "urn:doe-iri:resource:compute",
         "group": "computes",
         "site_id": "afb8a6d7-cd5b-4040-8be7-6e917b30af08"
     },
@@ -16,6 +17,7 @@
         "description": "Sophia is an AMD+NVIDIA GPU-based system with 24 nodes and 8 A100 GPUs per node.",
         "last_updated": "2025-07-10T11:28:40.969Z",
         "type": "compute",
+        "type_urn": "urn:doe-iri:resource:compute",
         "group": "computes",
         "site_id": "afb8a6d7-cd5b-4040-8be7-6e917b30af08"
     },
@@ -26,6 +28,7 @@
         "description": "Crux is an AMD CPU-only system with 256 nodes.",
         "last_updated": "2025-07-10T11:28:40.969Z",
         "type": "compute",
+        "type_urn": "urn:doe-iri:resource:compute",
         "group": "computes",
         "site_id": "afb8a6d7-cd5b-4040-8be7-6e917b30af08"
     },
@@ -36,6 +39,7 @@
         "description": "Aurora is an HPE Cray-Ex based system with 10,624 nodes and 6 Intel Data Center GPU Max Series per node.",
         "last_updated": "2025-07-10T11:28:40.969Z",
         "type": "compute",
+        "type_urn": "urn:doe-iri:resource:compute",
         "group": "computes",
         "site_id": "afb8a6d7-cd5b-4040-8be7-6e917b30af08"
     },
@@ -43,9 +47,10 @@
         "id": "7f7d0593-162e-43b9-8476-07d7d137d6ab",
         "name": "Edith",
         "short_name": "edith",
-        "description": "Edit is an ALCF development cluster with 4 nodes",
+        "description": "Edith is an ALCF development cluster with 4 nodes",
         "last_updated": "2025-07-10T11:28:40.969Z",
         "type": "compute",
+        "type_urn": "urn:doe-iri:resource:compute",
         "group": "computes",
         "site_id": "afb8a6d7-cd5b-4040-8be7-6e917b30af08"
     },
@@ -56,6 +61,7 @@
         "description": "Sirius is an ALCF staging cluster.",
         "last_updated": "2025-07-10T11:28:40.969Z",
         "type": "compute",
+        "type_urn": "urn:doe-iri:resource:compute",
         "group": "computes",
         "site_id": "afb8a6d7-cd5b-4040-8be7-6e917b30af08"
     },
@@ -66,6 +72,7 @@
         "description": "Eagle is a Lustre filesystem for intensive job output, large files, and community sharing via Globus.",
         "last_updated": "2025-07-10T11:28:40.969Z",
         "type": "storage",
+        "type_urn": "urn:doe-iri:resource:storage",
         "group": "storages",
         "site_id": "afb8a6d7-cd5b-4040-8be7-6e917b30af08"
     },
@@ -76,6 +83,7 @@
         "description": "Home is a Lustre filesystem for small files.",
         "last_updated": "2025-07-10T11:28:40.969Z",
         "type": "storage",
+        "type_urn": "urn:doe-iri:resource:storage",
         "group": "storages",
         "site_id": "afb8a6d7-cd5b-4040-8be7-6e917b30af08"
     },
@@ -86,6 +94,7 @@
         "description": "The ALCF Inference Service provides API access to a variety of state-of-the-art open-source models running on dedicated ALCF hardware. Documentation: https://docs.alcf.anl.gov/services/inference-endpoints/",
         "last_updated": "2026-05-13T11:30:00.000Z",
         "type": "service",
+        "type_urn": "urn:doe-iri:service:generic",
         "group": "services",
         "site_id": "afb8a6d7-cd5b-4040-8be7-6e917b30af08"
     },
@@ -96,6 +105,7 @@
         "description": "Flare is a 91 PB Lustre Filesystem with 160 OSTs, 40 MDTs, and 48 Gateway nodes mounted at /lus/flare/projects/ with a peak theoretical performance of 650 GB/s.",
         "last_updated": "2026-09-29T11:30:00.000Z",
         "type": "storage",
+        "type_urn": "urn:doe-iri:resource:storage",
         "group": "storages",
         "site_id": "afb8a6d7-cd5b-4040-8be7-6e917b30af08"
     }
