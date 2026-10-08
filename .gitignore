@@ -14,3 +14,4 @@ alcf_endpoints.json
 alcf_identity_mapping.json
 alcf_*.json*
 .env*
+uv.lock
