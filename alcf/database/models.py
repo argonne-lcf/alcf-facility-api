@@ -15,7 +15,7 @@ class NamedObject(SQLModel):
     name: Optional[str] = None
     short_name: Optional[str] = None
     description: Optional[str] = None
-    last_updated: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
+    last_updated: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None), sa_type=DateTime(timezone=False))
 
 class Facility(NamedObject, table=True):
     """Facility entity."""
@@ -40,8 +40,8 @@ class Incident(NamedObject, table=True):
     """Incident entity."""
     status: str
     type: str
-    start: datetime
-    end: Optional[datetime] = None
+    start: datetime = Field(sa_type=DateTime(timezone=False))
+    end: Optional[datetime] = Field(default=None, sa_type=DateTime(timezone=False))
     resolution: str
     event_ids: Optional[List[str]] = Field(default=None, sa_column=Column(JSON))
     resource_ids: Optional[List[str]] = Field(default=None, sa_column=Column(JSON))
@@ -49,17 +49,18 @@ class Incident(NamedObject, table=True):
 class Event(NamedObject, table=True):
     """Event entity."""
     status: str
-    occurred_at: datetime
+    occurred_at: datetime = Field(sa_type=DateTime(timezone=False))
     resource_id: str
     incident_id: str
 
 class Resource(NamedObject, table=True):
     """Resource entity."""
     type: str
+    type_urn: str
     group: Optional[str] = None
     current_status: str
     last_event_id: Optional[str] = None
-    last_verified: Optional[datetime] = None
+    last_verified: Optional[datetime] = Field(default=None, sa_type=DateTime(timezone=False))
     site_id: str
     capability_ids: Optional[List[str]] = Field(default=None, sa_column=Column(JSON))
 
@@ -71,7 +72,7 @@ class User(SQLModel, table=True):
     idp_id: Optional[str] = None
     idp_name: Optional[str] = None
     auth_service: Optional[str] = None
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None), sa_type=DateTime(timezone=False))
 
 class Task(SQLModel, table=True):
     """Task entity."""
@@ -82,5 +83,5 @@ class Task(SQLModel, table=True):
     task_command: str = Field(sa_column=Column(JSON))  # Store TaskCommand as JSON string
     globus_endpoint_id: Optional[str] = None
     globus_function_id: Optional[str] = None
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
-    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None), sa_type=DateTime(timezone=False))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None), sa_type=DateTime(timezone=False))
