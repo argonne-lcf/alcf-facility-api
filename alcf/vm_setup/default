@@ -38,7 +38,23 @@ server {
         include proxy_params;
     }
 
-    # API v1 - port 8000
+    # V2 API - port 8001
+    location /api/v2 {
+        proxy_pass http://gunicorn_v2;
+        include proxy_params;
+        proxy_set_header SCRIPT_NAME /api/v2;
+
+        access_log /var/log/nginx/api.v2.access.log;
+        error_log /var/log/nginx/api.v2.error.log info;
+    }
+
+    # V1 API Swagger documentation at /api/v1
+    location = /api/v1 {
+        proxy_pass http://gunicorn_v1;
+        include proxy_params;
+    }
+
+    # V1 API - port 8000
     location /api/v1 {
         proxy_pass http://gunicorn_v1;
         include proxy_params;
@@ -48,15 +64,6 @@ server {
         error_log /var/log/nginx/api.v1.error.log info;
     }
 
-    # API v2 - port 8001
-    location /api/v2 {
-        proxy_pass http://gunicorn_v2;
-        include proxy_params;
-        proxy_set_header SCRIPT_NAME /api/v2;
-
-        access_log /var/log/nginx/api.v2.access.log;
-        error_log /var/log/nginx/api.v2.error.log info;
-    }
 
     # Nginx logs
     access_log /var/log/nginx/access.log;
