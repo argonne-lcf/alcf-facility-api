@@ -14,6 +14,7 @@ import re
 ALLOWED_PATH_BASES = {
     "home": [Path("/home")],
     "eagle": [Path("/eagle"), Path("/lus/eagle")],
+    "flare": [Path("/flare"), Path("/lus/flare/projects")],
 }
 
 # Define allowed paths (string version for error messages)
