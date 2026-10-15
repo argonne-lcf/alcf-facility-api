@@ -16,6 +16,7 @@ ALLOWED_PATH_BASES = {
     "eagle": [Path("/eagle"), Path("/lus/eagle")],
     "flare": [Path("/flare"), Path("/lus/flare/projects")],
 }
+ALLOWED_PATH_BASES_KEYS = list(ALLOWED_PATH_BASES.keys())
 
 # Define allowed paths (string version for error messages)
 ALLOWED_PATHS_TEXT = []
@@ -193,7 +194,7 @@ def _validate_base_path(path: Path, resource_name: str):
     if allowed_bases is None:
         raise HTTPException(
             status_code=HTTP_501_NOT_IMPLEMENTED,
-            detail=f"{resource_name} not supported yet."
+            detail=f"{resource_name} filesystem not supported yet. Use an ID associated with {ALLOWED_PATH_BASES_KEYS}."
         )
 
     # For each allowed path base for this resource ...
