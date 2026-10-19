@@ -172,6 +172,7 @@ async def get_db_objects(
     resource_type: str = None,
     status: str = None,
     type: str = None,
+    type_urn: str = None,
     current_status: str = None,
     site_id: str = None,
     resolution: str = None,
@@ -188,6 +189,7 @@ async def get_db_objects(
         resource_type,
         status,
         type,
+        type_urn,
         current_status,
         site_id,
         resolution
@@ -220,6 +222,8 @@ async def get_db_objects(
                 stmt = stmt.where(db_model_class.type == resource_type)
             if type:
                 stmt = stmt.where(db_model_class.type == type)
+            if type_urn:
+                stmt = stmt.where(db_model_class.type_urn == type_urn)
             if status:
                 stmt = stmt.where(db_model_class.status == status)
             if current_status:
@@ -272,7 +276,8 @@ async def get_db_resources(
     modified_since: datetime.datetime | None = None,
     offset: int = None,
     limit: int = None,
-    resource_type: str = None,
+    type: str = None,
+    type_urn: str = None,
     current_status: str = None,
     site_id: str = None
     ) -> List[db_models.Resource]:
@@ -285,7 +290,8 @@ async def get_db_resources(
         modified_since=modified_since,
         offset=offset,
         limit=limit,
-        resource_type=resource_type,
+        type=type,
+        type_urn=type_urn,
         current_status=current_status,
         site_id=site_id
     )
