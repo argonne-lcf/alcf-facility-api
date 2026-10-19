@@ -63,7 +63,7 @@ class AlcfAdapter(StatusFacilityAdapter):
             modified_since=modified_since,
             offset=offset,
             limit=limit,
-            resource_type=resource_type.value if resource_type else None,
+            type=resource_type.value if resource_type else None,
             current_status=current_status.value if current_status else None,
             site_id=site_id
         )
