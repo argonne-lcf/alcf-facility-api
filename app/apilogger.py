@@ -98,6 +98,11 @@ def configure_logging(level: str | int | None = None) -> None:
         setattr(file_handler, IRI_HANDLER_ATTR, True)
         root.addHandler(file_handler)
 
+    # [ADDITION BEGINS] - mute http logs
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+    logging.getLogger("httpcore").setLevel(logging.WARNING)
+    # [ADDITION ENDS]
+
     _CONFIGURED = True
 
 
