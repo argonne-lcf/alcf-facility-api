@@ -70,8 +70,6 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
                 raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="'process_count' not supported yet.")
             if job_spec.resources.processes_per_node:
                 raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="'processes_per_node' not supported yet.")
-            if job_spec.resources.cpu_cores_per_process:
-                raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="'cpu_cores_per_process' not supported yet.")
             if job_spec.resources.gpu_cores_per_process:
                 raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="'gpu_cores_per_process' not supported yet.")
             if job_spec.resources.exclusive_node_use == False:
