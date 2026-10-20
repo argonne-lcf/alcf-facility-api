@@ -27,7 +27,8 @@ data = {
     "stderr_path": "/home/bcote/qsub",
     "resources": {
         "memory": 2222,
-        "node_count": 1
+        "node_count": 1,
+        "cpu_cores_per_process": 64
     },
     "attributes": {
         "duration": 300,
