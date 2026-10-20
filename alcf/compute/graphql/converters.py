@@ -105,6 +105,19 @@ def get_default_slots(resource_name: str) -> int:
         )
 
 
+# Get CPU count per compute node
+def get_cpu_per_node(iri_jobspec: compute_models.JobSpec, resource_name: str) -> int:
+    max_cpu_per_node = get_default_slots(resource_name)
+    if iri_jobspec.resources and iri_jobspec.resources.cpu_cores_per_process:
+        if iri_jobspec.resources.cpu_cores_per_process > max_cpu_per_node:
+            raise HTTPException(
+                status_code=HTTP_400_BAD_REQUEST,
+                detail=f"'cpu_cores_per_process' must be at most {max_cpu_per_node} for {resource_name}."
+            )
+        return iri_jobspec.resources.cpu_cores_per_process
+    return max_cpu_per_node
+
+
 # Format task count
 def format_task_count(iri_jobspec: compute_models.JobSpec) -> dict:
     node_count = get_node_count(iri_jobspec)
@@ -120,7 +133,7 @@ def format_tasks_resources(iri_jobspec: compute_models.JobSpec, resource_name: s
     tasks_resources = [
         {
             "index": f"0-{node_count-1}" if node_count > 1 else "0",
-            "slots": get_default_slots(resource_name)
+            "slots": get_cpu_per_node(iri_jobspec, resource_name)
         }
     ]
     memory = iri_jobspec.resources.memory if iri_jobspec.resources else None
