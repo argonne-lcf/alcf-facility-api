@@ -40,7 +40,7 @@ class AllocationEntry(IRIBaseModel):
 class ProjectAllocation(IRIBaseModel):
     """
     A project's allocation for a capability. (aka. repo)
-    This allocation is a piece of the total allocation for the capability. (eg. 5% of the total node hours of Perlmutter GPU nodes)
+    This allocation is a piece of the total allocation for the capability. (eg. 5% of the total node hours of Aurora GPU nodes)
     A project would at least have a storage and job repos, maybe more than 1 of each.
     """
 
