@@ -204,6 +204,14 @@ Add `type_urn` in resources:
 psql -U apiuser -d facilityapi_db -c "ALTER TABLE resource ADD COLUMN type_urn TEXT;"
 ```
 
+### Backup database
+
+See `create_postgres_backup.sh`. Set a `crontab -e` as `apiuser` with:
+
+```bash
+0 2 * * * /home/apiuser/postgres_backup/create_backup_postgres.sh >> /home/apiuser/postgres_backup/backup.log 2>&1
+```
+
 ## Redis cache
 
 Install redis
