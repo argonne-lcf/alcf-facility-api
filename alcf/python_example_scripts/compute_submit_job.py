@@ -11,9 +11,8 @@ resource_id = "55c1c993-1124-47f9-b823-514ba3849a9a" # Polaris
 commands = """
 echo Start
 sleep 10
-echo "slept for 10 secs"
-echo "using following python executable"
-which python
+pwd
+echo $TEST_ENV
 echo End
 """
 
@@ -24,6 +23,7 @@ data = {
     "name": "TEST",
     "stdout_path": "/home/bcote/qsub",
     "stderr_path": "/home/bcote/qsub",
+    "environment": {"TEST_ENV": "It's working!"},
     "resources": {
         "memory": 2222,
         "node_count": 1,
@@ -32,7 +32,7 @@ data = {
     "attributes": {
         "duration": 300,
         "queue_name": "debug",
-        "account": "datascience",
+        "account": "iri_api",
         "custom_attributes": {"filesystems": "eagle"}
     }
 }
