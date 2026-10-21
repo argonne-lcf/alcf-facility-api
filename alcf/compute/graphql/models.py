@@ -35,6 +35,7 @@ class Job(BaseModel):
     remoteCommand: Optional[str] = None
     commandArgs: Optional[List[str]] = None
     workDir: Optional[str] = None
+    env: Optional[str] = None
     resourcesRequested: Optional[JobResources] = None
     resourcesUsed: Optional[JobResources] = None
     queue: Optional[Queue] = None
