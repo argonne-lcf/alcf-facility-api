@@ -73,18 +73,29 @@ def set_nested_value(data: dict, path: str, value: Any) -> dict:
     return data
 
 
+# Format dictionary name/value entries
+def format_name_value_entries(input_dict: dict) -> str:
+    name_value_str = ""
+    for name, value in input_dict.items():
+        name_value_str += '{name: "' + name + '", value: "' + value + '"}'
+    if name_value_str:
+        return f"[{name_value_str}]"
+    else:
+        return None
+
+
 # Format custom resources
-def format_custom_resources(iri_jobspec: compute_models.JobSpec):
-    customResources = None
+def format_custom_resources(iri_jobspec: compute_models.JobSpec) -> str:
     if iri_jobspec.attributes:
         if iri_jobspec.attributes.custom_attributes:
-            customResources = ""
-            for name, value in iri_jobspec.attributes.custom_attributes.items():
-                customResources += '{name: "' + name + '", value: "' + value + '"}'
-    if customResources:
-        customResources = f"[{customResources}]"
-    return customResources
+            return format_name_value_entries(iri_jobspec.attributes.custom_attributes)
 
+
+# Format environment
+def format_env(iri_jobspec: compute_models.JobSpec) -> str:
+    if iri_jobspec.environment:
+        return format_name_value_entries(iri_jobspec.environment)
+    
 
 # Get node count
 def get_node_count(iri_jobspec: compute_models.JobSpec) -> int:
@@ -156,6 +167,7 @@ def get_graphql_job_from_iri_jobspec(
         'workDir': 'directory',
         'errorPath': 'stderr_path',
         'outputPath': 'stdout_path',
+        'env': lambda js: format_env(js),
         'resourcesRequested.jobResources.wallClockTime': lambda js: js.attributes.duration if js.attributes and js.attributes.duration else None,
         'resourcesRequested.jobResources.customResources': lambda js: format_custom_resources(js) if js.attributes else None,
         'resourcesRequested.taskCount': lambda js: format_task_count(js),

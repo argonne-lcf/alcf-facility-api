@@ -72,7 +72,7 @@ def format_graphql_block(key, block, base_indent: int = 0, indent: int = 4) -> s
 
     # String
     elif isinstance(block, str):
-        if key == "customResources":
+        if key in ("customResources", "env"):
             return block
         else:
             return f"\"{block}\""

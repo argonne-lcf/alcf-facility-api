@@ -55,8 +55,6 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
         # Error if input variables are not supported yet
         if job_spec.inherit_environment == False:
             raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="'inherit_environment' not supported yet.")
-        if job_spec.environment:
-            raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="'environment' not supported yet.")
         if job_spec.stdin_path:
             raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="'stdin_path' not supported yet.")
         if job_spec.pre_launch:
