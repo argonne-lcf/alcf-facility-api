@@ -20,6 +20,7 @@ from utils import (
     result_summary,
     JobState,
     Task,
+    filesystem_request,
 )
 
 BASE_URL = None
@@ -79,7 +80,11 @@ def get_job_stdout_path(job_id: str) -> str:
 
 def view_file(path: str, size: int = 4096, offset: int = 0) -> Task:
     url = f"{BASE_URL}/filesystem/view/{FILESYSTEM_RESOURCE_ID}"
-    response = requests.get(url, params={"path": path, "size": size, "offset": offset}, headers=HEADERS)
+    # General: caller provides only data; method is resolved inside filesystem_request
+    # via BASE_URL check (api/v1 vs api/v2).
+    response = filesystem_request(
+        url, HEADERS, data={"path": path, "size": size, "offset": offset}, base_url=BASE_URL
+    )
     data = assert_status(f"filesystem/view {path}", response, expected=200)
     task_id = data.get("task_id")
     if not task_id:
@@ -91,7 +96,10 @@ def view_file(path: str, size: int = 4096, offset: int = 0) -> Task:
 
 def head_file(path: str, lines: int = 20) -> Task:
     url = f"{BASE_URL}/filesystem/head/{FILESYSTEM_RESOURCE_ID}"
-    response = requests.get(url, params={"path": path, "lines": lines}, headers=HEADERS)
+    # General: caller provides only data; method is resolved inside filesystem_request
+    response = filesystem_request(
+        url, HEADERS, data={"path": path, "lines": lines}, base_url=BASE_URL
+    )
     data = assert_status(f"filesystem/head {path}", response, expected=200)
     task_id = data.get("task_id")
     if not task_id:

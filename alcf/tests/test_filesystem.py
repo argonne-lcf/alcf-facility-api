@@ -18,6 +18,7 @@ from utils import (
     set_current_test,
     section,
     result_summary,
+    filesystem_request,
 )
 
 BASE_URL = None
@@ -52,24 +53,21 @@ def fs_url(op: str) -> str:
     return f"{BASE_URL}/filesystem/{op}/{FILESYSTEM_RESOURCE_ID}"
 
 
-def submit_and_wait(label: str, method: str, op: str, payload: dict | None = None, params: dict | None = None, expected_status: int = 200) -> dict:
-    url = fs_url(op)
-    if method == "GET":
-        response = requests.get(url, params=params, headers=HEADERS)
-    elif method == "POST":
-        response = requests.post(url, json=payload, headers=HEADERS)
-    elif method == "PUT":
-        response = requests.put(url, json=payload, headers=HEADERS)
-    elif method == "DELETE":
-        response = requests.delete(url, params=params, headers=HEADERS)
-    else:
-        raise ValueError(f"Unsupported method: {method}")
+def submit_and_wait(label: str, op: str, data: dict | None = None, expected_status: int = 200) -> dict:
+    """General filesystem submit helper - caller does not choose HTTP method.
 
-    data = assert_status(label, response, expected=expected_status)
-    task_id = data.get("task_id")
+    The correct verb and encoding are decided inside filesystem_request by
+    inspecting BASE_URL (api/v1 vs api/v2) and the operation name. Callers
+    only provide the operation and a unified data dict.
+    """
+    url = fs_url(op)
+    response = filesystem_request(url, HEADERS, data=data, base_url=BASE_URL, op=op)
+
+    resp_data = assert_status(label, response, expected=expected_status)
+    task_id = resp_data.get("task_id")
     if not task_id:
         print(f"  [FAIL] {label}: no task_id in response")
-        print(data)
+        print(resp_data)
         sys.exit(1)
     print(f"  [INFO] task_id = {task_id}")
     return wait_for_task(task_id)
@@ -82,9 +80,8 @@ def test_mkdir() -> bool:
     try:
         submit_and_wait(
             "mkdir (create test directory)",
-            "POST",
             "mkdir",
-            payload={"path": TEST_DIR, "parent": True},
+            data={"path": TEST_DIR, "parent": True},
             expected_status=201,
         )
         return True
@@ -137,9 +134,8 @@ def test_ls_dir() -> bool:
     try:
         submit_and_wait(
             "ls (list test directory)",
-            "GET",
             "ls",
-            params={"path": TEST_DIR},
+            data={"path": TEST_DIR},
         )
         return True
     except SystemExit:
@@ -151,15 +147,13 @@ def test_chmod() -> bool:
     try:
         submit_and_wait(
             "chmod (set notes.txt permissions to 644)",
-            "PUT",
             "chmod",
-            payload={"path": TEST_TEXT_FILE, "mode": "644"},
+            data={"path": TEST_TEXT_FILE, "mode": "644"},
         )
         submit_and_wait(
             "chmod (set subdir permissions to 755)",
-            "PUT",
             "chmod",
-            payload={"path": TEST_SUBDIR, "mode": "755"},
+            data={"path": TEST_SUBDIR, "mode": "755"},
         )
         return True
     except SystemExit:
@@ -171,15 +165,13 @@ def test_chown() -> bool:
     try:
         submit_and_wait(
             "chown (set notes.txt owner)",
-            "PUT",
             "chown",
-            payload={"path": TEST_TEXT_FILE, "owner": OWNER, "group": "users"},
+            data={"path": TEST_TEXT_FILE, "owner": OWNER, "group": "users"},
         )
         submit_and_wait(
             "chown (set subdir owner)",
-            "PUT",
             "chown",
-            payload={"path": TEST_SUBDIR, "owner": OWNER, "group": "users"},
+            data={"path": TEST_SUBDIR, "owner": OWNER, "group": "users"},
         )
         return True
     except SystemExit:
@@ -191,9 +183,8 @@ def test_head() -> bool:
     try:
         submit_and_wait(
             "head (read first lines of notes.txt)",
-            "GET",
             "head",
-            params={"path": TEST_TEXT_FILE, "lines": 5},
+            data={"path": TEST_TEXT_FILE, "lines": 5},
         )
         return True
     except SystemExit:
@@ -205,9 +196,8 @@ def test_view() -> bool:
     try:
         submit_and_wait(
             "view (read bytes from notes.txt)",
-            "GET",
             "view",
-            params={"path": TEST_TEXT_FILE, "size": 100, "offset": 0},
+            data={"path": TEST_TEXT_FILE, "size": 100, "offset": 0},
         )
         return True
     except SystemExit:
@@ -219,9 +209,8 @@ def test_tail() -> bool:
     try:
         submit_and_wait(
             "tail (read last lines of notes.txt)",
-            "GET",
             "tail",
-            params={"path": TEST_TEXT_FILE, "lines": 5},
+            data={"path": TEST_TEXT_FILE, "lines": 5},
         )
         return True
     except SystemExit:
@@ -233,9 +222,8 @@ def test_checksum() -> bool:
     try:
         submit_and_wait(
             "checksum (SHA-256 of notes.txt)",
-            "GET",
             "checksum",
-            params={"path": TEST_TEXT_FILE},
+            data={"path": TEST_TEXT_FILE},
         )
         return True
     except SystemExit:
@@ -247,15 +235,13 @@ def test_file() -> bool:
     try:
         submit_and_wait(
             "file (type of notes.txt)",
-            "GET",
             "file",
-            params={"path": TEST_TEXT_FILE},
+            data={"path": TEST_TEXT_FILE},
         )
         submit_and_wait(
             "file (type of subdir)",
-            "GET",
             "file",
-            params={"path": TEST_SUBDIR},
+            data={"path": TEST_SUBDIR},
         )
         return True
     except SystemExit:
@@ -267,9 +253,8 @@ def test_rm() -> bool:
     try:
         submit_and_wait(
             "rm (remove test directory)",
-            "DELETE",
             "rm",
-            params={"path": TEST_DIR},
+            data={"path": TEST_DIR},
         )
         return True
     except SystemExit:
