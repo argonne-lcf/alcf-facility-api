@@ -62,6 +62,91 @@ def get_base_url() -> str:
     return get_env("BASE_URL").rstrip("/")
 
 
+def is_v2_api(base_url: str | None = None) -> bool:
+    """Return True if BASE_URL points to api/v2, False for api/v1.
+
+    Checks whether the base URL contains 'api/v2' or '/v2' to determine
+    the filesystem API version. When True, all filesystem operations must use POST.
+    """
+    url = base_url if base_url is not None else get_base_url()
+    return "api/v2" in url or "/v2" in url
+
+
+# Mapping of filesystem operation -> HTTP method used in api/v1.
+# Only operations explicitly exercised in the tests are listed.
+# api/v2 uses POST for all operations.
+_FS_V1_METHOD: dict[str, str] = {
+    "mkdir": "POST",
+    "ls": "GET",
+    "chmod": "PUT",
+    "chown": "PUT",
+    "head": "GET",
+    "view": "GET",
+    "tail": "GET",
+    "checksum": "GET",
+    "file": "GET",
+    "rm": "DELETE",
+}
+
+
+def _extract_fs_op(url: str) -> str | None:
+    """Extract filesystem operation from URL like .../filesystem/<op>/<resource_id>."""
+    try:
+        # split on /filesystem/ and take next segment
+        after = url.split("/filesystem/")[1]
+        op = after.split("/")[0].split("?")[0]
+        return op
+    except Exception:
+        return None
+
+
+def filesystem_request(
+    url: str,
+    headers: dict,
+    data: dict | None = None,
+    base_url: str | None = None,
+    op: str | None = None,
+) -> requests.Response:
+    """Make a filesystem request compatible with both api/v1 and api/v2.
+
+    This is the *general* entry point - callers do NOT choose the HTTP method
+    and do NOT distinguish payload vs params. Callers provide only a unified
+    ``data`` dict; the function inspects BASE_URL (api/v1 vs api/v2) and the
+    filesystem operation name to decide the correct verb and encoding.
+
+    - api/v2: always POST with JSON body.
+    - api/v1: method looked up from _FS_V1_METHOD; GET/DELETE use query params,
+      POST/PUT use JSON body.
+
+    Args:
+        url: Full filesystem endpoint URL.
+        headers: Request headers.
+        data: Unified payload for the operation (e.g. {"path": "...", "mode": "644"}).
+        base_url: Explicit BASE_URL to inspect for version (defaults to env).
+        op: Explicit operation name (e.g. "ls", "chmod"). If omitted, extracted from url.
+    """
+    # Resolve operation name if not explicitly given
+    if op is None:
+        op = _extract_fs_op(url)
+
+    # Determine HTTP method based on version and operation
+    if is_v2_api(base_url):
+        # v2: all filesystem ops are POST with JSON
+        return requests.post(url, json=data, headers=headers)
+    else:
+        resolved_method = _FS_V1_METHOD.get(op)
+        if resolved_method == "GET":
+            return requests.get(url, params=data, headers=headers)
+        elif resolved_method == "POST":
+            return requests.post(url, json=data, headers=headers)
+        elif resolved_method == "PUT":
+            return requests.put(url, json=data, headers=headers)
+        elif resolved_method == "DELETE":
+            return requests.delete(url, params=data, headers=headers)
+        else:
+            raise ValueError(f"Unsupported method: {resolved_method}")
+
+
 def print_response(label: str, response: requests.Response, verbose: bool = True) -> None:
     status = response.status_code
     ok = 200 <= status < 300
