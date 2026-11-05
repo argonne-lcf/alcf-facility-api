@@ -11,7 +11,6 @@ from starlette.status import (
     HTTP_400_BAD_REQUEST, 
     HTTP_408_REQUEST_TIMEOUT,
     HTTP_500_INTERNAL_SERVER_ERROR,
-    HTTP_501_NOT_IMPLEMENTED,
 )
 
 # Get indents
@@ -97,32 +96,35 @@ def format_graphql_block(key, block, base_indent: int = 0, indent: int = 4) -> s
             )
 
 
-# Build submit job query
-def build_submit_job_query(
-    user: User, 
-    graphql_job: graphql_models.Job
-) -> str:
+# Build GraphQL createJob payload
+def build_create_job_payload(input: dict) -> dict:
+    return {
+        "query": get_create_job_mutation(),
+        "variables": {
+            "input": input
+        }
+    }
 
-    # Generate and return the job submission GraphQL query
-    input_data = graphql_job.model_dump(exclude_none=True)
-    return f"""
-        mutation {{
-            createJob (
-                input: {dictionary_to_graphql_str(input_data, base_indent=16, indent=4)}
-            ) {{
-                node {{
+
+# Build submit job query
+def get_create_job_mutation() -> str:
+    """Return static job submission GraphQL query with expected 'input' variable."""
+    return """
+        mutation CreateJob($input: JobInput!) {
+            createJob(input: $input) {
+                node {
                     jobId
-                    status {{
+                    status {
                         state
                         exitStatus
-                    }}
-                }}
-                error {{
+                    }
+                }
+                error {
                     errorCode
                     errorMessage
-                }}
-            }}
-        }}
+                }
+            }
+        }
     """
     
 
@@ -213,7 +215,7 @@ def build_update_job_query(
 
 # Post GraphQL
 async def post_graphql(
-    query: str = None,
+    json: dict,
     access_token: str = None,
     url: str = None,
     ):
@@ -228,7 +230,7 @@ async def post_graphql(
     # Submit request to GraphQL API 
     try:
         async with httpx.AsyncClient(trust_env=GRAPHQL_HTTPX_TRUST_ENV) as client:
-            response = await client.post(url, json={"query": query}, headers=headers, timeout=10)
+            response = await client.post(url, json=json, headers=headers, timeout=10)
             response = response.json()
     except httpx.TimeoutException:
         raise HTTPException(
