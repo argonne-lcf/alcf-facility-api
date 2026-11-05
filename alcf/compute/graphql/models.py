@@ -5,7 +5,7 @@ class JobTasksResources(BaseModel):
     index: Optional[str] = ""
     wallClockTime: Optional[int] = None
     physicalMemory: Optional[int] = None
-    customResources: Optional[str] = None
+    customResources: Optional[list[dict[str,str]]] = None
 
 class TasksResource(BaseModel):
     index: Optional[str] = None
@@ -35,7 +35,7 @@ class Job(BaseModel):
     remoteCommand: Optional[str] = None
     commandArgs: Optional[List[str]] = None
     workDir: Optional[str] = None
-    env: Optional[str] = None
+    env: Optional[list[dict[str,str]]] = None
     resourcesRequested: Optional[JobResources] = None
     resourcesUsed: Optional[JobResources] = None
     queue: Optional[Queue] = None
