@@ -74,12 +74,17 @@ def set_nested_value(data: dict, path: str, value: Any) -> dict:
 
 
 # Format dictionary name/value entries
-def format_name_value_entries(input_dict: dict) -> str:
-    name_value_str = ""
+def format_name_value_entries(input_dict: dict) -> list[dict]:
+    name_value_dict = []
     for name, value in input_dict.items():
-        name_value_str += '{name: "' + name + '", value: "' + value + '"}'
-    if name_value_str:
-        return f"[{name_value_str}]"
+        name_value_dict.append(
+            {
+                "name": name,
+                "value": value
+            }
+        )
+    if name_value_dict:
+        return name_value_dict
     else:
         return None
 
@@ -182,56 +187,16 @@ def get_graphql_job_from_iri_jobspec(
     # Validate data
     graphql_job = graphql_models.Job(**graphql_data)
 
-    # Format command arguments
-    graphql_job = format_commandArgs(graphql_job)
-    
-    # Return the GraphQL Job object
-    return graphql_job
-
-
-def format_commandArgs(
-    job: graphql_models.Job
-) -> graphql_models.Job:
-    """Format executable arguments commandArgs to work with GraphQL if needed."""
-    
-    # If /bin/bash ...
-    if job.commandArgs and job.remoteCommand == "/bin/bash":
-
-        # Max of two arguments with /bin/bash
-        if len(job.commandArgs) > 2:
+    # Check /bin/bash argument length
+    if graphql_job.commandArgs and graphql_job.remoteCommand == "/bin/bash":
+        if len(graphql_job.commandArgs) > 2:
             raise HTTPException(
                 status_code=HTTP_400_BAD_REQUEST,
                 detail="List of arguments for /bin/bash must have a length of 2 at most."
             )
 
-        # For each argument in the list ...
-        for i_arg, argument in enumerate(job.commandArgs):
-
-            # Escape quotes for GraphQL
-            argument = argument.replace('"', '\\"')
-
-            # Remove empty lines and strip whitespace
-            lines = [
-                line.strip()
-                for line in argument.splitlines()
-                if line.strip()
-            ]
-
-            # Add semicolons unless line ends with {
-            formatted_lines = [
-                line if line.endswith("{") else f"{line};"
-                for line in lines
-            ]
-
-            # Remove trailing semicolon from final line
-            if formatted_lines:
-                formatted_lines[-1] = formatted_lines[-1].rstrip(";")
-
-            # Join into single line
-            job.commandArgs[i_arg] = " ".join(formatted_lines)
-    
-    # Return formatted commandArgs
-    return job
+    # Return the GraphQL Job object
+    return graphql_job
 
 
 # Get IRI Job from GraphQL Job
