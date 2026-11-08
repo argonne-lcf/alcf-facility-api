@@ -105,34 +105,38 @@ def get_cancel_job_mutation() -> str:
     """
 
 
-# Build update job query
-def build_update_job_query(
-    user: User, 
-    graphql_job: graphql_models.Job,
+# Build GraphQL updateJob payload
+def build_update_job_payload(
+    input: dict,
     job_id: str,
-) -> str:
-    
-    # Generate and return the job submission GraphQL query
-    input_data = graphql_job.model_dump(exclude_none=True)
-    return f"""
-        mutation {{
-            updateJob (
-                jobId: "{job_id}",
-                input: {dictionary_to_graphql_str(input_data, base_indent=16, indent=4)}
-            ) {{
-                node {{
+) -> dict:
+    return {
+        "query": get_update_job_mutation(),
+        "variables": {
+            "jobId": job_id,
+            "input": input
+        }
+    }
+
+
+def get_update_job_mutation() -> str:
+    """Return static update job GraphQL mutation with expected 'jobId' and 'input' variables."""
+    return """
+        mutation UpdateJob($jobId: String!, $input: JobInput!) {
+            updateJob(jobId: $jobId, input: $input) {
+                node {
                     jobId
-                    status {{
+                    status {
                         state
                         exitStatus
-                    }}
-                }}
-                error {{
+                    }
+                }
+                error {
                     errorCode
                     errorMessage
-                }}
-            }}
-        }}
+                }
+            }
+        }
     """
 
 
