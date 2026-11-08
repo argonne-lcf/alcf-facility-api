@@ -158,28 +158,32 @@ def get_list_jobs_query() -> str:
             }
         }
     """
-    
 
-# Build candel job query
-def build_cancel_job_query(
-    user: User, 
-    job_id: str,
-) -> str:
-    
-    # Generate and return the job submission GraphQL query
-    return f"""
-        mutation {{
-            deleteJob (jobId: "{job_id}" input: {{}}) {{
-                node {{
+
+def build_cancel_job_payload(job_id: str) -> dict:
+    return {
+        "query": get_cancel_job_mutation(),
+        "variables": {
+            "jobId": job_id
+        }
+    }
+
+
+def get_cancel_job_mutation() -> str:
+    """Return static cancel job GraphQL mutation with expected 'jobId' variable."""
+    return """
+        mutation CancelJob($jobId: String!) {
+            deleteJob(jobId: $jobId, input: {}) {
+                node {
                     jobId
-                }}
-                error {{
+                }
+                error {
                     jobId
                     errorCode
                     errorMessage
-                }}
-            }}
-        }}
+                }
+            }
+        }
     """
 
 
