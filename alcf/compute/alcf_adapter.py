@@ -30,7 +30,7 @@ from starlette.status import (
 from alcf.compute.graphql.utils import (
     validate_job_response,
     build_create_job_payload,
-    build_get_job_query,
+    build_list_jobs_payload,
     build_cancel_job_query,
     build_update_job_query,
     post_graphql,
@@ -188,7 +188,7 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
         # Submit query to GraphQL API
         response = await post_graphql(
             access_token=user_keycloak_access_token,
-            query=build_get_job_query(filters),
+            json=build_list_jobs_payload(filters.model_dump(exclude_none=True)),
             url=graphql_url
         )
 
@@ -239,7 +239,7 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
         # Submit query to GraphQL API
         response = await post_graphql(
             access_token=user_keycloak_access_token,
-            query=build_get_job_query(filters),
+            json=build_list_jobs_payload(filters.model_dump(exclude_none=True)),
             url=graphql_url
         )
         

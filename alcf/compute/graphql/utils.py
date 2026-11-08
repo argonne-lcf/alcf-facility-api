@@ -106,7 +106,6 @@ def build_create_job_payload(input: dict) -> dict:
     }
 
 
-# Build submit job query
 def get_create_job_mutation() -> str:
     """Return static job submission GraphQL query with expected 'input' variable."""
     return """
@@ -126,36 +125,38 @@ def get_create_job_mutation() -> str:
             }
         }
     """
-    
 
-# Build get job query
-def build_get_job_query(
-    filters: graphql_models.QueryJobsFilter
-) -> str:
 
-    # Generate and return the job submission GraphQL query
-    filters = filters.model_dump(exclude_none=True)
-    return f"""
-        query {{
-            jobs (
-                filter: {dictionary_to_graphql_str(filters, base_indent=16, indent=4)}
-            ) {{
-                edges {{
-                    node {{
+def build_list_jobs_payload(filters: dict) -> dict:
+    return {
+        "query": get_list_jobs_query(),
+        "variables": {
+            "filter": filters
+        }
+    }
+
+
+def get_list_jobs_query() -> str:
+    """Return static job list GraphQL query with expected 'filter' variable."""
+    return """
+        query ListJobs($filter: JobsFilter!) {
+            jobs(filter: $filter) {
+                edges {
+                    node {
                         jobId
-                        status {{
+                        status {
                             state
                             exitStatus
-                        }}
+                        }
                         owner
-                        queue {{
+                        queue {
                             name
-                        }}
+                        }
                         accountingId
-                    }}
-                }}
-            }}
-        }}
+                    }
+                }
+            }
+        }
     """
     
 
