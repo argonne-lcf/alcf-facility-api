@@ -31,7 +31,7 @@ from alcf.compute.graphql.utils import (
     validate_job_response,
     build_create_job_payload,
     build_list_jobs_payload,
-    build_cancel_job_query,
+    build_cancel_job_payload,
     build_update_job_query,
     post_graphql,
     get_graphql_url
@@ -280,7 +280,7 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
         # Submit query to GraphQL API
         response = await post_graphql(
             access_token=user_keycloak_access_token,
-            query=build_cancel_job_query(user, job_id),
+            json=build_cancel_job_payload(job_id),
             url=graphql_url
         )
 
