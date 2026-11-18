@@ -4,8 +4,8 @@ from dotenv import load_dotenv
 load_dotenv(override=True)
 
 # Targeted resource
-#resource_id = "7f7d0593-162e-43b9-8476-07d7d137d6ab" # Edith
-resource_id = "55c1c993-1124-47f9-b823-514ba3849a9a" # Polaris
+#resource_id = "55c1c993-1124-47f9-b823-514ba3849a9a" # Polaris
+resource_id = "8b9b42f7-572a-4909-8472-a0453436304c" # Crux
 
 # Request data
 job_id = "78337"
