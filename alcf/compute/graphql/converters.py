@@ -1,3 +1,6 @@
+import base64
+import textwrap
+
 from fastapi import HTTPException
 from starlette.status import HTTP_500_INTERNAL_SERVER_ERROR, HTTP_400_BAD_REQUEST
 from app.routers.compute import models as compute_models
@@ -74,12 +77,17 @@ def set_nested_value(data: dict, path: str, value: Any) -> dict:
 
 
 # Format dictionary name/value entries
-def format_name_value_entries(input_dict: dict) -> str:
-    name_value_str = ""
+def format_name_value_entries(input_dict: dict) -> list[dict]:
+    name_value_dict = []
     for name, value in input_dict.items():
-        name_value_str += '{name: "' + name + '", value: "' + value + '"}'
-    if name_value_str:
-        return f"[{name_value_str}]"
+        name_value_dict.append(
+            {
+                "name": name,
+                "value": value
+            }
+        )
+    if name_value_dict:
+        return name_value_dict
     else:
         return None
 
@@ -158,7 +166,8 @@ def get_graphql_job_from_iri_jobspec(
     iri_jobspec: compute_models.JobSpec,
     resource_name: str
 ) -> graphql_models.Job:
-    """Convert an IRI JobSpec to a GraphQL Job model."""    
+    """Convert an IRI JobSpec to a GraphQL Job model."""
+
     # Define mapping ('graphql_job':'iri_job')
     field_mapping = {
         'name': 'name',
@@ -182,56 +191,33 @@ def get_graphql_job_from_iri_jobspec(
     # Validate data
     graphql_job = graphql_models.Job(**graphql_data)
 
-    # Format command arguments
-    graphql_job = format_commandArgs(graphql_job)
-    
+    # Prepare shell comand if needed
+    graphql_job = normalize_shell_command(graphql_job)
+
     # Return the GraphQL Job object
     return graphql_job
 
 
-def format_commandArgs(
-    job: graphql_models.Job
-) -> graphql_models.Job:
-    """Format executable arguments commandArgs to work with GraphQL if needed."""
-    
-    # If /bin/bash ...
-    if job.commandArgs and job.remoteCommand == "/bin/bash":
+def normalize_shell_command(graphql_job: graphql_models.Job) -> graphql_models.Job:
+    """Switch to shellPath/scriptContent if /bin/bash command is multi-line."""
+    if graphql_job.commandArgs and graphql_job.remoteCommand == "/bin/bash":
 
-        # Max of two arguments with /bin/bash
-        if len(job.commandArgs) > 2:
+        # Validate /bin/bash IRI inputs
+        if len(graphql_job.commandArgs) != 2:
             raise HTTPException(
                 status_code=HTTP_400_BAD_REQUEST,
-                detail="List of arguments for /bin/bash must have a length of 2 at most."
+                detail="List of arguments for /bin/bash must have a length of 2."
             )
 
-        # For each argument in the list ...
-        for i_arg, argument in enumerate(job.commandArgs):
+        # Switch to shellPath and scriptContent if commands include multiple lines
+        commands = textwrap.dedent(graphql_job.commandArgs[1]).strip()
+        if "\n" in commands:
+            graphql_job.shellPath = graphql_job.remoteCommand
+            graphql_job.scriptContent = base64.urlsafe_b64encode(commands.encode("utf-8")).decode("ascii")
+            graphql_job.remoteCommand = None
+            graphql_job.commandArgs = None
 
-            # Escape quotes for GraphQL
-            argument = argument.replace('"', '\\"')
-
-            # Remove empty lines and strip whitespace
-            lines = [
-                line.strip()
-                for line in argument.splitlines()
-                if line.strip()
-            ]
-
-            # Add semicolons unless line ends with {
-            formatted_lines = [
-                line if line.endswith("{") else f"{line};"
-                for line in lines
-            ]
-
-            # Remove trailing semicolon from final line
-            if formatted_lines:
-                formatted_lines[-1] = formatted_lines[-1].rstrip(";")
-
-            # Join into single line
-            job.commandArgs[i_arg] = " ".join(formatted_lines)
-    
-    # Return formatted commandArgs
-    return job
+    return graphql_job    
 
 
 # Get IRI Job from GraphQL Job

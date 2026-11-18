@@ -11,209 +11,138 @@ from starlette.status import (
     HTTP_400_BAD_REQUEST, 
     HTTP_408_REQUEST_TIMEOUT,
     HTTP_500_INTERNAL_SERVER_ERROR,
-    HTTP_501_NOT_IMPLEMENTED,
 )
 
-# Get indents
-def get_indent_strings(indent: int, base_indent: int):
-    return " " * indent, " " * base_indent
+
+# Build GraphQL createJob payload
+def build_create_job_payload(input: dict) -> dict:
+    return {
+        "query": get_create_job_mutation(),
+        "variables": {
+            "input": input
+        }
+    }
 
 
-# Dictionary to GraphQL
-def dictionary_to_graphql_str(d: dict, base_indent: int = 0, indent: int = 4) -> str:
-    """Convert an input dictionary into a GraphQL-compatible string."""
-
-    # Generate indent spacings
-    base_indent_str, indent_str = get_indent_strings(base_indent, indent)
-    
-    # Initialize the GraphQL-compatible string
-    string = "{\n"
-
-    # Convert each key-value pair in the dictionary
-    for key, value in d.items():
-        convertion = format_graphql_block(key, value, base_indent=base_indent, indent=indent)
-        string += base_indent_str + indent_str + f"{key}: {convertion}\n"
-
-    # Close the dictionary and return the string
-    return f"{string}{base_indent_str}}}"
-
-
-# List to GraphQL
-def list_to_graphql_str(l: list, indent: int = 4, base_indent: int = 0) -> str:
-    """Convert an input list into a GraphQL-compatible string."""
-    
-    # Generate indent spacings
-    base_indent_str, indent_str = get_indent_strings(base_indent, indent)
-    
-    # Initialize the GraphQL-compatible string
-    string = "[\n"
-    
-    # Convert each item in the list
-    last_i = len(l) - 1
-    for i, item in enumerate(l):
-        convertion = format_graphql_block(i, item, base_indent=base_indent, indent=indent)
-        if not isinstance(convertion, str):
-            convertion = str(convertion)
-        string += base_indent_str + indent_str + convertion
-        if i != last_i:
-            string += ",\n"
-                
-    # Remove trailingClose the list and return the string
-    return f"{string}\n{base_indent_str}]"
-
-
-# Format GraphQL block
-def format_graphql_block(key, block, base_indent: int = 0, indent: int = 4) -> str:
-    """Generic fonction to format a block of a dictionary into a GraphQL-compatible string."""
-
-    # Boolean
-    if isinstance(block, bool):
-        return json.dumps(block)
-
-    # String
-    elif isinstance(block, str):
-        if key in ("customResources", "env"):
-            return block
-        else:
-            return f"\"{block}\""
-    
-    # Number
-    elif isinstance (block, (int, float)):
-        return block
-    
-    # List
-    elif isinstance(block, list):
-        return list_to_graphql_str(block, base_indent=base_indent+indent, indent=indent)
-        
-    # Dictionary
-    elif isinstance(block, dict):
-        return dictionary_to_graphql_str(block, base_indent=base_indent+indent, indent=indent)
-        
-    # Error for unsupported type
-    else:
-        raise HTTPException(
-                status_code=HTTP_400_BAD_REQUEST,
-                detail=f"Type {type(block)} not supported in format_graphql_block."
-            )
-
-
-# Build submit job query
-def build_submit_job_query(
-    user: User, 
-    graphql_job: graphql_models.Job
-) -> str:
-
-    # Generate and return the job submission GraphQL query
-    input_data = graphql_job.model_dump(exclude_none=True)
-    return f"""
-        mutation {{
-            createJob (
-                input: {dictionary_to_graphql_str(input_data, base_indent=16, indent=4)}
-            ) {{
-                node {{
+def get_create_job_mutation() -> str:
+    """Return static job submission GraphQL query with expected 'input' variable."""
+    return """
+        mutation CreateJob($input: JobInput!) {
+            createJob(input: $input) {
+                node {
                     jobId
-                    status {{
+                    status {
                         state
                         exitStatus
-                    }}
-                }}
-                error {{
+                    }
+                }
+                error {
                     errorCode
                     errorMessage
-                }}
-            }}
-        }}
+                }
+            }
+        }
     """
-    
 
-# Build get job query
-def build_get_job_query(
-    filters: graphql_models.QueryJobsFilter
-) -> str:
 
-    # Generate and return the job submission GraphQL query
-    filters = filters.model_dump(exclude_none=True)
-    return f"""
-        query {{
-            jobs (
-                filter: {dictionary_to_graphql_str(filters, base_indent=16, indent=4)}
-            ) {{
-                edges {{
-                    node {{
+def build_list_jobs_payload(filters: dict) -> dict:
+    return {
+        "query": get_list_jobs_query(),
+        "variables": {
+            "filter": filters
+        }
+    }
+
+
+def get_list_jobs_query() -> str:
+    """Return static job list GraphQL query with expected 'filter' variable."""
+    return """
+        query ListJobs($filter: JobsFilter!) {
+            jobs(filter: $filter) {
+                edges {
+                    node {
                         jobId
-                        status {{
+                        status {
                             state
                             exitStatus
-                        }}
+                        }
                         owner
-                        queue {{
+                        queue {
                             name
-                        }}
+                        }
                         accountingId
-                    }}
-                }}
-            }}
-        }}
+                    }
+                }
+            }
+        }
     """
-    
 
-# Build candel job query
-def build_cancel_job_query(
-    user: User, 
-    job_id: str,
-) -> str:
-    
-    # Generate and return the job submission GraphQL query
-    return f"""
-        mutation {{
-            deleteJob (jobId: "{job_id}" input: {{}}) {{
-                node {{
+
+def build_cancel_job_payload(job_id: str) -> dict:
+    return {
+        "query": get_cancel_job_mutation(),
+        "variables": {
+            "jobId": job_id
+        }
+    }
+
+
+def get_cancel_job_mutation() -> str:
+    """Return static cancel job GraphQL mutation with expected 'jobId' variable."""
+    return """
+        mutation CancelJob($jobId: String!) {
+            deleteJob(jobId: $jobId, input: {}) {
+                node {
                     jobId
-                }}
-                error {{
+                }
+                error {
                     jobId
                     errorCode
                     errorMessage
-                }}
-            }}
-        }}
+                }
+            }
+        }
     """
 
 
-# Build update job query
-def build_update_job_query(
-    user: User, 
-    graphql_job: graphql_models.Job,
+# Build GraphQL updateJob payload
+def build_update_job_payload(
+    input: dict,
     job_id: str,
-) -> str:
-    
-    # Generate and return the job submission GraphQL query
-    input_data = graphql_job.model_dump(exclude_none=True)
-    return f"""
-        mutation {{
-            updateJob (
-                jobId: "{job_id}",
-                input: {dictionary_to_graphql_str(input_data, base_indent=16, indent=4)}
-            ) {{
-                node {{
+) -> dict:
+    return {
+        "query": get_update_job_mutation(),
+        "variables": {
+            "jobId": job_id,
+            "input": input
+        }
+    }
+
+
+def get_update_job_mutation() -> str:
+    """Return static update job GraphQL mutation with expected 'jobId' and 'input' variables."""
+    return """
+        mutation UpdateJob($jobId: String!, $input: JobInput!) {
+            updateJob(jobId: $jobId, input: $input) {
+                node {
                     jobId
-                    status {{
+                    status {
                         state
                         exitStatus
-                    }}
-                }}
-                error {{
+                    }
+                }
+                error {
                     errorCode
                     errorMessage
-                }}
-            }}
-        }}
+                }
+            }
+        }
     """
 
 
 # Post GraphQL
 async def post_graphql(
-    query: str = None,
+    json: dict,
     access_token: str = None,
     url: str = None,
     ):
@@ -228,7 +157,7 @@ async def post_graphql(
     # Submit request to GraphQL API 
     try:
         async with httpx.AsyncClient(trust_env=GRAPHQL_HTTPX_TRUST_ENV) as client:
-            response = await client.post(url, json={"query": query}, headers=headers, timeout=10)
+            response = await client.post(url, json=json, headers=headers, timeout=10)
             response = response.json()
     except httpx.TimeoutException:
         raise HTTPException(

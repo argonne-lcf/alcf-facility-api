@@ -29,10 +29,10 @@ from starlette.status import (
 # GraphQL query utils
 from alcf.compute.graphql.utils import (
     validate_job_response,
-    build_submit_job_query,
-    build_get_job_query,
-    build_cancel_job_query,
-    build_update_job_query,
+    build_create_job_payload,
+    build_list_jobs_payload,
+    build_cancel_job_payload,
+    build_update_job_payload,
     post_graphql,
     get_graphql_url
 )
@@ -97,7 +97,7 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
         # Submit query to GraphQL API
         response = await post_graphql(
             access_token=user_keycloak_access_token,
-            query=build_submit_job_query(user, graphql_data),
+            json=build_create_job_payload(graphql_data.model_dump(exclude_none=True)),
             url=graphql_url
         )
 
@@ -130,6 +130,9 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
         job_spec: compute_models.JobSpec,
         job_id: str,
     ) -> compute_models.Job:
+
+        # Not available until more reliable implementation is done
+        raise HTTPException(status_code=HTTP_501_NOT_IMPLEMENTED, detail="'update_job' not supported yet.")
         
         # Recover GraphQL URL
         graphql_url = get_graphql_url(resource.name)
@@ -146,7 +149,7 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
         # Submit query to GraphQL API
         response = await post_graphql(
             access_token=user_keycloak_access_token,
-            query=build_update_job_query(user, graphql_data, job_id),
+            json=build_update_job_payload(graphql_data.model_dump(exclude_none=True), job_id),
             url=graphql_url
         )
 
@@ -188,7 +191,7 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
         # Submit query to GraphQL API
         response = await post_graphql(
             access_token=user_keycloak_access_token,
-            query=build_get_job_query(filters),
+            json=build_list_jobs_payload(filters.model_dump(exclude_none=True)),
             url=graphql_url
         )
 
@@ -239,7 +242,7 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
         # Submit query to GraphQL API
         response = await post_graphql(
             access_token=user_keycloak_access_token,
-            query=build_get_job_query(filters),
+            json=build_list_jobs_payload(filters.model_dump(exclude_none=True)),
             url=graphql_url
         )
         
@@ -280,7 +283,7 @@ class AlcfAdapter(ComputeFacilityAdapter, AlcfAuthenticatedAdapter):
         # Submit query to GraphQL API
         response = await post_graphql(
             access_token=user_keycloak_access_token,
-            query=build_cancel_job_query(user, job_id),
+            json=build_cancel_job_payload(job_id),
             url=graphql_url
         )
 
