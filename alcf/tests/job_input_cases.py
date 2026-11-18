@@ -193,4 +193,16 @@ fi
 """,
         "expected": "[LOG] Starting deployment...\n[LOG] Pulling latest changes...\n[LOG] Building application...\n[LOG] Deploying application...\n[LOG] Application started\n[LOG] Deployment successful",
     },
+    {
+        "commands": "\necho == dirs\nls -ld /eagle/iri_api 2>&1\necho == builds\ntimeout 120 find /eagle/iri_api/tests ~ -maxdepth 5 -type f \\( -name \"erf*\" -o -name \"*.testtxt\" \\) 2>/dev/null | head -40\necho == done\n",
+        "expected": "== dirs\ndrwxrws--- 9 root iri_api 4096 Nov 17 19:32 /eagle/iri_api\n== builds\n/eagle/iri_api/tests/hello.testtxt\n== done"
+    },
+    {
+        "commands": "\necho == dirs\nls -ld /eagle/iri_api 2>&1\necho == builds\ntimeout 120 find /eagle/iri_api/tests ~ -maxdepth 5 -type f \( -name \"erf*\" -o -name \"*.testtxt\" \) 2>/dev/null | head -40\necho == done\n",
+        "expected": "== dirs\ndrwxrws--- 9 root iri_api 4096 Nov 17 19:32 /eagle/iri_api\n== builds\n/eagle/iri_api/tests/hello.testtxt\n== done"
+    },
+    {
+        "commands": "cd /eagle/iri_api && echo '=== TOTAL ENERGY ===' && grep -i 'total energy' tests/test.out | tail -5 && cat /tmp/gnu_chunk_ac 2>/dev/null || echo 'no chunk c'",
+        "expected": "=== TOTAL ENERGY ===\ntotal energy from file\nno chunk c"
+    }
 ]

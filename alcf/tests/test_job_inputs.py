@@ -87,7 +87,19 @@ def run_case(index: int, case: dict) -> bool:
         final_state = extract_job_state(final_data)
         print(f"  [INFO] Final job state: {final_state}")
 
-        if final_state in (JobState.FAILED.value, JobState.CANCELED.value):
+        if final_state == JobState.FAILED.value:
+            stderr_path = f"{OUTPUT_PATH}/{job_id}.ER"
+            print(f"  [FAIL] Job failed. Reading stderr from: {stderr_path}")
+            try:
+                err_view = view_file(stderr_path)
+                err_result = err_view.result or {}
+                err_content = str((err_result.get("output") or {}).get("content", ""))
+                print(f"  [FAIL] --- Job stderr ({stderr_path}) ---\n{err_content}")
+            except SystemExit:
+                print(f"  [FAIL] Could not read stderr file at {stderr_path}")
+            return False
+
+        if final_state == JobState.CANCELED.value:
             print(f"  [WARN] Job ended in state {final_state}; will still attempt to read stdout.")
 
         stdout_path = f"{OUTPUT_PATH}/{job_id}.OU"
@@ -111,7 +123,7 @@ def run_case(index: int, case: dict) -> bool:
         set_current_test(None)
 
 
-def main() -> None:
+def main(indices: list[int] | None = None) -> None:
     global BASE_URL, HEADERS, COMPUTE_RESOURCE_ID, FILESYSTEM_RESOURCE_ID, OUTPUT_PATH, ACCOUNT, QUEUE, FILESYSTEM
     BASE_URL = get_base_url()
     HEADERS = get_headers()
@@ -122,6 +134,11 @@ def main() -> None:
     QUEUE = get_env("COMPUTE_QUEUE")
     FILESYSTEM = get_env("COMPUTE_FILESYSTEM")
 
+    if indices is None:
+        selected = list(range(len(CASES)))
+    else:
+        selected = indices
+
     print("\nJob Inputs Test Suite")
     print(f"  BASE_URL               : {BASE_URL}")
     print(f"  COMPUTE_RESOURCE_ID    : {COMPUTE_RESOURCE_ID}")
@@ -129,11 +146,12 @@ def main() -> None:
     print(f"  QUEUE                  : {QUEUE}")
     print(f"  ACCOUNT                : {ACCOUNT}")
     print(f"  OUTPUT_PATH            : {OUTPUT_PATH}")
-    print(f"  Number of test cases   : {len(CASES)}")
+    print(f"  Total cases available  : {len(CASES)}")
+    print(f"  Cases to run           : {selected}")
 
-    for index, case in enumerate(CASES):
+    for index in selected:
         label = f"case_{index}"
-        ok = run_case(index, case)
+        ok = run_case(index, CASES[index])
         (passed if ok else failed).append(label)
 
     result_summary(passed, failed)
@@ -142,7 +160,22 @@ def main() -> None:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--env", default=".env", help="Path to env file (default: .env)")
+    parser.add_argument(
+        "-i", "--index",
+        type=int,
+        action="append",
+        help="Run only the test case at this index (0-based). "
+             "Can be repeated to run several cases, e.g. -i 0 -i 3. "
+             "Omit to run all cases.",
+    )
     args = parser.parse_args()
+
+    if args.index is not None:
+        for i in args.index:
+            if i < 0 or i >= len(CASES):
+                print(f"[ERROR] Index {i} out of range (valid: 0..{len(CASES) - 1})")
+                sys.exit(2)
+
     load_dotenv(dotenv_path=".env", override=False)
     load_dotenv(dotenv_path=args.env, override=True)
-    main()
+    main(indices=args.index)
