@@ -176,6 +176,8 @@ OPENTELEMETRY_ENABLED=true
 OTLP_ENDPOINT="<apm-host>:8200"
 OTLP_TOKEN="<your-apm-secret-token>"
 OTLP_INSECURE=false
+# Send 100% of the traces, not just a sampling
+OTEL_SAMPLE_RATE=1.0
 ```
 
 Create a `alcf_endpoints.json` file with the following structure:
