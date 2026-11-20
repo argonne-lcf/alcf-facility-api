@@ -170,6 +170,12 @@ KEYCLOAK_SERVER_URL="https://<your-domain>/realms/<your-realm>"
 KEYCLOAK_AUTHORIZED_USERNAMES=["the-user", ...]
 GLOBUS_AUTHORIZED_USERNAMES=["the-user@the-domain", ...]
 GLOBUS_AMSC_AUTHORIZED_USERNAMES=["the-user@the-domain", ...]
+
+# Elastic APM / OpenTelemetry
+OPENTELEMETRY_ENABLED=true
+OTLP_ENDPOINT="<apm-host>:8200"
+OTLP_TOKEN="<your-apm-secret-token>"
+OTLP_INSECURE=false
 ```
 
 Create a `alcf_endpoints.json` file with the following structure:
