@@ -15,6 +15,18 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from .. import config
 
+# [ALCF ADDITION begins]
+# Propagate status_code>=500 to Elastic APM
+from opentelemetry import trace
+from opentelemetry.trace import Status, StatusCode
+def _record_server_error(exc: Exception, status: int):
+    if status < 500:
+        return
+    span = trace.get_current_span()
+    if span is not None and span.is_recording():
+        span.record_exception(exc)
+        span.set_status(Status(StatusCode.ERROR, str(exc)))
+# [ALCF ADDITION ends]
 
 class Problem(BaseModel):
     model_config = ConfigDict(extra="allow", json_schema_extra={"description": 'Error structure for REST interface based on RFC 9457, "Problem Details for HTTP APIs."'})
@@ -164,6 +176,10 @@ def install_error_handlers(app: FastAPI):
             )
 
         # Generic fallback
+        # [ALCF ADDITION begins]
+        # Propagate status_code>=500 to Elastic APM
+        _record_server_error(exc, exc.status_code)
+        # [ALCF ADDITION ends]
         return problem_response(
             request=request,
             status=exc.status_code,
@@ -198,6 +214,10 @@ def install_error_handlers(app: FastAPI):
                 extra_headers={"Allow": "GET, HEAD"},
             )
 
+        # [ALCF ADDITION begins]
+        # Propagate status_code>=500 to Elastic APM
+        _record_server_error(exc, exc.status_code)
+        # [ALCF ADDITION ends]
         return problem_response(
             request=request,
             status=exc.status_code,
@@ -210,6 +230,10 @@ def install_error_handlers(app: FastAPI):
     @app.exception_handler(Exception)
     async def global_handler(request: Request, exc: Exception):
         logging.getLogger().exception(exc)
+        # [ALCF ADDITION begins]
+        # Propagate status_code>=500 to Elastic APM
+        _record_server_error(exc, 500)
+        # [ALCF ADDITION ends]
         return problem_response(
             request=request,
             status=500,
