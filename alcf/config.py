@@ -122,6 +122,17 @@ class AccountSettings(BaseSettings):
         env_prefix = "ACCOUNT_"
 
 
+# OpenTelemetry
+class OTLPSettings(BaseSettings):
+    """OTLP exporter configuration."""
+
+    token: Optional[str] = Field(default="")
+    insecure: Optional[bool] = Field(default=True)
+
+    class Config(SettingsConfigDict):
+        env_prefix = "OTLP_"
+
+
 class AlcfSettings(BaseSettings):
     """Main ALCF application settings."""
 
@@ -133,6 +144,7 @@ class AlcfSettings(BaseSettings):
     redis: RedisSettings = Field(default_factory=RedisSettings)
     account: AccountSettings = Field(default_factory=AccountSettings)
     rate_limit: RateLimitSettings = Field(default_factory=RateLimitSettings)
+    otlp: OTLPSettings = Field(default_factory=OTLPSettings)
 
     # Other variables without a prefix
     graphql_httpx_trust_env: bool = Field(default=True)
@@ -192,3 +204,6 @@ GRAPHQL_HTTPX_TRUST_ENV = settings.graphql_httpx_trust_env
 AUTHORIZED_IDP_DOMAIN = settings.authorized_idp_domain
 TASK_TIMEOUT_SEC = settings.task_timeout_sec
 ENV = settings.env
+OTLP_TOKEN = settings.otlp.token
+OTLP_INSECURE = settings.otlp.insecure
+OTLP_HEADERS = {"authorization": f"Bearer {OTLP_TOKEN}"} if OTLP_TOKEN else {}
