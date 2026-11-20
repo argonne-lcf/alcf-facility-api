@@ -22,6 +22,10 @@ from .apilogger import configure_logging
 from .idempotency import create_store
 from .request_context import set_api_url_base, _api_url_base
 
+# [ALCF MODIFICATION begins]
+from alcf.config import OTLP_HEADERS, OTLP_INSECURE
+# [ALCF MODIFICATION ends]
+
 from app.routers.error_handlers import install_error_handlers
 from app.routers.facility import facility
 from app.routers.status import status
@@ -43,7 +47,11 @@ if config.OPENTELEMETRY_ENABLED:
         samplerate = "1.0" if config.OPENTELEMETRY_DEBUG else config.OTEL_SAMPLE_RATE
         tracer_provider = TracerProvider(resource=resource, sampler=ParentBased(TraceIdRatioBased(samplerate)))
         if config.OTLP_ENDPOINT:
-            span_processor = BatchSpanProcessor(OTLPSpanExporter(endpoint=config.OTLP_ENDPOINT, insecure=True))
+            #span_processor = BatchSpanProcessor(OTLPSpanExporter(endpoint=config.OTLP_ENDPOINT, insecure=True))
+            # [ALCF MODIFICATION begins]
+            # Adding insecure and headers config variables
+            span_processor = BatchSpanProcessor(OTLPSpanExporter(endpoint=config.OTLP_ENDPOINT, insecure=OTLP_INSECURE, headers=OTLP_HEADERS))
+            # [ALCF MODIFICATION ends]
         else:
             span_processor = SimpleSpanProcessor(ConsoleSpanExporter())
         tracer_provider.add_span_processor(span_processor)
@@ -51,7 +59,11 @@ if config.OPENTELEMETRY_ENABLED:
 
     if config.OTEL_METRICS_ENABLED:
         if config.OTLP_ENDPOINT:
-            metric_reader = PeriodicExportingMetricReader(OTLPMetricExporter(endpoint=config.OTLP_ENDPOINT, insecure=True), export_interval_millis=config.OTEL_METRIC_EXPORT_INTERVAL)
+            #metric_reader = PeriodicExportingMetricReader(OTLPMetricExporter(endpoint=config.OTLP_ENDPOINT, insecure=True), export_interval_millis=config.OTEL_METRIC_EXPORT_INTERVAL)
+            # [ALCF MODIFICATION begins]
+            # Adding insecure and headers config variables
+            metric_reader = PeriodicExportingMetricReader(OTLPMetricExporter(endpoint=config.OTLP_ENDPOINT, insecure=OTLP_INSECURE, headers=OTLP_HEADERS), export_interval_millis=config.OTEL_METRIC_EXPORT_INTERVAL)
+            # [ALCF MODIFICATION ends]
         else:
             metric_reader = PeriodicExportingMetricReader(ConsoleMetricExporter(), export_interval_millis=config.OTEL_METRIC_EXPORT_INTERVAL)
         metrics.set_meter_provider(MeterProvider(resource=resource, metric_readers=[metric_reader]))
