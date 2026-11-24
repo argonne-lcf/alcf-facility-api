@@ -45,7 +45,7 @@ class AlcfAdapter(AccountFacilityAdapter, AlcfAuthenticatedAdapter):
         ni_capabilities = ni_models.NiCapabilities(capabilities=response).capabilities
         
         # Format response
-        iri_response = [await self._format_capability(c) for c in ni_capabilities if c]
+        iri_response = [self._format_capability(c) for c in ni_capabilities if c]
 
         # Apply filters
         if name:
@@ -100,8 +100,14 @@ class AlcfAdapter(AccountFacilityAdapter, AlcfAuthenticatedAdapter):
         # TODO: remove once storage usage is available
         ni_allocations = [a for a in ni_allocations if a.unit != account_models.AllocationUnit.bytes.value]
 
+        # [TEMPORARY] - Query all capabilities to connect resource names to capability IDs
+        # TODO: remove if capability ID becomes part of Ni allocation response
+        # Submit query to Ni REST API
+        response = await get_ni_rest(url=f"{get_ni_rest_api_url()}/capabilities")
+        cs = ni_models.NiCapabilities(capabilities=response).capabilities
+
         # Return response in IRI format
-        return [self._format_allocation(project, a) for a in ni_allocations]
+        return [self._format_allocation(project, a, cs) for a in ni_allocations]
 
     
     # Get user allocations
@@ -125,7 +131,7 @@ class AlcfAdapter(AccountFacilityAdapter, AlcfAuthenticatedAdapter):
         ]
 
 
-    async def _format_capability(
+    def _format_capability(
         self: "AlcfAdapter",
         ni_capability: ni_models.NiCapability,
     ) -> types_models.Capability:
@@ -170,14 +176,16 @@ class AlcfAdapter(AccountFacilityAdapter, AlcfAuthenticatedAdapter):
     def _format_allocation(
         self: "AlcfAdapter",
         project: account_models.Project,
-        ni_allocation: ni_models.NiAllocation
+        ni_allocation: ni_models.NiAllocation,
+        ni_capabilities: ni_models.NiCapabilities,
     ) -> account_models.ProjectAllocation:
         """Create IRI allocation from Ni data"""
         try:
+            capability = next(c for c in ni_capabilities if c.name.lower() == ni_allocation.resource.lower())
             return account_models.ProjectAllocation(
                 id=ni_allocation.allocation_id,
                 project_id=project.id,
-                capability_id=ni_allocation.resource, # TODO use ID when available
+                capability_id=capability.id,
                 entries=[
                     account_models.AllocationEntry(
                         allocation=ni_allocation.deposits,
