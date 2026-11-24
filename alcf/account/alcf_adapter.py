@@ -102,7 +102,6 @@ class AlcfAdapter(AccountFacilityAdapter, AlcfAuthenticatedAdapter):
 
         # [TEMPORARY] - Query all capabilities to connect resource names to capability IDs
         # TODO: remove if capability ID becomes part of Ni allocation response
-        # Submit query to Ni REST API
         response = await get_ni_rest(url=f"{get_ni_rest_api_url()}/capabilities")
         cs = ni_models.NiCapabilities(capabilities=response).capabilities
 
